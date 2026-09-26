@@ -1,0 +1,126 @@
+import { useState, type ReactNode } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { ChevronDown, ExternalLink, MapPin } from 'lucide-react';
+import { api } from '../lib/api';
+import { cn, sourceLabel, timeAgo } from '../lib/format';
+import type { Attempt, Job } from '../lib/types';
+import { Badge, ScoreDial, StatusBadge } from './ui';
+
+export function JobRow({
+  job,
+  selected,
+  onSelect,
+  actions,
+  showStatus,
+}: {
+  job: Job;
+  selected?: boolean;
+  onSelect?: (v: boolean) => void;
+  actions?: ReactNode;
+  showStatus?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const d = job.scoreDetail;
+  return (
+    <li className={cn('border-b border-line last:border-b-0', selected && 'bg-accent-soft/35')}>
+      <div className="flex flex-wrap items-start gap-3 px-4 py-3 sm:flex-nowrap">
+        {onSelect && (
+          <input
+            type="checkbox"
+            aria-label={`Select ${job.title}`}
+            checked={!!selected}
+            onChange={(e) => onSelect(e.target.checked)}
+            className="mt-3 size-4 accent-[var(--accent)]"
+          />
+        )}
+        <ScoreDial score={job.score} />
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+            <button onClick={() => setOpen((o) => !o)} className="text-left text-[14.5px] font-semibold hover:underline underline-offset-2">
+              {job.title}
+            </button>
+            {showStatus && <StatusBadge status={job.status} />}
+          </div>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[13px] text-ink-2">
+            <span className="font-medium">{job.company || 'Unknown company'}</span>
+            {job.location && (
+              <span className="inline-flex items-center gap-0.5 text-ink-3">
+                <MapPin className="size-3" />
+                {job.location}
+              </span>
+            )}
+            <span className="text-ink-3">{job.postedAt ? `posted ${timeAgo(job.postedAt)}` : `found ${timeAgo(job.discoveredAt)}`}</span>
+          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1">
+            <Badge>{sourceLabel[job.source]}</Badge>
+            {job.isRemote && <Badge tone="info">Remote</Badge>}
+            {job.easyApply && job.source !== 'web' && <Badge tone="good">Easy Apply</Badge>}
+            {job.origin === 'link' && <Badge tone="accent">Your list</Badge>}
+            {job.salaryRaw && <Badge>{job.salaryRaw}</Badge>}
+            {d?.matchedSkills.slice(0, 5).map((s) => (
+              <Badge key={s} tone="good">
+                {s}
+              </Badge>
+            ))}
+            {d?.missingSkills.slice(0, 3).map((s) => (
+              <Badge key={s} className="line-through decoration-ink-3/60">
+                {s}
+              </Badge>
+            ))}
+          </div>
+          {job.reason && <p className="mt-1.5 text-[12.5px] text-ink-3">{job.reason}</p>}
+        </div>
+        {/* Phones: actions drop to their own line so the title keeps the width. */}
+        <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
+          {actions}
+          <a href={job.url} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-ink-3 hover:bg-surface-2 hover:text-ink" title="Open posting">
+            <ExternalLink className="size-4" />
+          </a>
+          <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-2 text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="Details" aria-expanded={open}>
+            <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
+          </button>
+        </div>
+      </div>
+      {open && <JobDetail job={job} />}
+    </li>
+  );
+}
+
+function JobDetail({ job }: { job: Job }) {
+  const { data } = useQuery({ queryKey: ['jobs', 'detail', job.id], queryFn: () => api.get<{ job: Job; attempts: Attempt[] }>(`/jobs/${job.id}`) });
+  const d = job.scoreDetail;
+  return (
+    <div className="grid gap-4 border-t border-line bg-surface-2/40 px-4 py-4 md:grid-cols-[1fr_280px]">
+      <div>
+        <p className="mb-1 text-[12px] font-semibold text-ink-3 uppercase">Description</p>
+        <p className="max-h-60 overflow-y-auto text-[13px] whitespace-pre-line text-ink-2">{job.description || 'No description captured.'}</p>
+      </div>
+      <div className="space-y-3 text-[12.5px]">
+        {d && (
+          <div>
+            <p className="mb-1 font-semibold text-ink-3 uppercase">Why this score</p>
+            <ul className="space-y-0.5 text-ink-2">
+              <li>Skills match: {d.technical}</li>
+              <li>Salary fit: {d.salary}</li>
+              <li>Location fit: {d.location}</li>
+              {d.llm !== null && <li>AI opinion: {d.llm}</li>}
+            </ul>
+          </div>
+        )}
+        {!!data?.attempts.length && (
+          <div>
+            <p className="mb-1 font-semibold text-ink-3 uppercase">Attempts</p>
+            {data.attempts.map((a) => (
+              <details key={a.id} className="mb-1">
+                <summary className="cursor-pointer text-ink-2">
+                  {a.outcome ?? 'running'} - {timeAgo(a.startedAt)} - {a.fields} fields, {a.llmCalls} AI
+                </summary>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-surface p-2 font-mono text-[11px] whitespace-pre-wrap">{a.trace.join('\n') || a.detail}</pre>
+              </details>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

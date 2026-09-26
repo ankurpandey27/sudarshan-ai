@@ -1,0 +1,22 @@
+{
+  "name": "sudarshan",
+  "version": "2.0.0",
+  "description": "Sudarshan - a local-first job application agent that goes out, finishes the task, and returns. LinkedIn, Naukri and any career site; your own AI key or a free local model.",
+  "private": true,
+  "license": "MIT",
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "workspaces": [
+    "apps/server",
+    "apps/web"
+  ],
+  "scripts": {
+    "start": "node scripts/start.mjs",
+    "dev": "node scripts/dev.mjs",
+    "build": "npm run build -w apps/web && npm run build -w apps/server",
+    "test": "npm test -w apps/server && npm run test:browser -w apps/server",
+    "typecheck": "npm run typecheck -w apps/server && npm run typecheck -w apps/web",
+    "lint": "npm run lint -w apps/server"
+  }
+}

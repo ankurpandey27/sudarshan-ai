@@ -1,0 +1,18 @@
+import { Module } from '@nestjs/common';
+import { AnswersModule } from '../answers/answers.module';
+import { ApplyModule } from '../apply/apply.module';
+import { BrowserModule } from '../browser/browser.module';
+import { DiscoveryModule } from '../discovery/discovery.module';
+import { JobsModule } from '../jobs/jobs.module';
+import { ProfileModule } from '../profile/profile.module';
+import { ScoringModule } from '../scoring/scoring.module';
+import { AgentController } from './agent.controller';
+import { AgentService } from './agent.service';
+import { InsightsService } from './insights.service';
+
+@Module({
+  imports: [AnswersModule, ApplyModule, BrowserModule, DiscoveryModule, JobsModule, ProfileModule, ScoringModule],
+  controllers: [AgentController],
+  providers: [AgentService, InsightsService],
+})
+export class AgentModule {}

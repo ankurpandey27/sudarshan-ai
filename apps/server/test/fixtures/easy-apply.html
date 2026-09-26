@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Senior Backend Engineer - Acme</title>
+<style>
+  [role=dialog] { position: fixed; inset: 40px; background: #fff; border: 1px solid #ccc; padding: 16px; overflow: auto; }
+  .hidden { display: none; }
+  .err { color: #b00; font-size: 12px; }
+  /* Hidden native radio with a clickable label, as on LinkedIn. */
+  .chip input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+  .chip label { display: inline-block; padding: 4px 10px; border: 1px solid #888; margin-right: 6px; }
+</style>
+</head>
+<body>
+<h1>Senior Backend Engineer</h1>
+<p>Acme Corp - Bengaluru (Hybrid). We use Node.js, TypeScript and React.</p>
+<button id="easy" class="jobs-apply-button" aria-label="Easy Apply to Senior Backend Engineer">Easy Apply</button>
+
+<div role="dialog" class="jobs-easy-apply-modal hidden" id="modal" aria-label="Apply to Acme">
+  <!-- step 1: contact -->
+  <section data-step="1">
+    <h3>Contact info</h3>
+    <div><label for="fn">First name</label><input id="fn" name="firstName" required></div>
+    <div><label for="ln">Last name</label><input id="ln" name="lastName" required value="Sharma"></div>
+    <div>
+      <label for="em">Email address</label>
+      <select id="em" required><option value="">Select an option</option><option selected>priya@example.com</option></select>
+    </div>
+    <div>
+      <label for="cc">Phone country code</label>
+      <select id="cc" required><option value="">Select an option</option><option>United States (+1)</option><option>India (+91)</option></select>
+    </div>
+    <div><label for="ph">Mobile phone number</label><input id="ph" type="tel" required><span class="err" id="ph-err"></span></div>
+    <footer><button type="button" data-next aria-label="Continue to next step">Next</button></footer>
+  </section>
+
+  <!-- step 2: resume + screening -->
+  <section data-step="2" class="hidden">
+    <h3>Resume</h3>
+    <div><label for="cv">Upload resume</label><input id="cv" type="file" accept=".pdf,.doc,.docx" required></div>
+    <h3>Additional questions</h3>
+    <div class="q">
+      <label for="yr">How many years of work experience do you have with React?</label>
+      <input id="yr" type="text" required aria-describedby="yr-err"><span class="err" id="yr-err" role="alert"></span>
+    </div>
+    <fieldset class="chip">
+      <legend>Are you willing to relocate to Bengaluru?</legend>
+      <input type="radio" id="r-yes" name="reloc" value="Yes" required><label for="r-yes">Yes</label>
+      <input type="radio" id="r-no" name="reloc" value="No"><label for="r-no">No</label>
+    </fieldset>
+    <div>
+      <label for="np">What is your notice period?</label>
+      <select id="np" required>
+        <option value="">Select an option</option><option>Immediate</option><option>15 days or less</option>
+        <option>1 month</option><option>2 months</option><option>3 months</option>
+      </select>
+    </div>
+    <div><label for="ectc">Expected CTC (in lakhs per annum)</label><input id="ectc" required></div>
+    <div><input type="checkbox" id="follow" checked><label for="follow">Follow Acme to stay up to date with their page.</label></div>
+    <footer><button type="button" data-next>Review</button></footer>
+  </section>
+
+  <!-- step 3: free text -->
+  <section data-step="3" class="hidden">
+    <div><label for="why">Why do you want to join Acme?</label><textarea id="why" required></textarea></div>
+    <div><input type="checkbox" id="terms" required><label for="terms">I agree to the terms and privacy policy</label></div>
+    <footer><button type="button" id="submit">Submit application</button></footer>
+  </section>
+
+  <section data-step="done" class="hidden"><h2>Your application was sent to Acme!</h2><button>Done</button></section>
+</div>
+
+<script>
+  const modal = document.getElementById('modal');
+  let step = 1;
+  const show = (s) => document.querySelectorAll('[data-step]').forEach((el) => el.classList.toggle('hidden', el.dataset.step !== String(s)));
+  document.getElementById('easy').addEventListener('click', () => { modal.classList.remove('hidden'); show(1); });
+  const $ = (id) => document.getElementById(id);
+  function valid(s) {
+    if (s === 1) {
+      const phoneOk = /^\d{10}$/.test($('ph').value);
+      $('ph-err').textContent = phoneOk ? '' : 'Enter a valid phone number';
+      return $('fn').value && $('cc').value && phoneOk;
+    }
+    if (s === 2) {
+      const y = $('yr').value;
+      const yOk = /^\d+$/.test(y);
+      $('yr').setAttribute('aria-invalid', String(!yOk));
+      $('yr-err').textContent = yOk ? '' : 'Enter a whole number between 0 and 99';
+      return $('cv').files.length === 1 && yOk && document.querySelector('input[name=reloc]:checked') && $('np').value && /^\d+(\.\d+)?$/.test($('ectc').value);
+    }
+    if (s === 3) return $('why').value.trim().length > 10 && $('terms').checked;
+    return false;
+  }
+  document.querySelectorAll('[data-next]').forEach((b) => b.addEventListener('click', () => { if (valid(step)) show(++step); }));
+  $('submit').addEventListener('click', () => {
+    if (!valid(3)) return;
+    window.__submitted = {
+      fn: $('fn').value, ph: $('ph').value, cc: $('cc').value, yr: $('yr').value,
+      reloc: document.querySelector('input[name=reloc]:checked').value, np: $('np').value,
+      ectc: $('ectc').value, why: $('why').value, cv: $('cv').files[0].name, follow: $('follow').checked,
+    };
+    show('done');
+  });
+</script>
+</body>
+</html>
