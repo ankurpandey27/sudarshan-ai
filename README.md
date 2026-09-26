@@ -8,6 +8,13 @@
 A job application agent that runs on your own laptop - LinkedIn, Naukri and any career site.<br/>
 Bring any AI key, use a free local model, or no AI at all. Free and open source.</p>
 
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-e8a317" /></a>
+  <img alt="Node 22.13+" src="https://img.shields.io/badge/node-%E2%89%A5%2022.13-339933" />
+  <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/runs%20on-Windows%20%7C%20macOS%20%7C%20Linux-555" />
+  <img alt="Local-first" src="https://img.shields.io/badge/data-stays%20on%20your%20computer-1b1814" />
+</p>
+
 ---
 
 ## Why "Sudarshan"?
@@ -38,8 +45,10 @@ The logo is the chakra itself: a gold saw-toothed rim around twelve spokes. Insi
 8. [When something goes wrong](#when-something-goes-wrong)
 9. [Safety and privacy](#safety-and-privacy)
 10. [Configuration](#configuration)
-11. [For developers](#for-developers)
-12. [Status and known gaps](#status-and-known-gaps)
+11. [Updating and removing](#updating-and-removing)
+12. [For developers](#for-developers)
+13. [Status and known gaps](#status-and-known-gaps)
+14. [Contributing](#contributing)
 
 ---
 
@@ -77,6 +86,7 @@ Browser agents that "look at a screenshot, think, click, repeat" need 30-60 AI c
 
 - [Node.js](https://nodejs.org) **22.13 or newer** (the LTS download is fine). Check with `node -v`.
 - **Google Chrome**, **Microsoft Edge** or **Brave** (already on most computers).
+- Works on **Windows, macOS and Linux**. No database, Docker or Python to install.
 
 **Run**
 
@@ -85,6 +95,8 @@ git clone https://github.com/ankurpandey27/sudarshan-ai.git
 cd sudarshan-ai
 npm start
 ```
+
+No Git? Click **Code -> Download ZIP** on this page, unzip it, open a terminal in the `sudarshan-ai` folder and run `npm start`.
 
 That's the only command. The first run installs and builds (a few minutes), then opens **http://localhost:4747** in your browser. Later runs start in seconds and rebuild automatically after you pull updates.
 
@@ -118,7 +130,7 @@ Open **Settings -> AI model** (or step 1 of the wizard), then for any provider:
 
 Keys are stored **encrypted on your computer** and are never shown again (only a hint like `sk-...3456`).
 
-You can also add a **Fallback model** (Settings -> AI model -> Fallback). If the main one fails or runs out of credits, Sudarshan switches automatically. A local Ollama model is a great fallback.
+You can also add a **Fallback model** (Settings -> AI model -> *Fallback model (optional)*). If the main one fails or runs out of credits, Sudarshan switches automatically. A local Ollama model is a great fallback.
 
 ### Which one should I pick?
 
@@ -238,7 +250,7 @@ Download the template from the wizard or **Settings -> Spreadsheet -> Template**
 | Page | What it is for |
 |---|---|
 | **Mission control** | Start/stop, **What needs attention**, today's applications vs limits, the live **flight log**, AI spend |
-| **Review** | Scored jobs with the reason. Approve a batch (or *all above 70*). In **Auto** mode strong matches are queued for you |
+| **Review** | Scored jobs with the reason. Approve them one by one, or all strong matches at once (*Approve all N jobs scoring 70+*). In **Auto** mode strong matches are queued for you |
 | **Questions** | Questions only you can answer - answer once, every waiting job continues |
 | **Applications** | Everything applied / needing attention, with the step-by-step trace of each attempt. Export to Excel, paste more links |
 | **Answer memory** | See and edit everything Sudarshan has learned |
@@ -271,7 +283,7 @@ Each failed application also keeps a **screenshot** and a **step-by-step trace**
 
 ## Safety and privacy
 
-- **Everything stays on your computer**, in `~/.sudarshan` (`%USERPROFILE%\.sudarshan` on Windows): the database, your resume, the agent's browser profile, logs and screenshots of failed attempts. (Installs from before the rename keep using `~/.job-apply-agent`.)
+- **Everything stays on your computer**, in `~/.sudarshan` (`%USERPROFILE%\.sudarshan` on Windows): the database, your resume, the agent's browser profile, logs and screenshots of failed attempts.
 - **API keys are encrypted** (AES-256-GCM) with a key generated on your machine, and never sent back to the page.
 - **No passwords stored** - you log in to job sites in the agent's own browser window.
 - **Local only** - the server listens on `127.0.0.1` and rejects requests from other websites.
@@ -292,7 +304,26 @@ Everything is set from the UI. For power users, environment variables:
 | `SUDARSHAN_OPEN_BROWSER` | `true` | Set `false` to not open the browser on start |
 | `LOG_LEVEL` | `info` | `debug` for more detail |
 
-(The older `JAA_*` names still work.)
+
+
+---
+
+## Updating and removing
+
+**Update** to the latest version:
+
+```bash
+cd sudarshan-ai
+git pull
+npm start          # installs and rebuilds only what changed
+```
+
+Your data is not in the project folder, so updating never touches it.
+
+**Remove Sudarshan completely:**
+
+1. Stop it (`Ctrl + C`) and delete the `sudarshan-ai` folder.
+2. Delete your data folder: `~/.sudarshan` (`%USERPROFILE%.sudarshan` on Windows). This erases your profile, resume copy, answers, encrypted keys and the agent's logged-in browser profile.
 
 ---
 
@@ -331,6 +362,20 @@ scripts/    start.mjs (the one command), dev.mjs
 - **Verified:** resume parsing, Excel import, LinkedIn discovery and scoring against the live site, the full multi-step form engine in a real browser, profile self-repair, security and key encryption.
 - **Not yet verified against live logged-in accounts:** LinkedIn Easy Apply submission and the Naukri chat questionnaire. Their pages change often - use **Stop before the final Submit** for your first applications and report what the flight log shows.
 - Workday-style portals that require creating an account usually end up as **"Do by hand"**.
+
+## Contributing
+
+Bug reports and pull requests are welcome. Job sites change their pages often, so the most useful report is:
+
+1. What you expected and what happened.
+2. The lines from the **flight log** around the problem (Mission control).
+3. For a failed application: the step-by-step trace from **Applications -> the job -> Attempts**.
+
+Please **remove personal details** (name, email, phone, salary) before posting logs or screenshots. For code changes, run `npm test`, `npm run typecheck` and `npm run lint` before opening a pull request.
+
+## Disclaimer
+
+Sudarshan automates actions in your own browser, on your own accounts. Automated applying may break a job site's terms of service, and sites can restrict accounts that apply too fast. The defaults are conservative, but **you are responsible for how you use it**. It is not affiliated with LinkedIn, Naukri or any AI provider.
 
 ## License
 
