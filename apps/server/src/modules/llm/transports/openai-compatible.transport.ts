@@ -73,7 +73,7 @@ export class OpenAiCompatibleTransport implements LlmTransport {
     const h: Record<string, string> = {};
     if (this.apiKey) h.authorization = `Bearer ${this.apiKey}`;
     if (this.kind === LlmProviderKind.OPENROUTER) {
-      h['http-referer'] = 'https://github.com/sudarshan-agent';
+      h['http-referer'] = 'https://github.com/ankurpandey27/sudarshan-ai';
       h['x-title'] = 'Sudarshan';
     }
     return h;

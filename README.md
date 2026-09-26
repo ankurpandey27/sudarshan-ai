@@ -81,8 +81,8 @@ Browser agents that "look at a screenshot, think, click, repeat" need 30-60 AI c
 **Run**
 
 ```bash
-git clone <this repository> sudarshan
-cd sudarshan
+git clone https://github.com/ankurpandey27/sudarshan-ai.git
+cd sudarshan-ai
 npm start
 ```
 
