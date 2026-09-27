@@ -3,8 +3,9 @@
 <head><meta charset="utf-8"><title>Apply - Indeed-style</title></head>
 <body>
 <!-- Mirrors Indeed Apply: the resume step already shows the saved resume, with an optional
-     "upload a different file"; the review step's Submit stays disabled until a reCAPTCHA
-     (loaded late) is solved. -->
+     "upload a different file"; the review step mentions "applied" in its boilerplate, and its
+     Submit stays disabled until a reCAPTCHA (loaded late) is solved. #review opens a saved
+     draft straight on the review step, as Indeed can. -->
 <main id="app">
   <section data-step="1">
     <h2>Add a resume for the employer</h2>
@@ -16,24 +17,34 @@
   <section data-step="2" hidden>
     <h2>Review your application</h2>
     <p>You will not be able to edit your application after you submit.</p>
+    <p>You've applied to 3 jobs this week.</p>
+    <label><input type="checkbox" id="alerts"> Get email updates for similar jobs</label>
     <button id="submit" disabled>Submit your application</button>
   </section>
 </main>
 <script>
   window.__uploads = 0;
   document.getElementById('other').addEventListener('change', () => window.__uploads++);
-  document.getElementById('continue').addEventListener('click', () => {
+  const toReview = () => {
     document.querySelector('[data-step="1"]').hidden = true;
     document.querySelector('[data-step="2"]').hidden = false;
-    // The captcha arrives a moment after the review page.
+  };
+  // The captcha arrives a moment after the review page.
+  const addCaptcha = (delay) =>
     setTimeout(() => {
       const f = document.createElement('iframe');
-      f.src = 'about:blank#recaptcha';
       f.title = 'reCAPTCHA';
       f.setAttribute('src', 'https://www.google.com/recaptcha/api2/anchor?k=test');
       document.querySelector('[data-step="2"]').appendChild(f);
-    }, 1500);
+    }, delay);
+  document.getElementById('continue').addEventListener('click', () => {
+    toReview();
+    addCaptcha(1500);
   });
+  if (location.hash === '#review') {
+    toReview();
+    addCaptcha(1500);
+  }
 </script>
 </body>
 </html>

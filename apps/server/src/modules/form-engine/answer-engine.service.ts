@@ -13,7 +13,7 @@ import { FormField } from './interfaces/form-field.interface';
 import { LlmFieldAnswer, ResolveOptions, ResolveResult, UnresolvedField } from './interfaces/resolve-result.interface';
 import { ANSWER_SYSTEM_PROMPT, buildAnswerPrompt } from './utils/answer-prompt.util';
 import { needsAnswer, toInstruction } from './utils/field-value.util';
-import { answerFromProfile, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
+import { answerFromProfile, namesACountry, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
 import { GENERIC_QUESTION } from '../answers/constants/answers.constants';
 
 const RESUME_FIELD = /resume|cv\b|curriculum|bio ?data/i;
@@ -38,6 +38,8 @@ export class AnswerEngineService {
     };
     const forLlm: FormField[] = [];
     const hints = new Map<string, string>();
+    // "Authorized to work in this country?" for a job abroad: which country is unknown, so it cannot be remembered.
+    const unknownCountry = new Set<string>();
 
     for (const field of fields) {
       const forced = opts.force?.has(field.id) === true;
@@ -66,8 +68,11 @@ export class AnswerEngineService {
       if (field.kind === FieldKind.CHECKBOX && !field.required && !forced) continue;
 
       // A saved "Yes, authorized" from a job at home must not be reused for a job abroad.
+      // One that names the country is remembered for that country - exact wording only, never a fuzzy match.
       const authAbroad = WORK_AUTH_QUESTION.test(field.label.toLowerCase()) && !workAuthorizationKnown(ctx);
-      const remembered = authAbroad ? null : this.answers.lookup(field.label || field.placeholder);
+      const found = this.answers.lookup(field.label || field.placeholder);
+      const remembered = !authAbroad ? found : namesACountry(field.label) && found?.similarity === 1 ? found : null;
+      if (authAbroad && !namesACountry(field.label)) unknownCountry.add(field.id);
       if (remembered && !forced) {
         const ins = toInstruction(field, remembered.answer);
         if (ins) {
@@ -104,7 +109,11 @@ export class AnswerEngineService {
       }
       if (field.required || opts.force?.has(field.id)) {
         // Without a real question it cannot be asked once and remembered - it would come back on every attempt.
-        if (GENERIC_QUESTION.test((field.label || field.placeholder).trim())) {
+        if (unknownCountry.has(field.id)) {
+          result.blockers.push(
+            'A work-authorization question for a job abroad does not say which country - answer it in the open tab, or fill Work authorization in your Profile',
+          );
+        } else if (GENERIC_QUESTION.test((field.label || field.placeholder).trim())) {
           result.blockers.push('A required question on this form has no label, so it cannot be remembered - answer it in the open tab');
         } else {
           result.unresolved.push({ field, suggestion: a?.value?.trim() || null });

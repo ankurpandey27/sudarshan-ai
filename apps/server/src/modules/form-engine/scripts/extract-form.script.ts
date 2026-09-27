@@ -348,8 +348,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     let kind: FormSnapshot['actions'][number]['kind'] = 'other';
     if (
       /^(submit|submit application|send application|send|finish|complete application|submit & apply|confirm and apply)$/i.test(lower) ||
-      // "Submit your application" (Indeed); not "Send me jobs like this" (Naukri).
-      /^submit\b|(submit|send) (your |my |the )?application/.test(lower)
+      // "Submit your application" (Indeed); not "Submit resume" (an upload step) or "Send me jobs like this" (Naukri).
+      /^submit( now)?!?$|(submit|send) (your |my |the )?application/.test(lower)
     )
       kind = 'submit';
     else if (/^review\b|review (your )?application/.test(lower)) kind = 'review';

@@ -51,7 +51,9 @@ describe('AnswerEngineService', () => {
 
     const abroad = await engine.resolve([field('Are you legally authorized to work?')], at('Austin, Texas, United States'), { allowLlm: false });
     expect(abroad.instructions).toHaveLength(0);
-    expect(abroad.unresolved).toHaveLength(1);
+    // Which country is unknown, so it is handed over rather than asked (and forgotten) again and again.
+    expect(abroad.unresolved).toHaveLength(0);
+    expect(abroad.blockers.join()).toMatch(/does not say which country/);
   });
 
   it('hands an unlabelled required question over instead of asking it again and again', async () => {
@@ -59,5 +61,26 @@ describe('AnswerEngineService', () => {
     const out = await engine.resolve([field('Choose an option', ['Option A', 'Option B'])], at('Noida, India'), { allowLlm: false });
     expect(out.unresolved).toHaveLength(0);
     expect(out.blockers.join()).toMatch(/no label/);
+  });
+
+  it('remembers an authorization answer for the country the question names, so it is not asked again', async () => {
+    const { answers, engine } = make();
+    const us = 'Are you legally authorized to work in the United States?';
+    // Your answer from the Questions page.
+    answers.remember(us, 'No', AnswerSource.USER);
+    const again = await engine.resolve([field(us)], at('Austin, Texas, United States'), { allowLlm: false });
+    expect(again.instructions).toHaveLength(1);
+    expect(again.unresolved).toHaveLength(0);
+    // Never reused for another country, even though the wording is close.
+    const canada = await engine.resolve([field('Are you legally authorized to work in Canada?')], at('Toronto, Canada'), { allowLlm: false });
+    expect(canada.instructions).toHaveLength(0);
+    expect(canada.unresolved).toHaveLength(1);
+  });
+
+  it('hands over an authorization question abroad that does not say which country', async () => {
+    const { engine } = make();
+    const out = await engine.resolve([field('Are you legally authorized to work in this country?')], at('Austin, Texas, United States'), { allowLlm: false });
+    expect(out.unresolved).toHaveLength(0);
+    expect(out.blockers.join()).toMatch(/does not say which country/);
   });
 });

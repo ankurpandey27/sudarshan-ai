@@ -11,7 +11,7 @@ import { Job } from '../../jobs/interfaces/job.interface';
 import {
   APPLIED_BUTTON,
   CLOSED_TEXT,
-  GENERIC_SUCCESS,
+  INDEED_SUCCESS,
   INDEED_APPLY_HOST,
   INDEED_CLOSED,
   INDEED_CHALLENGE,
@@ -39,7 +39,7 @@ export class IndeedApplyAdapter implements ApplyAdapter {
     const result = (status: PrepareStatus, extra: Partial<PrepareResult> = {}): PrepareResult => ({
       status,
       scopeSelector: null,
-      successPattern: GENERIC_SUCCESS,
+      successPattern: INDEED_SUCCESS,
       ...extra,
     });
     // Indeed only finishes drawing a job in a visible tab; a background tab stays blank under the header.

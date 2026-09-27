@@ -72,4 +72,12 @@ describe('PlatformHealthService', () => {
     applied(ids[2]);
     expect(health.state(JobPlatform.LINKEDIN).status).toBe('ok');
   });
+
+  it('never pauses all company sites together, and never counts crashes or timeouts', () => {
+    const { health, attempt } = make();
+    for (let i = 0; i < 3; i++) attempt('run:stuck', 'web');
+    expect(health.state(JobPlatform.OTHER).status).toBe('ok');
+    for (let i = 0; i < 3; i++) attempt('error');
+    expect(health.state(JobPlatform.LINKEDIN).status).toBe('ok');
+  });
 });

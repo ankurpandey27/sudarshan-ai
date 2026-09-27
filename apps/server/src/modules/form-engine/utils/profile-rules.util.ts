@@ -16,6 +16,11 @@ const guess = (value: string): RuleAnswer => ({ value, confident: false });
 /** "Are you authorized / eligible to work ...?" */
 export const WORK_AUTH_QUESTION = /(legally\s*)?(authori[sz]ed|eligible|permitted)\s*to\s*work|work\s*authori[sz]ation|right to work/;
 
+/** The question names a place: "...to work in the United States?" - not "...in this country?". Needs the original capitals. */
+export function namesACountry(label: string): boolean {
+  return /\b(?:in|for)\s+(?:the\s+)?(?!This\b|That\b|Your\b|Our\b|Any\b|A\b)[A-Z][A-Za-z.]+/.test(label);
+}
+
 /** Whether "authorized to work" can be answered for this job: stated in the profile, or the job is where you live. */
 export function workAuthorizationKnown(c: AnswerContext): boolean {
   return !!c.profile.workAuthorization.trim() || jobInHomeCountry(c);

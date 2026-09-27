@@ -93,11 +93,13 @@ export class TasteService implements OnApplicationBootstrap, OnApplicationShutdo
     try {
       const rows = this.decided();
       const key = rows.map((r) => `${r.id}:${r.y}`).join(',');
-      if (key !== this.trainedOn) {
+      const changed = key !== this.trainedOn;
+      if (changed) {
         this.trainedOn = key;
         this.train(rows);
       }
-      this.scoreOpenJobs();
+      // A new model re-scores every open job; otherwise only jobs that have no score yet.
+      this.scoreOpenJobs(changed);
     } catch (err) {
       this.logger.warn(`Taste model skipped: ${(err as Error).message}`);
     }
@@ -191,14 +193,16 @@ export class TasteService implements OnApplicationBootstrap, OnApplicationShutdo
     return Math.round((right / samples.length) * 100) / 100;
   }
 
-  private scoreOpenJobs(): void {
+  private scoreOpenJobs(all: boolean): void {
     if (!this.model) {
       this.storage.run('UPDATE jobs SET taste = NULL, taste_reasons = NULL WHERE taste IS NOT NULL');
       return;
     }
+    // Taste is shown and used only in Review and the queue; a new model leaves no stale scores elsewhere.
+    if (all) this.storage.run(`UPDATE jobs SET taste = NULL, taste_reasons = NULL WHERE taste IS NOT NULL AND status NOT IN ('review', 'approved')`);
     const open = this.storage.all<JobRowForTaste>(
       `SELECT id, title, source, url, apply_url, is_remote, easy_apply, score, score_detail, status, user_decided, reason FROM jobs
-       WHERE status IN ('review', 'approved', 'skipped', 'new') AND score IS NOT NULL`,
+       WHERE status IN ('review', 'approved') AND score IS NOT NULL${all ? '' : ' AND taste IS NULL'}`,
     );
     this.storage.transaction(() => {
       for (const r of open) {

@@ -14,7 +14,7 @@ import { AnswerContext } from '../src/modules/form-engine/interfaces/answer-cont
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
 import { LlmService } from '../src/modules/llm/llm.service';
 import { EMPTY_PROFILE } from '../src/modules/profile/constants/profile.constants';
-import { LINKEDIN_SCOPE } from '../src/modules/apply/constants/apply.constants';
+import { GENERIC_SUCCESS, LINKEDIN_SCOPE } from '../src/modules/apply/constants/apply.constants';
 import { WebApplyAdapter } from '../src/modules/apply/adapters/web.adapter';
 import { PrepareStatus } from '../src/modules/apply/enums/prepare-status.enum';
 
@@ -149,26 +149,47 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     expect(second.steps.some((m) => /"Save & Next"/.test(m))).toBe(true);
   });
 
-  it('keeps the resume a site already shows, and hands over a Submit that waits for a captcha (Indeed)', async () => {
-    // Offline: the captcha frame must not really load.
-    await page.setRequestInterception(true);
-    const block = (r: import('puppeteer-core').HTTPRequest) => (r.url().startsWith('file:') ? r.continue() : r.abort());
-    page.on('request', block);
-    await page.goto(`file://${join(__dirname, 'fixtures', 'resume-step-captcha.html').replace(/\\/g, '/')}`);
+  it('uploads the resume when the page only mentions ".pdf" in a hint', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'resume-hint.html').replace(/\\/g, '/')}`);
     const out = await runner.run(page, {
       scopeSelector: null,
-      successPattern: SUCCESS,
-      ctx,
+      successPattern: GENERIC_SUCCESS,
+      ctx: { ...ctx, resumePath: join(__dirname, 'fixtures', 'resume.pdf') },
       domain: 'fixture.local',
       allowLlm: false,
       pauseBeforeSubmit: false,
       onStep: () => undefined,
     });
+    expect(await page.evaluate(() => (window as unknown as { __uploads: number }).__uploads)).toBe(1);
+    expect(out.status).toBe('applied');
+  });
+
+  it('never calls an unsent Indeed review page "applied" - keeps the resume, hands over the captcha (Indeed)', async () => {
+    // Offline: the captcha frame must not really load.
+    await page.setRequestInterception(true);
+    const block = (r: import('puppeteer-core').HTTPRequest) => (r.url().startsWith('file:') ? r.continue() : r.abort());
+    page.on('request', block);
+    const base = `file://${join(__dirname, 'fixtures', 'resume-step-captcha.html').replace(/\\/g, '/')}`;
+    // Through the resume step, and straight onto a saved draft's review step.
+    for (const url of [base, `${base}#review`]) {
+      await page.goto('about:blank');
+      await page.goto(url);
+      const out = await runner.run(page, {
+        scopeSelector: null,
+        // The broad wording: the review page's "You've applied to 3 jobs" must still not count.
+        successPattern: GENERIC_SUCCESS,
+        ctx,
+        domain: 'fixture.local',
+        allowLlm: false,
+        pauseBeforeSubmit: false,
+        onStep: () => undefined,
+      });
+      expect(await page.evaluate(() => (window as unknown as { __uploads: number }).__uploads)).toBe(0);
+      expect(out.status).toBe('captcha');
+      expect(out.detail).toMatch(/captcha/i);
+    }
     page.off('request', block);
     await page.setRequestInterception(false);
-    expect(await page.evaluate(() => (window as unknown as { __uploads: number }).__uploads)).toBe(0);
-    expect(out.status).toBe('captcha');
-    expect(out.detail).toMatch(/captcha/i);
   });
 
   it('recognises a one-click apply (Instahyre) instead of reporting "no apply button"', async () => {

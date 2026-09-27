@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Apply - career site</title></head>
+<body>
+<!-- A career form whose resume box is not marked required, but whose own script refuses to send
+     without one. Its hint text mentions ".pdf", which is not an attached resume. -->
+<form id="apply">
+  <label for="cv">Upload your resume (.pdf, .docx)</label>
+  <input id="cv" type="file" accept=".pdf,.doc,.docx">
+  <p id="cv-error" hidden>Resume is required</p>
+  <button id="send" type="submit">Submit application</button>
+</form>
+<p id="done" hidden>Thank you for applying. Your application has been submitted.</p>
+<script>
+  window.__uploads = 0;
+  const cv = document.getElementById('cv');
+  cv.addEventListener('change', () => window.__uploads++);
+  document.getElementById('apply').addEventListener('submit', (e) => {
+    e.preventDefault();
+    if (!cv.files.length) {
+      document.getElementById('cv-error').hidden = false;
+      cv.setAttribute('aria-invalid', 'true');
+      cv.setAttribute('aria-describedby', 'cv-error');
+      return;
+    }
+    document.getElementById('apply').hidden = true;
+    document.getElementById('done').hidden = false;
+  });
+</script>
+</body>
+</html>

@@ -6,6 +6,6 @@ export const BROKEN_STREAK = 3;
 
 /**
  * Attempt endings that suggest the site's pages changed. Captchas, questions for you, logins and
- * closed jobs are normal and never count.
+ * closed jobs are normal, and so are crashes and timeouts ("error") - none of them count.
  */
-export const BROKEN_ENDINGS = ['run:stuck', 'run:closed', 'prep:no_apply_button', 'error'];
+export const BROKEN_ENDINGS = ['run:stuck', 'run:closed', 'prep:no_apply_button'];

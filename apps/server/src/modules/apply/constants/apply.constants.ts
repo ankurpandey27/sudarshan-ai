@@ -44,3 +44,5 @@ export const ONE_CLICK_SUCCESS =
  */
 export const ALREADY_APPLIED_TEXT =
   /you('ve| have) already applied|already applied (to|for) this|application (was |has been )?already (submitted|sent|received)/i;
+/** Indeed's own confirmation after Submit - its forms mention "applied" everywhere else. */
+export const INDEED_SUCCESS = /your application has been submitted|application (has been )?submitted to|we('ve| have) received your application/i;

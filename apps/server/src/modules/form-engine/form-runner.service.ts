@@ -17,6 +17,7 @@ import { fillFieldsInPage } from './scripts/fill-fields.script';
 import { documentTextInPage, pickTypeaheadOptionInPage } from './scripts/page-helpers.script';
 import { NAVIGATE_SYSTEM_PROMPT, buildNavigatePrompt } from './utils/navigate-prompt.util';
 import { CAPTCHA_WAIT_MS, MAX_OTHER_MOVES, RESUME_ON_PAGE, UNSAFE_ACTION } from './constants/form-runner.constants';
+import { needsAnswer } from './utils/field-value.util';
 import { PlaybookService } from './playbook.service';
 import { stepSignature } from './utils/step-signature.util';
 
@@ -55,13 +56,20 @@ export class FormRunnerService {
     let otherMoves = 0;
     let force = new Set<string>();
     // The resume is uploaded at most once per application: a file input always reads empty after the page redraws.
-    let uploaded = false;
+    // ...plus once more only if the site then complains about it ("Resume is required").
+    let uploads = 0;
+    // Buttons pressed in this run; nothing has been sent before the first one.
+    let pressed = 0;
 
     for (let step = 1; step <= maxSteps; step++) {
       out.steps = step;
       const snap = await this.snapshot(page, opts.scopeSelector);
 
-      if (opts.successPattern.test(snap.text) || opts.successPattern.test(await this.docText(page))) {
+      // A confirmation only counts after Sudarshan pressed something, and never on a page that is
+      // still a form waiting to be sent (fields plus a Submit button, or an unsolved captcha) -
+      // job sites mention "applied" and "application" all over their forms.
+      const stillAForm = snap.captcha || (snap.fields.length > 0 && snap.actions.some((a) => a.kind === 'submit'));
+      if (pressed > 0 && !stillAForm && (opts.successPattern.test(snap.text) || opts.successPattern.test(await this.docText(page)))) {
         return { ...out, status: 'applied', detail: 'Application submitted' };
       }
       if (opts.scopeSelector && !snap.scopeFound) {
@@ -72,10 +80,11 @@ export class FormRunnerService {
       // which would overwrite answers typed before the upload finished.
       // A step that already shows a resume (e.g. Indeed's saved one) needs no upload unless the site insists.
       const resumeShown = RESUME_ON_PAGE.test(snap.text);
-      const needsUpload = (f: FormSnapshot['fields'][number]) => f.kind === FieldKind.FILE && !f.value && !uploaded && (f.required || !resumeShown);
+      const needsUpload = (f: FormSnapshot['fields'][number]) =>
+        f.kind === FieldKind.FILE && !f.value && (uploads === 0 ? f.required || !!f.error || !resumeShown : uploads === 1 && !!f.error);
       const emptyFiles = snap.fields.filter(needsUpload);
       if (emptyFiles.length) {
-        uploaded = true;
+        uploads++;
         const up = await this.answers.resolve(emptyFiles, opts.ctx, { allowLlm: false });
         const files = up.instructions.filter((i) => i.kind === FieldKind.FILE);
         if (files.length) {
@@ -130,10 +139,16 @@ export class FormRunnerService {
         if (snap.actions.some((a) => a.disabled && (a.kind === 'submit' || a.kind === 'apply'))) {
           await sleep(3000);
           const again = await this.snapshot(page, opts.scopeSelector).catch(() => snap);
-          const detail = again.captcha
-            ? 'Filled - only the captcha is left; solve it and press Submit in the open tab'
-            : 'Filled - the Submit button is waiting for you (usually a captcha); finish it in the open tab';
-          return { ...out, status: 'captcha', detail };
+          if (again.captcha) return { ...out, status: 'captcha', detail: 'Filled - only the captcha is left; solve it and press Submit in the open tab' };
+          // Not a captcha: say which answers the site is still waiting for, if it shows them.
+          const missing = again.fields.filter((f) => f.required && needsAnswer(f)).map((f) => f.label || f.placeholder);
+          return {
+            ...out,
+            status: 'stuck',
+            detail: missing.length
+              ? `Submit stays greyed out - these still need an answer: ${missing.slice(0, 3).join('; ')}`
+              : 'Submit stays greyed out - finish the form',
+          };
         }
         return { ...out, status: 'stuck', detail: `No way forward found on ${new URL(snap.url).hostname}` };
       }
@@ -144,13 +159,15 @@ export class FormRunnerService {
       }
       opts.onStep(`Step ${step}: "${action.text}"`);
       await this.click(page, action.id);
+      pressed++;
       await this.settle(page);
 
       const after = await this.snapshot(page, opts.scopeSelector);
-      const fp = fingerprint(after);
       const errored = after.fields.filter((f) => f.error);
-      const moved = fp !== fingerprint(snap) || after.text !== snap.text;
-      if (errored.length && !moved) {
+      // Same step = same fields and address, ignoring error messages: new errors are not progress.
+      const sameStep = stepShape(after) === stepShape(snap);
+      const moved = !sameStep || (!errored.length && after.text !== snap.text);
+      if (errored.length && sameStep) {
         repeats++;
         if (repeats >= 2) {
           const why = [...errored.map((f) => `${f.label}: ${f.error}`), ...after.errors].slice(0, 3).join('; ');
@@ -266,6 +283,7 @@ export class FormRunnerService {
   }
 }
 
-function fingerprint(s: FormSnapshot): string {
-  return s.fields.map((f) => `${f.label}|${f.error ? 'E' : ''}`).join('#') + `@${s.url.split('?')[0]}`;
+/** The step's fields and address, without error flags, to tell "moved on" from "showed errors". */
+function stepShape(s: FormSnapshot): string {
+  return s.fields.map((f) => f.label).join('#') + `@${s.url.split('?')[0]}`;
 }

@@ -5,7 +5,8 @@
 export const CAPTCHA_WAIT_MS = 180_000;
 
 /** A resume file already attached on the page, e.g. "AnkurResume.pdf" on Indeed's resume step. */
-export const RESUME_ON_PAGE = /\b[\w .()-]{2,80}\.(pdf|docx?|rtf)\b/i;
+// A real file name - letters or digits right before the extension - not hint text like "(.pdf, .docx)".
+export const RESUME_ON_PAGE = /\b[A-Za-z0-9][\w()-]*[A-Za-z0-9]\.(pdf|docx?|rtf)\b/i;
 
 /** Buttons that end or undo an application; never tried as "another way forward". */
 export const UNSAFE_ACTION = /save (and|&) (close|exit)|save for later|withdraw|delete|remove|sign ?out|log ?out|unsubscribe/i;

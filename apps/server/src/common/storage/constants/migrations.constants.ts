@@ -164,4 +164,7 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE jobs ADD COLUMN taste REAL;
   ALTER TABLE jobs ADD COLUMN taste_reasons TEXT;
   `,
+  `
+  CREATE INDEX idx_attempts_started ON attempts (started_at);
+  `,
 ];
