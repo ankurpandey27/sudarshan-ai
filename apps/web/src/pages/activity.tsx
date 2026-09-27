@@ -2,18 +2,31 @@
 // SPDX-License-Identifier: MIT
 
 import { useEffect, useState } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { ScrollText, Search } from 'lucide-react';
 import { api } from '../lib/api';
 import { clock, cn, levelColor, platformLabel, sourceLabel } from '../lib/format';
 import type { ActivityPage } from '../lib/types';
-import { Button, Card, Empty, Input, PageTitle } from '../components/ui';
+import { Card, Empty, Input, PageTitle } from '../components/ui';
+import { Pagination } from '../components/pagination';
+import { useDebounced } from '../lib/use-debounced';
+import { useSaved } from '../lib/use-saved';
 
 type Kind = 'all' | 'apply' | 'problems';
 const KINDS: { id: Kind; label: string }[] = [
   { id: 'all', label: 'All' },
   { id: 'apply', label: 'Applications' },
   { id: 'problems', label: 'Problems' },
+];
+
+// Log lines are tagged with the platform they are about; "web" is any other career site.
+const SOURCES: { id: string; label: string }[] = [
+  { id: '', label: 'All platforms' },
+  { id: 'linkedin', label: 'LinkedIn' },
+  { id: 'naukri', label: 'Naukri' },
+  { id: 'indeed', label: 'Indeed' },
+  { id: 'instahyre', label: 'Instahyre' },
+  { id: 'web', label: 'Other sites' },
 ];
 
 const dayName = (day: string): string => {
@@ -31,30 +44,28 @@ const dayName = (day: string): string => {
 export function ActivityPage() {
   const [day, setDay] = useState('');
   const [kind, setKind] = useState<Kind>('all');
+  const [source, setSource] = useState('');
   const [text, setText] = useState('');
-  const [search, setSearch] = useState('');
+  const search = useDebounced(text.trim());
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useSaved('sudarshan.activity.pageSize', 50);
+  useEffect(() => setPage(1), [day, kind, source, search, pageSize]);
 
-  // Search as you type, without a request per keystroke.
-  useEffect(() => {
-    const t = setTimeout(() => setSearch(text.trim()), 300);
-    return () => clearTimeout(t);
-  }, [text]);
-
-  const query = useInfiniteQuery({
-    queryKey: ['activity', day, kind, search],
-    initialPageParam: 0,
-    queryFn: ({ pageParam }) => {
-      const qs = new URLSearchParams({ kind, limit: '150' });
+  const query = useQuery({
+    queryKey: ['activity', day, kind, source, search, page, pageSize],
+    queryFn: () => {
+      const qs = new URLSearchParams({ kind, limit: String(pageSize), page: String(page) });
       if (day) qs.set('day', day);
+      if (source) qs.set('source', source);
       if (search) qs.set('search', search);
-      if (pageParam) qs.set('beforeId', String(pageParam));
       return api.get<ActivityPage>(`/events/history?${qs}`);
     },
-    getNextPageParam: (last) => (last.hasMore ? last.items.at(-1)?.id : undefined),
+    placeholderData: keepPreviousData,
   });
-  const first = query.data?.pages[0];
-  const items = query.data?.pages.flatMap((p) => p.items) ?? [];
+  const first = query.data;
+  const items = first?.items ?? [];
   const days = first?.days ?? [];
+  const filtered = !!(search || day || source || kind !== 'all');
   const total = days.reduce((n, d) => n + d.lines, 0);
 
   // Group lines under a date heading when showing several days.
@@ -91,16 +102,36 @@ export function ActivityPage() {
             </button>
           ))}
         </div>
-        <div className="relative w-full sm:w-72">
-          <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-ink-3" />
-          <Input value={text} onChange={(e) => setText(e.target.value)} placeholder="Search - a company, job title, error..." className="pl-8" />
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <select
+            value={source}
+            onChange={(e) => setSource(e.target.value)}
+            aria-label="Platform"
+            className="h-9 rounded-lg border border-line bg-surface px-2 text-[13px]"
+          >
+            {SOURCES.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <div className="relative flex-1 sm:w-72 sm:flex-none">
+            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-ink-3" />
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Search - a company, job title, error..."
+              className="pl-8"
+              aria-label="Search the log"
+            />
+          </div>
         </div>
       </div>
 
       <Card className="overflow-hidden">
         {!query.isLoading && items.length === 0 && (
-          <Empty icon={<ScrollText className="size-7" />} title={search || day || kind !== 'all' ? 'Nothing matches' : 'No activity yet'}>
-            {search || day || kind !== 'all' ? 'Try another day, filter or search.' : 'Start the agent or press "Search now" on Lakshya.'}
+          <Empty icon={<ScrollText className="size-7" />} title={filtered ? 'Nothing matches' : 'No activity yet'}>
+            {filtered ? 'Try another day, platform, filter or search.' : 'Start the agent or press "Search now" on Lakshya.'}
           </Empty>
         )}
         <ol className="bg-surface-2/40 px-4 py-2 font-mono text-[12.5px] leading-6">
@@ -124,13 +155,18 @@ export function ActivityPage() {
             );
           })}
         </ol>
-        {query.hasNextPage && (
-          <div className="border-t border-line p-3 text-center">
-            <Button size="sm" onClick={() => void query.fetchNextPage()} loading={query.isFetchingNextPage}>
-              Load older
-            </Button>
-          </div>
-        )}
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={first?.total ?? 0}
+          noun="lines"
+          onPage={(p) => {
+            setPage(p);
+            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onPageSize={setPageSize}
+          className="border-t border-line"
+        />
       </Card>
     </>
   );

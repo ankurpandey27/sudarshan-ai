@@ -32,7 +32,16 @@ export const useAnswers = (search: string) =>
 export const usePresets = () => useQuery({ queryKey: ['presets'], queryFn: () => api.get<LlmPreset[]>('/llm/providers'), staleTime: Infinity });
 export const useUsage = () => useQuery({ queryKey: ['usage'], queryFn: () => api.get<LlmUsage>('/llm/usage'), refetchInterval: 30000 });
 
-export const useJobs = (params: { status?: string; source?: string; platform?: string; search?: string; sort?: string; page?: number; limit?: number }) => {
+export const useJobs = (params: {
+  status?: string;
+  source?: string;
+  platform?: string;
+  search?: string;
+  sort?: string;
+  page?: number;
+  limit?: number;
+  minScore?: number;
+}) => {
   const qs = new URLSearchParams(
     Object.entries(params)
       .filter(([, v]) => v !== undefined && v !== '')

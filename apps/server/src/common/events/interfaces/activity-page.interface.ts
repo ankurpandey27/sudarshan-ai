@@ -15,6 +15,8 @@ export interface ActivityPage {
   items: AgentEvent[];
   /** Pass the last item's id as beforeId to load older lines. */
   hasMore: boolean;
+  /** Lines matching the filters, across every page. */
+  total: number;
   /** Every day still kept, newest first. */
   days: ActivityDay[];
   keepDays: number;

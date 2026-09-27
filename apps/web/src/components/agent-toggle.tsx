@@ -19,7 +19,7 @@ const phaseText: Record<AgentPhase, string> = {
   sleeping: 'Outside active hours',
 };
 
-export function AgentToggle({ compact }: { compact?: boolean }) {
+export function AgentToggle({ compact, rail }: { compact?: boolean; rail?: boolean }) {
   const { data } = useAgent();
   const qc = useQueryClient();
   const toast = useToast();
@@ -33,6 +33,25 @@ export function AgentToggle({ compact }: { compact?: boolean }) {
   });
   const running = data?.running ?? false;
   const phase = data?.phase ?? 'stopped';
+
+  // Collapsed sidebar: one button, state in its colour and tooltip.
+  if (rail) {
+    return (
+      <button
+        onClick={() => toggle.mutate()}
+        disabled={toggle.isPending}
+        title={running ? `Sudarshan is out working - ${phaseText[phase]}. Click to stop.` : 'Sudarshan is resting. Click to start.'}
+        aria-label={running ? 'Stop agent' : 'Start agent'}
+        className={cn(
+          'relative mx-auto grid size-10 place-items-center rounded-xl border transition-colors disabled:opacity-60',
+          running ? 'border-accent/40 bg-accent-soft/70 text-ink hover:bg-accent-soft' : 'border-transparent bg-accent text-accent-ink hover:brightness-105',
+        )}
+      >
+        {running ? <Pause className="size-4" /> : <Play className="size-4" />}
+        {running && <span className="live-dot absolute -top-0.5 -right-0.5 size-2.5 rounded-full border-2 border-bg bg-accent" />}
+      </button>
+    );
+  }
 
   return (
     <div className={cn('rounded-xl border p-3', running ? 'border-accent/40 bg-accent-soft/60' : 'border-line bg-surface')}>

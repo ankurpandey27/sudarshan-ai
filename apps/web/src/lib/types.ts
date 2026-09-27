@@ -292,6 +292,7 @@ export interface ActivityDay {
 export interface ActivityPage {
   items: AgentEvent[];
   hasMore: boolean;
+  total: number;
   days: ActivityDay[];
   keepDays: number;
 }

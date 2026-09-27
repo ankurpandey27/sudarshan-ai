@@ -14,6 +14,7 @@ import { useAgent, useAnalytics, useSettings, useStats, useUsage } from '../lib/
 import type { AnalyticsReport, JobPlatform } from '../lib/types';
 import { AiUsageCard } from '../components/ai-usage-card';
 import { TasteCard } from '../components/taste-card';
+import { Tabs, useTab, type TabDef } from '../components/tabs';
 import { ApplyOnCard } from '../components/apply-on-card';
 import { PLATFORM_COLOR } from '../components/platform-badge';
 import { Button, Card, CardHeader } from '../components/ui';
@@ -24,6 +25,13 @@ import { Donut } from '../components/charts/donut';
 import { Sparkline } from '../components/charts/sparkline';
 import { BarList } from '../components/charts/bar-list';
 import { Pipeline } from '../components/charts/pipeline';
+
+type View = 'overview' | 'insights' | 'activity';
+const VIEWS: readonly TabDef<View>[] = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'insights', label: 'Insights' },
+  { id: 'activity', label: 'Activity' },
+];
 
 const RANGES = [7, 30, 90] as const;
 type Range = (typeof RANGES)[number];
@@ -44,6 +52,7 @@ export function Dashboard() {
   const { data: stats } = useStats();
   const { data: settings } = useSettings();
   const { data: usage } = useUsage();
+  const [view, setView] = useTab(VIEWS, 'view');
   const [days, setDays] = useState<Range>(savedRange);
   const [platform, setPlatform] = useState<JobPlatform | ''>('');
   const { data: report, isLoading } = useAnalytics(days, platform);
@@ -98,122 +107,134 @@ export function Dashboard() {
         </div>
       </header>
 
-      <InsightsPanel />
+      <Tabs tabs={VIEWS} value={view} onChange={setView} />
 
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <Segmented label="Range" value={days} options={RANGES.map((r) => ({ value: r, label: `${r} days` }))} onChange={pickRange} />
-        <Segmented
-          label="Platform"
-          value={platform}
-          options={[{ value: '' as const, label: 'All platforms' }, ...PLATFORMS.map((p) => ({ value: p.key, label: p.label, dot: p.key }))]}
-          onChange={setPlatform}
-        />
-      </div>
-
-      <Kpis report={report} days={days} queue={agent?.queue ?? 0} review={stats?.byStatus.review ?? 0} questions={agent?.openQuestions ?? 0} />
-
-      <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <ApplicationsChart report={report} loading={isLoading} />
-        <Card>
-          <CardHeader title="Pipeline" hint={`Jobs found in the last ${days} days, and how far they got.`} />
-          <div className="px-5 py-5">
-            <Pipeline
-              stages={[
-                { id: 'found', label: 'Found', value: report?.pipeline.found ?? 0, hint: 'Jobs discovered in this range' },
-                { id: 'matched', label: 'Worth a look', value: report?.pipeline.matched ?? 0, hint: 'Scored high enough to review' },
-                { id: 'approved', label: 'Approved', value: report?.pipeline.approved ?? 0, hint: 'Approved by you, or by auto mode' },
-                { id: 'applied', label: 'Applied', value: report?.pipeline.applied ?? 0, hint: 'Application sent' },
-              ]}
-            />
-            {report && report.pipeline.approved > report.pipeline.applied && (
-              <p className="mt-5 rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-[12.5px] text-ink-2">
-                {report.pipeline.approved - report.pipeline.applied} approved job(s) not sent yet - they are in the queue, or need you in{' '}
-                <Link to="/applications" className="text-info hover:underline">
-                  Applications
-                </Link>
-                .
-              </p>
-            )}
-          </div>
-        </Card>
-      </div>
-
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <MatchQuality report={report} minApply={settings?.agent.minApplyScore ?? 70} />
-        <Card>
-          <CardHeader title="Where your applications went" hint={`Every platform, last ${days} days.`} />
-          <div className="px-5 py-5">
-            <Donut
-              centerLabel="applied"
-              slices={(report?.byPlatform ?? []).map((p) => ({
-                id: p.platform,
-                label: platformLabel(p.platform),
-                value: p.applied,
-                color: PLATFORM_COLOR[p.platform],
-                note: `of ${p.found} found`,
-              }))}
-            />
-          </div>
-        </Card>
-      </div>
-
-      <div className="mt-5 grid gap-5 lg:grid-cols-2">
-        <Card>
-          <CardHeader
-            title="Skills jobs asked for that you don't list"
-            hint="Worth adding to your profile if you have them - or learning next."
-            action={
-              <Link to="/profile" className="shrink-0 text-[12.5px] text-info hover:underline">
-                Edit profile
-              </Link>
-            }
+      {view !== 'activity' && (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <Segmented label="Range" value={days} options={RANGES.map((r) => ({ value: r, label: `${r} days` }))} onChange={pickRange} />
+          <Segmented
+            label="Platform"
+            value={platform}
+            options={[{ value: '' as const, label: 'All platforms' }, ...PLATFORMS.map((p) => ({ value: p.key, label: p.label, dot: p.key }))]}
+            onChange={setPlatform}
           />
-          <div className="px-5 py-5">
-            <BarList
-              color="var(--p-linkedin)"
-              empty="Nothing yet - appears once jobs are scored."
-              items={(report?.missingSkills ?? []).map((s) => ({ id: s.skill, label: s.skill, value: s.jobs, display: `${s.jobs} jobs` }))}
-            />
-          </div>
-        </Card>
-        <Card>
-          <CardHeader
-            title="Why jobs were skipped"
-            hint="Each is a setting you can change."
-            action={
-              <Link to="/review?tab=skipped" className="shrink-0 text-[12.5px] text-info hover:underline">
-                See skipped
-              </Link>
-            }
-          />
-          <div className="px-5 py-5">
-            <BarList
-              color="var(--p-other)"
-              empty="Nothing skipped in this range."
-              items={(report?.skipReasons ?? []).map((r) => ({ id: r.rule, label: r.label, value: r.jobs, hint: r.fix }))}
-            />
-            {report?.skipReasons[0]?.fix && (
-              <p className="mt-5 rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-[12.5px] text-ink-2">
-                <span className="font-semibold text-ink">To skip fewer for "{report.skipReasons[0].label}": </span>
-                {report.skipReasons[0].fix}
-              </p>
-            )}
-          </div>
-        </Card>
-      </div>
+        </div>
+      )}
 
-      <div className="mt-8 mb-3 flex items-center gap-3">
-        <h2 className="text-[13px] font-semibold text-ink-3">Controls and activity</h2>
-        <span className="h-px flex-1 bg-line/70" />
-      </div>
-      <ApplyOnCard />
-      <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
-        <RecentActivity />
-        <div className="space-y-5">
-          <TasteCard />
+      {view === 'overview' && (
+        <>
+          <InsightsPanel />
+
+          <Kpis report={report} days={days} queue={agent?.queue ?? 0} review={stats?.byStatus.review ?? 0} questions={agent?.openQuestions ?? 0} />
+
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+            <ApplicationsChart report={report} loading={isLoading} />
+            <Card>
+              <CardHeader title="Pipeline" hint={`Jobs found in the last ${days} days, and how far they got.`} />
+              <div className="px-5 py-5">
+                <Pipeline
+                  stages={[
+                    { id: 'found', label: 'Found', value: report?.pipeline.found ?? 0, hint: 'Jobs discovered in this range' },
+                    { id: 'matched', label: 'Worth a look', value: report?.pipeline.matched ?? 0, hint: 'Scored high enough to review' },
+                    { id: 'approved', label: 'Approved', value: report?.pipeline.approved ?? 0, hint: 'Approved by you, or by auto mode' },
+                    { id: 'applied', label: 'Applied', value: report?.pipeline.applied ?? 0, hint: 'Application sent' },
+                  ]}
+                />
+                {report && report.pipeline.approved > report.pipeline.applied && (
+                  <p className="mt-5 rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-[12.5px] text-ink-2">
+                    {report.pipeline.approved - report.pipeline.applied} approved job(s) not sent yet - they are in the queue, or need you in{' '}
+                    <Link to="/applications" className="text-info hover:underline">
+                      Applications
+                    </Link>
+                    .
+                  </p>
+                )}
+              </div>
+            </Card>
+          </div>
+          <div className="mt-5">
+            <ApplyOnCard />
+          </div>
+        </>
+      )}
+
+      {view === 'insights' && (
+        <>
+          <div className="grid gap-5 lg:grid-cols-2">
+            <MatchQuality report={report} minApply={settings?.agent.minApplyScore ?? 70} />
+            <Card>
+              <CardHeader title="Where your applications went" hint={`Every platform, last ${days} days.`} />
+              <div className="px-5 py-5">
+                <Donut
+                  centerLabel="applied"
+                  slices={(report?.byPlatform ?? []).map((p) => ({
+                    id: p.platform,
+                    label: platformLabel(p.platform),
+                    value: p.applied,
+                    color: PLATFORM_COLOR[p.platform],
+                    note: `of ${p.found} found`,
+                  }))}
+                />
+              </div>
+            </Card>
+          </div>
+
+          <div className="mt-5 grid gap-5 lg:grid-cols-2">
+            <Card>
+              <CardHeader
+                title="Skills jobs asked for that you don't list"
+                hint="Worth adding to your profile if you have them - or learning next."
+                action={
+                  <Link to="/profile" className="shrink-0 text-[12.5px] text-info hover:underline">
+                    Edit profile
+                  </Link>
+                }
+              />
+              <div className="px-5 py-5">
+                <BarList
+                  color="var(--p-linkedin)"
+                  empty="Nothing yet - appears once jobs are scored."
+                  items={(report?.missingSkills ?? []).map((s) => ({ id: s.skill, label: s.skill, value: s.jobs, display: `${s.jobs} jobs` }))}
+                />
+              </div>
+            </Card>
+            <Card>
+              <CardHeader
+                title="Why jobs were skipped"
+                hint="Each is a setting you can change."
+                action={
+                  <Link to="/review?tab=skipped" className="shrink-0 text-[12.5px] text-info hover:underline">
+                    See skipped
+                  </Link>
+                }
+              />
+              <div className="px-5 py-5">
+                <BarList
+                  color="var(--p-other)"
+                  empty="Nothing skipped in this range."
+                  items={(report?.skipReasons ?? []).map((r) => ({ id: r.rule, label: r.label, value: r.jobs, hint: r.fix }))}
+                />
+                {report?.skipReasons[0]?.fix && (
+                  <p className="mt-5 rounded-xl bg-surface-2/70 px-3.5 py-2.5 text-[12.5px] text-ink-2">
+                    <span className="font-semibold text-ink">To skip fewer for "{report.skipReasons[0].label}": </span>
+                    {report.skipReasons[0].fix}
+                  </p>
+                )}
+              </div>
+            </Card>
+          </div>
+          <div className="mt-5">
+            <TasteCard />
+          </div>
+        </>
+      )}
+
+      {view === 'activity' && (
+        <div className="grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <RecentActivity />
           <AiUsageCard usage={usage} />
         </div>
-      </div>
+      )}
     </div>
   );
 }

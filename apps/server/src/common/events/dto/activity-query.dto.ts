@@ -28,4 +28,16 @@ export class ActivityQueryDto {
   @Min(1)
   @Max(300)
   limit?: number;
+
+  /** Numbered pages (1 = newest); used instead of beforeId. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  /** Only lines about one platform, e.g. "linkedin". */
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  source?: string;
 }

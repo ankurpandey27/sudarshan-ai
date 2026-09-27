@@ -14,6 +14,9 @@ import { JobRow } from '../components/job-row';
 import { Button, Card, Empty, Input, PageTitle, Textarea } from '../components/ui';
 import { useToast } from '../components/toast';
 import { InfoTip } from '../components/info-tip';
+import { Pagination } from '../components/pagination';
+import { useDebounced } from '../lib/use-debounced';
+import { useSaved } from '../lib/use-saved';
 
 const TABS = [
   { id: 'applied', label: 'Applied', status: 'applied' },
@@ -30,16 +33,18 @@ export function Applications() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>(() => TABS.find((t) => t.id === params.get('tab'))?.id ?? 'applied');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useSaved('sudarshan.applications.pageSize', 20);
+  const query = useDebounced(search.trim());
   const [platform, setPlatform] = useState<JobPlatform | ''>('');
   const [adding, setAdding] = useState(false);
   const current = TABS.find((t) => t.id === tab)!;
   const { data, isLoading } = useJobs({
     status: current.status,
     platform,
-    search,
+    search: query,
     sort: tab === 'applied' ? 'applied' : 'recent',
     page,
-    limit: 50,
+    limit: pageSize,
   });
   const qc = useQueryClient();
   const toast = useToast();
@@ -65,7 +70,6 @@ export function Applications() {
     mutationFn: (url: string) => api.post('/browser/open', { url }),
     onError: (e: Error) => toast('error', e.message),
   });
-  const pages = data ? Math.max(1, Math.ceil(data.total / data.limit)) : 1;
 
   return (
     <>
@@ -164,20 +168,22 @@ export function Applications() {
             />
           ))}
         </ul>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={data?.total ?? 0}
+          noun="jobs"
+          onPage={(p) => {
+            setPage(p);
+            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onPageSize={(n) => {
+            setPageSize(n);
+            setPage(1);
+          }}
+          className="border-t border-line"
+        />
       </Card>
-      {pages > 1 && (
-        <div className="mt-3 flex items-center justify-end gap-2 text-[13px]">
-          <Button size="sm" disabled={page <= 1} onClick={() => setPage((p) => p - 1)}>
-            Previous
-          </Button>
-          <span className="tabular text-ink-3">
-            {page} / {pages}
-          </span>
-          <Button size="sm" disabled={page >= pages} onClick={() => setPage((p) => p + 1)}>
-            Next
-          </Button>
-        </div>
-      )}
     </>
   );
 }

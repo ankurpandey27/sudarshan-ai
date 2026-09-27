@@ -52,4 +52,19 @@ describe('EventsService flight log', () => {
 
     expect(events.activity({}).days).toEqual([{ day: localDay(), lines: 4, problems: 2 }]);
   });
+
+  it('pages the saved log by number and filters it by platform', () => {
+    const events = new EventsService(new StorageService(':memory:'));
+    for (let i = 1; i <= 25; i++) events.emit({ type: AgentEventType.LOG, message: `line ${i}`, source: i % 5 === 0 ? 'naukri' : 'linkedin' });
+
+    const p1 = events.activity({ limit: 10, page: 1 });
+    const p3 = events.activity({ limit: 10, page: 3 });
+    expect(p1.total).toBe(25);
+    expect(p1.items[0].message).toBe('line 25');
+    expect(p3.items.map((e) => e.message)).toEqual(['line 5', 'line 4', 'line 3', 'line 2', 'line 1']);
+
+    const naukri = events.activity({ source: 'naukri', limit: 10, page: 1 });
+    expect(naukri.total).toBe(5);
+    expect(naukri.items.every((e) => e.source === 'naukri')).toBe(true);
+  });
 });

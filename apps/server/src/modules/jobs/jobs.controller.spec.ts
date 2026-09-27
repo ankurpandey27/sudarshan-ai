@@ -74,4 +74,14 @@ describe('moving jobs between Review, the queue and Skipped', () => {
     expect(jobs.get(youSkipped).status).toBe(JobStatus.SKIPPED);
     expect(jobs.get(youReviewed).status).toBe(JobStatus.REVIEW);
   });
+
+  it('approves every strong match in Review, across all pages, and leaves weak ones', () => {
+    const { jobs, add, ctl } = make();
+    const ids = Array.from({ length: 30 }, (_, i) => add(String(200000 + i), JobStatus.REVIEW));
+    ids.forEach((id, i) => jobs.setScore(id, i < 25 ? 80 : 40, null as never, JobStatus.REVIEW, 'scored'));
+    expect(jobs.list({ status: [JobStatus.REVIEW], minScore: 70, limit: 1 }).total).toBe(25);
+    expect(ctl.approveStrong({ minScore: 70 }).updated).toBe(25);
+    expect(jobs.list({ status: [JobStatus.REVIEW] }).total).toBe(5);
+    expect(jobs.get(ids[24]).status).toBe(JobStatus.APPROVED);
+  });
 });

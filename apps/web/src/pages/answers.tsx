@@ -1,11 +1,14 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { BookOpenCheck, Plus, Search, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
-import { timeAgo } from '../lib/format';
+import { cn, timeAgo } from '../lib/format';
+import { useDebounced } from '../lib/use-debounced';
+import { useSaved } from '../lib/use-saved';
+import { Pagination } from '../components/pagination';
 import { useAnswers } from '../lib/queries';
 import type { Answer } from '../lib/types';
 import { Badge, Button, Card, Empty, Input, PageTitle, Textarea } from '../components/ui';
@@ -14,10 +17,50 @@ import { useToast } from '../components/toast';
 const sourceTone = { user: 'good', excel: 'info', llm: 'accent' } as const;
 const sourceText = { user: 'you', excel: 'excel', llm: 'AI' } as const;
 
+type SourceFilter = 'all' | Answer['source'];
+type SortBy = 'used' | 'recent' | 'az';
+const SORTS: { id: SortBy; label: string }[] = [
+  { id: 'used', label: 'Most used' },
+  { id: 'recent', label: 'Recently changed' },
+  { id: 'az', label: 'A-Z' },
+];
+
 export function AnswersPage() {
-  const [search, setSearch] = useState('');
+  const [text, setText] = useState('');
+  const search = useDebounced(text.trim());
   const [adding, setAdding] = useState(false);
+  const [source, setSource] = useState<SourceFilter>('all');
+  const [sortBy, setSortBy] = useState<SortBy>('used');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useSaved('sudarshan.answers.pageSize', 20);
   const { data = [], isLoading } = useAnswers(search);
+  useEffect(() => setPage(1), [search, source, sortBy, pageSize]);
+
+  const counts = useMemo(() => {
+    const c: Record<string, number> = { all: data.length };
+    for (const a of data) c[a.source] = (c[a.source] ?? 0) + 1;
+    return c;
+  }, [data]);
+  const shown = useMemo(() => {
+    const list = source === 'all' ? [...data] : data.filter((a) => a.source === source);
+    if (sortBy === 'recent') list.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    else if (sortBy === 'az') list.sort((a, b) => a.question.localeCompare(b.question));
+    return list;
+  }, [data, source, sortBy]);
+  const pageItems = shown.slice((page - 1) * pageSize, page * pageSize);
+  const chip = (id: SourceFilter, label: string) => (
+    <button
+      key={id}
+      onClick={() => setSource(id)}
+      aria-pressed={source === id}
+      className={cn(
+        'inline-flex h-7 items-center gap-1.5 rounded-full border px-2.5 text-[12.5px] transition-colors',
+        source === id ? 'border-accent bg-accent-soft/60 font-semibold text-ink' : 'border-line bg-surface text-ink-2 hover:border-line-strong',
+      )}
+    >
+      {label} <span className="text-ink-3 tabular">{counts[id] ?? 0}</span>
+    </button>
+  );
   return (
     <>
       <PageTitle
@@ -29,22 +72,64 @@ export function AnswersPage() {
           </Button>
         }
       />
-      <div className="relative mb-3 max-w-sm">
-        <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-ink-3" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search questions or answers" className="pl-8" />
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Where the answer came from">
+          {chip('all', 'All')}
+          {chip('user', 'Yours')}
+          {chip('excel', 'From Excel')}
+          {chip('llm', 'From AI')}
+        </div>
+        <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as SortBy)}
+            aria-label="Sort answers"
+            className="h-9 rounded-lg border border-line bg-surface px-2 text-[13px]"
+          >
+            {SORTS.map((o) => (
+              <option key={o.id} value={o.id}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <div className="relative flex-1 sm:w-72 sm:flex-none">
+            <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-ink-3" />
+            <Input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="Search questions or answers"
+              className="pl-8"
+              aria-label="Search answers"
+            />
+          </div>
+        </div>
       </div>
       {adding && <NewAnswer onDone={() => setAdding(false)} />}
       <Card>
-        {!isLoading && data.length === 0 && (
-          <Empty icon={<BookOpenCheck className="size-7" />} title="Memory is empty">
-            It fills as you answer questions, import an Excel answer sheet, or let the AI answer reusable questions.
+        {!isLoading && shown.length === 0 && (
+          <Empty icon={<BookOpenCheck className="size-7" />} title={search || source !== 'all' ? 'Nothing matches' : 'Memory is empty'}>
+            {search || source !== 'all'
+              ? 'Try another search or source.'
+              : 'It fills as you answer questions, import an Excel answer sheet, or let the AI answer reusable questions.'}
           </Empty>
         )}
         <ul>
-          {data.map((a) => (
+          {pageItems.map((a) => (
             <AnswerRow key={a.id} a={a} />
           ))}
         </ul>
+        <Pagination
+          page={page}
+          pageSize={pageSize}
+          total={shown.length}
+          noun="answers"
+          onPage={(p) => {
+            setPage(p);
+            document.querySelector('main')?.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          onPageSize={setPageSize}
+          className="border-t border-line"
+        />
       </Card>
     </>
   );
@@ -68,7 +153,7 @@ function AnswerRow({ a }: { a: Answer }) {
   });
   const dirty = value !== a.answer;
   return (
-    <li className="grid gap-2 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[1fr_1fr_auto] md:items-start">
+    <li className="grid gap-2 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
       <div>
         <p className="text-[13.5px] font-medium">{a.question}</p>
         <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
@@ -76,7 +161,12 @@ function AnswerRow({ a }: { a: Answer }) {
           used {a.uses}x - {timeAgo(a.updatedAt)}
         </p>
       </div>
-      <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={value.length > 80 ? 3 : 1} className="min-h-9" />
+      {/* One line for short answers ("Yes", "30 days"); a box only for longer ones. Decided by the saved answer, so it never jumps while typing. */}
+      {a.answer.length > 60 || a.answer.includes('\n') ? (
+        <Textarea value={value} onChange={(e) => setValue(e.target.value)} rows={3} aria-label={`Answer to: ${a.question}`} />
+      ) : (
+        <Input value={value} onChange={(e) => setValue(e.target.value)} aria-label={`Answer to: ${a.question}`} />
+      )}
       <div className="flex gap-1">
         {dirty && (
           <Button size="sm" variant="primary" onClick={() => save.mutate()} loading={save.isPending}>

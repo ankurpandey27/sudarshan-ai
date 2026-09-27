@@ -42,4 +42,11 @@ export class ListJobsQueryDto {
   @Min(1)
   @Max(200)
   limit?: number;
+
+  /** Only jobs scoring at least this, e.g. to count strong matches across every page. */
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  minScore?: number;
 }

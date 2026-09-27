@@ -172,6 +172,10 @@ export class JobsService implements OnApplicationBootstrap {
       where.push('(title LIKE ? OR company LIKE ?)');
       params.push(`%${q.search}%`, `%${q.search}%`);
     }
+    if (q.minScore !== undefined) {
+      where.push('score >= ?');
+      params.push(q.minScore);
+    }
     // Counts per platform use every filter except the platform itself.
     const base = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const platforms: Record<string, number> = {};
@@ -264,6 +268,18 @@ export class JobsService implements OnApplicationBootstrap {
   }
 
   /** When `from` is given, only jobs currently in one of those statuses move. */
+  /** Approves every job in Review scoring at least `minScore` (optionally on one platform) - all pages, not just the one shown. */
+  approveStrong(minScore: number, platform?: JobPlatform): number {
+    const ids = this.storage
+      .all<{ id: number }>(`SELECT id FROM jobs WHERE status = ? AND score >= ?${platform ? ` AND ${PLATFORM_SQL} = ?` : ''}`, [
+        JobStatus.REVIEW,
+        minScore,
+        ...(platform ? [platform] : []),
+      ])
+      .map((r) => r.id);
+    return this.setStatusMany(ids, JobStatus.APPROVED, 'Approved by you', [JobStatus.REVIEW], true);
+  }
+
   /** "I applied": counted as applied, and as your decision for the taste model. */
   markAppliedByYou(id: number): Job {
     this.storage.run('UPDATE jobs SET user_decided = 1 WHERE id = ?', [id]);

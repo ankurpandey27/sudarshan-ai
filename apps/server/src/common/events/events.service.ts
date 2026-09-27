@@ -55,7 +55,7 @@ export class EventsService {
 
   /** The saved flight log, newest first, filtered by day, kind and text. */
   activity(q: ActivityQueryDto): ActivityPage {
-    const empty: ActivityPage = { items: [], hasMore: false, days: [], keepDays: ACTIVITY_KEEP_DAYS };
+    const empty: ActivityPage = { items: [], hasMore: false, total: 0, days: [], keepDays: ACTIVITY_KEEP_DAYS };
     if (!this.storage) return empty;
     const where: string[] = [];
     const params: SQLInputValue[] = [];
@@ -70,18 +70,27 @@ export class EventsService {
       where.push('message LIKE ?');
       params.push(`%${q.search.trim()}%`);
     }
+    if (q.source) {
+      where.push('source = ?');
+      params.push(q.source);
+    }
+    // Everything matching the filters, before paging.
+    const filtered = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const total = Number(this.storage.get<{ n: number }>(`SELECT COUNT(*) n FROM activity ${filtered}`, params)?.n ?? 0);
     if (q.beforeId) {
       where.push('id < ?');
       params.push(q.beforeId);
     }
     const limit = q.limit ?? 100;
-    const rows = this.storage.all<ActivityRow>(`SELECT * FROM activity ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC LIMIT ?`, [
-      ...params,
-      limit + 1,
-    ]);
+    const offset = q.page && !q.beforeId ? (q.page - 1) * limit : 0;
+    const rows = this.storage.all<ActivityRow>(
+      `SELECT * FROM activity ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC LIMIT ? OFFSET ?`,
+      [...params, limit + 1, offset],
+    );
     return {
       items: rows.slice(0, limit).map((r) => this.toEvent(r, r.id)),
       hasMore: rows.length > limit,
+      total,
       days: this.days(),
       keepDays: ACTIVITY_KEEP_DAYS,
     };

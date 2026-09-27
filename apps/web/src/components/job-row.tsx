@@ -62,18 +62,22 @@ export function JobRow({
             {job.easyApply && job.source !== 'web' && <Badge tone="good">Easy Apply</Badge>}
             {job.origin === 'link' && <Badge tone="accent">Your list</Badge>}
             {job.salaryRaw && <Badge>{job.salaryRaw}</Badge>}
-            {d?.matchedSkills.slice(0, 5).map((s) => (
+            {d?.matchedSkills.slice(0, 3).map((s) => (
               <Badge key={s} tone="good">
                 {s}
               </Badge>
             ))}
-            {d?.missingSkills.slice(0, 3).map((s) => (
-              <Badge key={s} className="line-through decoration-ink-3/60">
-                {s}
-              </Badge>
-            ))}
+            {d && d.matchedSkills.length > 3 && (
+              <button onClick={() => setOpen(true)} className="text-[11.5px] text-ink-3 hover:text-ink" title={d.matchedSkills.slice(3).join(', ')}>
+                +{d.matchedSkills.length - 3} more
+              </button>
+            )}
           </div>
-          {job.reason && <p className="mt-1.5 text-[12.5px] text-ink-3">{job.reason}</p>}
+          {job.reason && (
+            <p className="mt-1.5 line-clamp-1 text-[12.5px] text-ink-3" title={job.reason}>
+              {job.reason}
+            </p>
+          )}
         </div>
         {/* Phones: actions drop to their own line so the title keeps the width. */}
         <div className="flex w-full shrink-0 items-center justify-end gap-1 sm:w-auto">
@@ -102,13 +106,26 @@ function JobDetail({ job }: { job: Job }) {
   return (
     <div className="grid gap-4 border-t border-line bg-surface-2/40 px-4 py-4 md:grid-cols-[1fr_280px]">
       <div>
-        <p className="mb-1 text-[12px] font-semibold text-ink-3 uppercase">Description</p>
+        <p className="mb-1 text-[12.5px] font-semibold text-ink-3">Description</p>
         <p className="max-h-60 overflow-y-auto text-[13px] whitespace-pre-line text-ink-2">{job.description || 'No description captured.'}</p>
       </div>
       <div className="space-y-3 text-[12.5px]">
+        {job.reason && <p className="text-ink-2">{job.reason}</p>}
+        {d && d.matchedSkills.length > 0 && (
+          <div>
+            <p className="mb-1 font-semibold text-ink-3">You have</p>
+            <p className="text-good">{d.matchedSkills.join(', ')}</p>
+          </div>
+        )}
+        {d && d.missingSkills.length > 0 && (
+          <div>
+            <p className="mb-1 font-semibold text-ink-3">Asked for, not in your profile</p>
+            <p className="text-ink-2">{d.missingSkills.join(', ')}</p>
+          </div>
+        )}
         {d && (
           <div>
-            <p className="mb-1 font-semibold text-ink-3 uppercase">Why this score</p>
+            <p className="mb-1 font-semibold text-ink-3">Why this score</p>
             <ul className="space-y-0.5 text-ink-2">
               <li>Skills match: {d.technical}</li>
               <li>Salary fit: {d.salary}</li>
@@ -119,7 +136,7 @@ function JobDetail({ job }: { job: Job }) {
         )}
         {!!data?.attempts.length && (
           <div>
-            <p className="mb-1 font-semibold text-ink-3 uppercase">Attempts</p>
+            <p className="mb-1 font-semibold text-ink-3">Attempts</p>
             {data.attempts.map((a) => (
               <details key={a.id} className="mb-1">
                 <summary className="cursor-pointer text-ink-2">

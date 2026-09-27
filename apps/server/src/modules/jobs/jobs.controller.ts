@@ -11,6 +11,7 @@ import { Attempt } from './interfaces/attempt.interface';
 import { Job } from './interfaces/job.interface';
 import { JobStats } from './interfaces/job-stats.interface';
 import { JobsService } from './jobs.service';
+import { ApproveStrongDto } from './dto/approve-strong.dto';
 
 @Controller('jobs')
 export class JobsController {
@@ -43,6 +44,13 @@ export class JobsController {
         true,
       ),
     };
+  }
+
+  /** "Approve all scoring N+": every page, on the server. */
+  @Post('approve-strong')
+  @HttpCode(200)
+  approveStrong(@Body() dto: ApproveStrongDto): { updated: number } {
+    return { updated: this.jobs.approveStrong(dto.minScore, dto.platform) };
   }
 
   /** Out of the queue and back to review; a job being applied to right now is not touched. */
