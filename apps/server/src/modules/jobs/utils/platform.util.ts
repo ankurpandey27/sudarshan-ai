@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+import { isHostOf } from './host.util';
 import { JobSource } from '../enums/job-source.enum';
 import { JobPlatform } from '../enums/job-platform.enum';
 
@@ -16,9 +17,7 @@ export function platformOf(source: JobSource, url: string, applyUrl: string | nu
   if (source === JobSource.LINKEDIN) return JobPlatform.LINKEDIN;
   if (source === JobSource.NAUKRI) return JobPlatform.NAUKRI;
   if (source === JobSource.INDEED) return JobPlatform.INDEED;
-  return [hostOf(url), hostOf(applyUrl)].some((h) => h === 'instahyre.com' || h.endsWith('.instahyre.com'))
-    ? JobPlatform.INSTAHYRE
-    : JobPlatform.OTHER;
+  return [hostOf(url), hostOf(applyUrl)].some((h) => isHostOf(h, 'instahyre.com')) ? JobPlatform.INSTAHYRE : JobPlatform.OTHER;
 }
 
 /** The site a job lives on, e.g. "jobs.lever.co". */

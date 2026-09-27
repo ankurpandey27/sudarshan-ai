@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Injectable } from '@nestjs/common';
-import { Page } from 'puppeteer-core';
+import { ElementHandle, Page } from 'puppeteer-core';
 import { sleep } from '../../../common/utils/sleep.util';
 import { FormRunnerService } from '../../form-engine/form-runner.service';
 import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
@@ -42,20 +42,15 @@ export class IndeedApplyAdapter implements ApplyAdapter {
       successPattern: GENERIC_SUCCESS,
       ...extra,
     });
+    // Indeed only finishes drawing a job in a visible tab; a background tab stays blank under the header.
+    await page.bringToFront().catch(() => undefined);
     await page.goto(job.url, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    // Wait for the apply control itself - the word "apply" appears in filters and descriptions first.
-    await page
-      .waitForFunction(
-        () =>
-          [...document.querySelectorAll('button, a')].some(
-            (b) =>
-              (b as HTMLElement).offsetWidth > 0 &&
-              /^(apply now|apply on company site|easily apply|applied|application submitted)/i.test((b as HTMLElement).innerText.trim()),
-          ),
-        // Includes time for Indeed's security check ("Just a moment...") to clear by itself.
-        { timeout: 45_000 },
-      )
-      .catch(() => undefined);
+    // Includes time for Indeed's security check ("Just a moment...") to clear by itself.
+    if (!(await this.applyControlShown(page, 30_000))) {
+      await page.bringToFront().catch(() => undefined);
+      await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => undefined);
+      await this.applyControlShown(page, 25_000);
+    }
     await sleep(800);
     const title = await page.title().catch(() => '');
     if (INDEED_CHALLENGE.test(title)) {
@@ -96,12 +91,32 @@ export class IndeedApplyAdapter implements ApplyAdapter {
       return (a as HTMLAnchorElement | undefined)?.href ?? null;
     });
     if (!href) {
-      const apply = snap.actions.find((a) => !a.disabled && /^(apply now|easily apply|apply)$/i.test(a.text.trim()));
-      if (!apply)
-        return result(PrepareStatus.NO_APPLY_BUTTON, { detail: `No apply button on the Indeed page (${await page.title().catch(() => '')} - ${page.url()})` });
-      await clickCatchingNewTab(page, () => this.runner.click(page, apply.id)).then(async (tab) => {
-        if (tab) await page.goto(tab.url(), { waitUntil: 'domcontentloaded' }).finally(() => tab.close().catch(() => undefined));
+      // Logged in, "Apply now" is a button that opens Indeed Apply by script.
+      const apply = await page.evaluateHandle(() => {
+        const visible = (el: Element) => (el as HTMLElement).offsetWidth > 0 && !(el as HTMLButtonElement).disabled;
+        const byId = document.querySelector('#indeedApplyButton, [data-testid*="indeedApply"], [data-testid*="apply-button"]');
+        if (byId && visible(byId)) return byId;
+        return (
+          [...document.querySelectorAll('button, a, [role=button]')].find(
+            (b) => visible(b) && /^(apply now|easily apply)\b/i.test(((b as HTMLElement).innerText || b.getAttribute('aria-label') || '').trim()),
+          ) ?? null
+        );
       });
+      const el = apply.asElement() as ElementHandle<Element> | null;
+      if (!el) {
+        const blank = await page
+          .evaluate(() => (document.querySelector('main, #viewJobSSRRoot, body')?.textContent ?? '').trim().length < 400)
+          .catch(() => false);
+        return result(PrepareStatus.NO_APPLY_BUTTON, {
+          detail: blank
+            ? 'The Indeed job page did not finish loading - try again, or apply by hand'
+            : `No apply button on the Indeed page (${await page.title().catch(() => '')} - ${page.url()})`,
+          page,
+        });
+      }
+      const tab = await clickCatchingNewTab(page, () => el.click());
+      if (tab) await page.goto(tab.url(), { waitUntil: 'domcontentloaded' }).finally(() => tab.close().catch(() => undefined));
+      else await page.waitForFunction(() => /smartapply\.indeed\.com/.test(location.href), { timeout: 20_000 }).catch(() => undefined);
     } else {
       await page.goto(href, { waitUntil: 'domcontentloaded', timeout: 60_000 });
     }
@@ -111,5 +126,24 @@ export class IndeedApplyAdapter implements ApplyAdapter {
     if (INDEED_LOGIN_URL.test(page.url())) return result(PrepareStatus.LOGIN_REQUIRED, { detail: 'Log in to Indeed in the agent browser', page });
     if (!INDEED_APPLY_HOST.test(page.url())) return result(PrepareStatus.NO_APPLY_BUTTON, { detail: `Indeed Apply did not open (at ${page.url()})`, page });
     return result(PrepareStatus.READY, { page });
+  }
+
+  /** Waits for Indeed's apply control (or an "applied" state) to appear on the job page. */
+  private applyControlShown(page: Page, timeout: number): Promise<boolean> {
+    return page
+      .waitForFunction(
+        () =>
+          !!document.querySelector('#indeedApplyButton') ||
+          [...document.querySelectorAll('button, a, [role=button]')].some(
+            (b) =>
+              (b as HTMLElement).offsetWidth > 0 &&
+              /^(apply now|apply on company site|easily apply|applied|application submitted)/i.test(
+                ((b as HTMLElement).innerText || b.getAttribute('aria-label') || '').trim(),
+              ),
+          ),
+        { timeout },
+      )
+      .then(() => true)
+      .catch(() => false);
   }
 }

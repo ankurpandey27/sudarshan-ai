@@ -70,9 +70,18 @@ describe('answerFromProfile', () => {
     expect(ask('What is your notice period?', FieldKind.SELECT, ['Immediate', '1 month', '2 months'])).toBe('1 month');
   });
 
-  it('answers work authorization and sponsorship', () => {
-    expect(ask('Are you legally authorized to work in India?', FieldKind.RADIO)).toBe('Yes');
+  it('answers sponsorship, and work authorization only where it is known', () => {
     expect(ask('Will you now or in the future require sponsorship?', FieldKind.RADIO)).toBe('No');
+    const at = (location: string, workAuthorization = '') =>
+      answerFromProfile(
+        { ...ctx, profile: { ...ctx.profile, workAuthorization }, job: { ...ctx.job, location } },
+        field('Are you legally authorized to work in this country?', FieldKind.RADIO),
+      )?.value;
+    // A job where you live: yes. Abroad with nothing stated: not claimed, so you are asked.
+    expect(at(`Noida, ${ctx.profile.country}`)).toBe('Yes');
+    expect(at('Austin, Texas, United States')).toBeUndefined();
+    // Stated in the profile: used everywhere.
+    expect(at('Austin, Texas, United States', 'US green card holder')).toBe('Yes');
   });
 
   it('never answers a question about someone else with your own name', () => {

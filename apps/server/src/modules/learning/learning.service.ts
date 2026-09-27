@@ -53,7 +53,7 @@ export class LearningService {
       await page.exposeFunction('__sudarshanLearn', (e: LearnEvent) => {
         if (session.done || !e.snap) return;
         this.learnStep(target, session, e.snap);
-        this.learnAnswers(e.snap, session);
+        this.learnAnswers(e.snap, session, new Set(e.touched ?? []));
         if (e.type === 'click') this.onClick(page, target, session, e.text, e.snap);
       });
       // The extractor and recorder are re-added on every navigation, for multi-page forms.
@@ -74,10 +74,12 @@ export class LearningService {
     return inScope?.scopeFound ? inScope : this.runner.snapshot(page, null);
   }
 
-  private learnAnswers(snap: FormSnapshot, session: LearningSession): void {
+  private learnAnswers(snap: FormSnapshot, session: LearningSession, touched: Set<string>): void {
     for (const f of snap.fields) {
       const value = f.value.trim();
       if (!value || f.kind === FieldKind.FILE || !f.label || f.label.length < 3) continue;
+      // Only what you typed or picked - not what the site filled in by itself.
+      if (!touched.has(f.id) && !(f.name && touched.has(`name:${f.name}`))) continue;
       if (SECRET_QUESTION.test(`${f.label} ${f.name}`)) continue;
       if (session.known.get(f.label) === value) continue;
       session.known.set(f.label, value);

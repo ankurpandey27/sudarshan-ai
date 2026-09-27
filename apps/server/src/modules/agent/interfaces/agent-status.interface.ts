@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+import { ScoringProgress } from '../../scoring/interfaces/scoring-progress.interface';
 import { AgentPhase } from '../enums/agent-phase.enum';
 
 export interface AgentStatus {
@@ -16,4 +17,6 @@ export interface AgentStatus {
   openQuestions: number;
   llm: string | null;
   appliedToday: number;
+  /** Set while jobs are being scored. */
+  scoring: ScoringProgress | null;
 }

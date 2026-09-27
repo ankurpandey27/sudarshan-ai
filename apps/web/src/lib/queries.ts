@@ -21,15 +21,14 @@ import type {
 export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings') });
 export const useProfile = () => useQuery({ queryKey: ['profile'], queryFn: () => api.get<ProfileState>('/profile') });
 export const useAgent = () =>
-  useQuery({ queryKey: ['agent'], queryFn: () => api.get<AgentStatus>('/agent/status'), refetchInterval: 5000 });
+  // Every second while jobs are being scored, so the progress bar moves.
+  useQuery({ queryKey: ['agent'], queryFn: () => api.get<AgentStatus>('/agent/status'), refetchInterval: (q) => (q.state.data?.scoring ? 1000 : 5000) });
 export const useStats = () => useQuery({ queryKey: ['stats'], queryFn: () => api.get<JobStats>('/jobs/stats') });
-export const useBrowser = () =>
-  useQuery({ queryKey: ['browser'], queryFn: () => api.get<BrowserStatus>('/browser/status'), refetchInterval: 8000 });
+export const useBrowser = () => useQuery({ queryKey: ['browser'], queryFn: () => api.get<BrowserStatus>('/browser/status'), refetchInterval: 8000 });
 export const useQuestions = () => useQuery({ queryKey: ['questions'], queryFn: () => api.get<PendingQuestion[]>('/questions') });
 export const useAnswers = (search: string) =>
   useQuery({ queryKey: ['answers', search], queryFn: () => api.get<Answer[]>(`/answers${search ? `?search=${encodeURIComponent(search)}` : ''}`) });
-export const usePresets = () =>
-  useQuery({ queryKey: ['presets'], queryFn: () => api.get<LlmPreset[]>('/llm/providers'), staleTime: Infinity });
+export const usePresets = () => useQuery({ queryKey: ['presets'], queryFn: () => api.get<LlmPreset[]>('/llm/providers'), staleTime: Infinity });
 export const useUsage = () => useQuery({ queryKey: ['usage'], queryFn: () => api.get<LlmUsage>('/llm/usage'), refetchInterval: 30000 });
 
 export const useJobs = (params: { status?: string; source?: string; platform?: string; search?: string; sort?: string; page?: number; limit?: number }) => {
@@ -45,8 +44,7 @@ export const useJobs = (params: { status?: string; source?: string; platform?: s
   });
 };
 
-export const useInsights = () =>
-  useQuery({ queryKey: ['insights'], queryFn: () => api.get<Insight[]>('/agent/insights'), refetchInterval: 10000 });
+export const useInsights = () => useQuery({ queryKey: ['insights'], queryFn: () => api.get<Insight[]>('/agent/insights'), refetchInterval: 10000 });
 
 export const useAnalytics = (days: number, platform: string) =>
   useQuery({

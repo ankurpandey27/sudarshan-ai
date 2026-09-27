@@ -14,7 +14,7 @@ export function isPlaceholderOption(option: string): boolean {
 }
 
 const YES = /^(yes|y|true|1|agree|i agree|accept|i accept|ok|sure|of course|absolutely)$/;
-const NO = /^(no|n|false|0|disagree|decline|i decline|not)$/;
+const NO = /^(no|n|nope|nah|false|0|disagree|decline|i decline|not)$/;
 
 // Handles yes/no synonyms, numbers against ranges ("3-5 years", "5+", "Less than 1") and partial matches. -1 if nothing fits.
 export function matchOption(value: string, options: string[]): number {
@@ -49,7 +49,9 @@ export function matchOption(value: string, options: string[]): number {
     if (hit) return hit.i;
   }
 
-  const starts = candidates.find((c) => c.o.startsWith(v) || v.startsWith(c.o));
+  // Whole words only: "new delhi" fits "new delhi india", but "noida" must not fit "no".
+  const wordPrefix = (long: string, short: string) => long === short || long.startsWith(`${short} `);
+  const starts = candidates.find((c) => wordPrefix(c.o, v) || wordPrefix(v, c.o));
   if (starts && Math.min(starts.o.length, v.length) >= 2) return starts.i;
   const contains = candidates.filter((c) => (c.o.includes(v) && v.length >= 3) || (v.includes(c.o) && c.o.length >= 3));
   if (contains.length === 1) return contains[0].i;

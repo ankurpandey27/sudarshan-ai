@@ -29,7 +29,7 @@ function candidateBlock(ctx: AnswerContext): string {
     `Current: ${p.currentTitle || '-'} at ${p.currentCompany || '-'}; total experience ${p.totalYearsExperience} years`,
     `Location: ${[p.city, p.state, p.country].filter(Boolean).join(', ')}; willing to relocate: ${p.willingToRelocate ? 'yes' : 'no'}`,
     `Notice period: ${p.noticePeriodDays ?? 'unknown'} days; current CTC: ${p.currentCtc ?? 'unknown'} ${p.currency}/yr; expected CTC: ${p.expectedCtc ?? 'unknown'} ${p.currency}/yr`,
-    `Needs visa sponsorship: ${p.needsSponsorship ? 'yes' : 'no'}; work authorization: ${p.workAuthorization || 'citizen of ' + (p.country || 'home country')}`,
+    `Needs visa sponsorship: ${p.needsSponsorship ? 'yes' : 'no'}; work authorization: ${p.workAuthorization || (p.country ? `not stated - lives in ${p.country}; never claim the right to work in any other country` : 'not stated - never claim any')}`,
     `Skills: ${skills || '-'}`,
     `Experience: ${exp || '-'}`,
     `Education: ${edu || '-'}`,

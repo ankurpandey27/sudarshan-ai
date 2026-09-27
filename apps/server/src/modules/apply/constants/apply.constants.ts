@@ -32,3 +32,9 @@ export const INDEED_CLOSED = /this job has expired|job has expired on indeed|no 
 export const SIGN_IN_PAGE = /accounts\.google\.com|secure\.indeed\.com|indeed\.com\/account\/login|login\.microsoftonline\.com|appleid\.apple\.com/i;
 /** Indeed's Cloudflare security check page. */
 export const INDEED_CHALLENGE = /just a moment|security check|verify you are human|additional verification/i;
+/**
+ * Wording that proves an application was sent, for one-click apply. Unlike GENERIC_SUCCESS it
+ * leaves out "thank you for your interest", which careers and sign-in pages show to everyone.
+ */
+export const ONE_CLICK_SUCCESS =
+  /thank(s| you) for applying|application (has been |was )?(received|submitted|sent)|successfully (applied|submitted)|we('ve| have) received your application|you('ve| have) (successfully )?applied/i;

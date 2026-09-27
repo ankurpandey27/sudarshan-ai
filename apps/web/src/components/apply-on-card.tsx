@@ -50,7 +50,9 @@ export function ApplyOnCard() {
             </span>
             <span className="mt-2 block font-semibold text-ink">What it can't do on its own</span>
             <span className="mt-1 block">
-              <b>Captchas and security checks</b> - by design, you do them. It fills everything else and leaves the tab open.
+              <b>Captchas and security checks</b> - by design, you do them. It fills everything else, leaves the tab open and moves on to the next job; the job
+              waits in Applications as "Do by hand". Solve the captcha and press Submit in that tab and it turns Applied by itself. Indeed has one on every
+              application, so on Indeed you always press Submit yourself.
             </span>
             <span className="mt-1 block">
               <b>Sites that make you create an account or log in</b>, or <b>verify with a code sent to your email or phone (OTP)</b> - these become "Do by hand"
@@ -77,7 +79,16 @@ export function ApplyOnCard() {
                   <PlatformDot platform={p.key} /> {p.label}
                 </>
               }
-              meta={enabled ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}` : queued ? `off · ${queued} waiting` : 'off'}
+              meta={
+                (enabled ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}` : queued ? `off · ${queued} waiting` : 'off') +
+                // Indeed puts a captcha on every application: Sudarshan prepares it, you submit.
+                (p.key === 'indeed' ? ' · you submit' : '')
+              }
+              title={
+                p.key === 'indeed'
+                  ? 'Indeed shows a captcha on every application. Sudarshan finds jobs and fills the form; you tick the captcha and press Submit.'
+                  : undefined
+              }
             />
           );
         })}

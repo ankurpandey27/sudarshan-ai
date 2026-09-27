@@ -35,14 +35,13 @@ export class JobsController {
   @HttpCode(200)
   approve(@Body() dto: JobIdsDto): { updated: number } {
     return {
-      updated: this.jobs.setStatusMany(dto.ids, JobStatus.APPROVED, 'Approved by you', [
-        JobStatus.REVIEW,
-        JobStatus.SKIPPED,
-        JobStatus.FAILED,
-        JobStatus.MANUAL,
-        JobStatus.DISMISSED,
-        JobStatus.NEW,
-      ]),
+      updated: this.jobs.setStatusMany(
+        dto.ids,
+        JobStatus.APPROVED,
+        'Approved by you',
+        [JobStatus.REVIEW, JobStatus.SKIPPED, JobStatus.FAILED, JobStatus.MANUAL, JobStatus.DISMISSED, JobStatus.NEW],
+        true,
+      ),
     };
   }
 
@@ -50,28 +49,26 @@ export class JobsController {
   @Post('unqueue')
   @HttpCode(200)
   unqueue(@Body() dto: JobIdsDto): { updated: number } {
-    return { updated: this.jobs.setStatusMany(dto.ids, JobStatus.REVIEW, 'Moved back to review by you', [JobStatus.APPROVED, JobStatus.SKIPPED]) };
+    return { updated: this.jobs.setStatusMany(dto.ids, JobStatus.REVIEW, 'Moved back to review by you', [JobStatus.APPROVED, JobStatus.SKIPPED], true) };
   }
 
   @Post('skip')
   @HttpCode(200)
   skip(@Body() dto: JobIdsDto): { updated: number } {
-    return { updated: this.jobs.setStatusMany(dto.ids, JobStatus.SKIPPED, 'Skipped by you', [JobStatus.NEW, JobStatus.REVIEW, JobStatus.APPROVED]) };
+    return { updated: this.jobs.setStatusMany(dto.ids, JobStatus.SKIPPED, 'Skipped by you', [JobStatus.NEW, JobStatus.REVIEW, JobStatus.APPROVED], true) };
   }
 
   @Post('dismiss')
   @HttpCode(200)
   dismiss(@Body() dto: JobIdsDto): { updated: number } {
     return {
-      updated: this.jobs.setStatusMany(dto.ids, JobStatus.DISMISSED, 'Dismissed by you', [
-        JobStatus.NEW,
-        JobStatus.REVIEW,
-        JobStatus.APPROVED,
-        JobStatus.SKIPPED,
-        JobStatus.NEEDS_INPUT,
-        JobStatus.FAILED,
-        JobStatus.MANUAL,
-      ]),
+      updated: this.jobs.setStatusMany(
+        dto.ids,
+        JobStatus.DISMISSED,
+        'Dismissed by you',
+        [JobStatus.NEW, JobStatus.REVIEW, JobStatus.APPROVED, JobStatus.SKIPPED, JobStatus.NEEDS_INPUT, JobStatus.FAILED, JobStatus.MANUAL],
+        true,
+      ),
     };
   }
 

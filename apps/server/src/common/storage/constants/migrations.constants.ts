@@ -142,4 +142,8 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE activity ADD COLUMN type TEXT NOT NULL DEFAULT 'log';
   CREATE INDEX idx_activity_job ON activity (job_id);
   `,
+  `
+  ALTER TABLE jobs ADD COLUMN user_decided INTEGER NOT NULL DEFAULT 0;
+  UPDATE jobs SET user_decided = 1 WHERE reason IN ('Skipped by you', 'Moved back to review by you', 'Approved by you', 'Dismissed by you');
+  `,
 ];

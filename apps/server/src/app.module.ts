@@ -13,6 +13,7 @@ import { EventsModule } from './common/events/events.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { LlmModule } from './modules/llm/llm.module';
 import { ProfileModule } from './modules/profile/profile.module';
+import { HousekeepingModule } from './modules/housekeeping/housekeeping.module';
 import { JobsModule } from './modules/jobs/jobs.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AnswersModule } from './modules/answers/answers.module';
@@ -34,6 +35,7 @@ import { HealthModule } from './modules/health/health.module';
     SettingsModule,
     LlmModule,
     ProfileModule,
+    HousekeepingModule,
     JobsModule,
     AnalyticsModule,
     AnswersModule,

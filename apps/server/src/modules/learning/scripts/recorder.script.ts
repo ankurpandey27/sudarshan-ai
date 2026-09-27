@@ -42,11 +42,33 @@ export function learnRecorderInPage(): void {
   };
 
   let timer: ReturnType<typeof setTimeout> | undefined;
+  // Fields you changed yourself, so values the site fills in on its own are never learned as yours.
+  // Elements are kept (not ids): a field on a newly shown step only gets its id when the form is next read.
+  const touchedEls = new Set<Element>();
+  const touch = (el: Element) => touchedEls.add(el);
+  const touched = (): string[] => {
+    const out = new Set<string>();
+    for (const el of touchedEls) {
+      for (let n: Element | null = el; n; n = n.parentElement) {
+        const id = n.getAttribute('data-jaa-id');
+        if (id) out.add(id);
+      }
+      const name = (el as HTMLInputElement).name;
+      if (name) out.add(`name:${name}`);
+    }
+    return [...out];
+  };
+  // Read the form first (which tags its fields), then list which of them were touched.
+  const report = (e: { type: 'edit' } | { type: 'click'; text: string }) => {
+    const form = snap();
+    send({ ...e, snap: form, touched: touched() });
+  };
   const onEdit = (e: Event) => {
     const el = e.target;
     if (!e.isTrusted || !(el instanceof Element) || secret(el)) return;
+    touch(el);
     clearTimeout(timer);
-    timer = setTimeout(() => send({ type: 'edit', snap: snap() }), 500);
+    timer = setTimeout(() => report({ type: 'edit' }), 500);
   };
   document.addEventListener('change', onEdit, true);
   document.addEventListener('input', onEdit, true);
@@ -55,12 +77,15 @@ export function learnRecorderInPage(): void {
     'click',
     (e) => {
       if (!e.isTrusted || !(e.target instanceof Element)) return;
+      // Custom radios and checkboxes fire no input event - picking one is a click.
+      const choice = e.target.closest('[role=radio], [role=checkbox], [role=option], [role=switch], label, input');
+      if (choice && !secret(choice)) touch(choice);
       const b = e.target.closest('button, a, [role=button], input[type=submit]');
       if (!b) return;
       const text = ((b as HTMLElement).innerText || (b as HTMLInputElement).value || b.getAttribute('aria-label') || '').trim();
       clearTimeout(timer);
       // Capture phase: this runs before the page reacts to the click.
-      if (text) send({ type: 'click', text: text.slice(0, 80), snap: snap() });
+      if (text) report({ type: 'click', text: text.slice(0, 80) });
     },
     true,
   );

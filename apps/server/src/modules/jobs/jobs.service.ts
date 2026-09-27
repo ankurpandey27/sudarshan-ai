@@ -48,10 +48,10 @@ export class JobsService implements OnApplicationBootstrap {
     const inserted: number[] = [];
     this.storage.transaction(() => {
       for (const j of jobs) {
-        const existing = this.storage.get<{ id: number; status: string }>(
-          'SELECT id, status FROM jobs WHERE source = ? AND external_id = ?',
-          [j.source, j.externalId],
-        );
+        const existing = this.storage.get<{ id: number; status: string }>('SELECT id, status FROM jobs WHERE source = ? AND external_id = ?', [
+          j.source,
+          j.externalId,
+        ]);
         const salary = j.salaryMin || j.salaryMax ? { min: j.salaryMin ?? null, max: j.salaryMax ?? null } : parseSalary(j.salaryRaw ?? null);
         const skills = j.skills?.length ? j.skills : extractSkills(`${j.title}\n${j.description}`);
         if (existing) {
@@ -62,8 +62,19 @@ export class JobsService implements OnApplicationBootstrap {
                skills = CASE WHEN length(?) > length(skills) THEN ? ELSE skills END,
                apply_url = COALESCE(?, apply_url), easy_apply = MAX(easy_apply, ?), updated_at = ?
              WHERE id = ?`,
-            [j.title, j.company, j.location, j.description, j.description, JSON.stringify(skills), JSON.stringify(skills),
-              j.applyUrl ?? null, j.easyApply ? 1 : 0, now, existing.id],
+            [
+              j.title,
+              j.company,
+              j.location,
+              j.description,
+              j.description,
+              JSON.stringify(skills),
+              JSON.stringify(skills),
+              j.applyUrl ?? null,
+              j.easyApply ? 1 : 0,
+              now,
+              existing.id,
+            ],
           );
           continue;
         }
@@ -72,10 +83,25 @@ export class JobsService implements OnApplicationBootstrap {
              salary_raw, salary_min, salary_max, description, skills, posted_at, status, origin, discovered_at, updated_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           [
-            j.source, j.externalId, j.url, j.applyUrl ?? null, j.title.slice(0, 300), j.company.slice(0, 200),
-            j.location.slice(0, 200), (j.isRemote || detectRemote(j.location, j.description)) ? 1 : 0, j.easyApply ? 1 : 0,
-            j.salaryRaw ?? null, salary.min, salary.max, j.description.slice(0, 20_000), JSON.stringify(skills),
-            j.postedAt ?? null, JobStatus.NEW, origin, now, now,
+            j.source,
+            j.externalId,
+            j.url,
+            j.applyUrl ?? null,
+            j.title.slice(0, 300),
+            j.company.slice(0, 200),
+            j.location.slice(0, 200),
+            j.isRemote || detectRemote(j.location, j.description) ? 1 : 0,
+            j.easyApply ? 1 : 0,
+            j.salaryRaw ?? null,
+            salary.min,
+            salary.max,
+            j.description.slice(0, 20_000),
+            JSON.stringify(skills),
+            j.postedAt ?? null,
+            JobStatus.NEW,
+            origin,
+            now,
+            now,
           ],
         );
         inserted.push(res.lastInsertRowid);
@@ -154,8 +180,7 @@ export class JobsService implements OnApplicationBootstrap {
       params.push(q.platform);
     }
     const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const order =
-      q.sort === 'recent' ? 'updated_at DESC' : q.sort === 'applied' ? 'applied_at DESC' : 'COALESCE(score, -1) DESC, discovered_at DESC';
+    const order = q.sort === 'recent' ? 'updated_at DESC' : q.sort === 'applied' ? 'applied_at DESC' : 'COALESCE(score, -1) DESC, discovered_at DESC';
     const limit = q.limit ?? 50;
     const offset = ((q.page ?? 1) - 1) * limit;
     const total = this.storage.get<{ n: number }>(`SELECT COUNT(*) n FROM jobs ${clause}`, params)?.n ?? 0;
@@ -164,9 +189,7 @@ export class JobsService implements OnApplicationBootstrap {
   }
 
   unscored(limit: number): Job[] {
-    return this.storage
-      .all<JobRow>('SELECT * FROM jobs WHERE status = ? ORDER BY discovered_at LIMIT ?', [JobStatus.NEW, limit])
-      .map(toJob);
+    return this.storage.all<JobRow>('SELECT * FROM jobs WHERE status = ? ORDER BY discovered_at LIMIT ?', [JobStatus.NEW, limit]).map(toJob);
   }
 
   nextToApply(platforms: JobPlatform[]): Job | null {
@@ -198,10 +221,11 @@ export class JobsService implements OnApplicationBootstrap {
   }
 
   isAlreadyApplied(company: string, title: string): boolean {
-    return !!this.storage.get(
-      'SELECT 1 FROM jobs WHERE status = ? AND lower(company) = lower(?) AND lower(title) = lower(?) LIMIT 1',
-      [JobStatus.APPLIED, company, title],
-    );
+    return !!this.storage.get('SELECT 1 FROM jobs WHERE status = ? AND lower(company) = lower(?) AND lower(title) = lower(?) LIMIT 1', [
+      JobStatus.APPLIED,
+      company,
+      title,
+    ]);
   }
 
   setScore(id: number, score: number, detail: ScoreDetail, status: JobStatus, reason: string): void {
@@ -230,20 +254,22 @@ export class JobsService implements OnApplicationBootstrap {
   }
 
   /** When `from` is given, only jobs currently in one of those statuses move. */
-  setStatusMany(ids: number[], status: JobStatus, reason?: string, from?: JobStatus[]): number {
+  /** `byUser` marks it as your decision, which rescoring never overrides. */
+  setStatusMany(ids: number[], status: JobStatus, reason?: string, from?: JobStatus[], byUser = false): number {
     if (ids.length === 0) return 0;
     const now = new Date().toISOString();
     const fromClause = from?.length ? ` AND status IN (${from.map(() => '?').join(',')})` : '';
     const { changes } = this.storage.run(
-      `UPDATE jobs SET status = ?, reason = COALESCE(?, reason), updated_at = ? WHERE id IN (${ids.map(() => '?').join(',')})${fromClause}`,
+      `UPDATE jobs SET status = ?, reason = COALESCE(?, reason), updated_at = ?${byUser ? ', user_decided = 1' : ''} WHERE id IN (${ids.map(() => '?').join(',')})${fromClause}`,
       [status, reason ?? null, now, ...ids, ...(from ?? [])],
     );
     this.events.emit({ type: AgentEventType.JOB_UPDATED, message: `${changes} job(s) -> ${status}`, data: { ids, status } });
     return changes;
   }
 
+  /** Sends the agent's own Review and Skipped decisions back for scoring; jobs you moved yourself stay put. */
   resetForRescore(): number {
-    return this.storage.run('UPDATE jobs SET status = ?, updated_at = ? WHERE status IN (?, ?)', [
+    return this.storage.run('UPDATE jobs SET status = ?, updated_at = ? WHERE status IN (?, ?) AND user_decided = 0', [
       JobStatus.NEW,
       new Date().toISOString(),
       JobStatus.REVIEW,
@@ -273,23 +299,24 @@ export class JobsService implements OnApplicationBootstrap {
     return this.storage.run('INSERT INTO attempts (job_id, started_at) VALUES (?, ?)', [jobId, new Date().toISOString()]).lastInsertRowid;
   }
 
-  finishAttempt(
-    attemptId: number,
-    outcome: string,
-    detail: string | null,
-    stats: AttemptStats,
-    trace: string[],
-    screenshot: string | null,
-  ): void {
+  finishAttempt(attemptId: number, outcome: string, detail: string | null, stats: AttemptStats, trace: string[], screenshot: string | null): void {
     const started = this.storage.get<{ started_at: string }>('SELECT started_at FROM attempts WHERE id = ?', [attemptId]);
     const now = new Date();
     this.storage.run(
       `UPDATE attempts SET finished_at = ?, outcome = ?, detail = ?, steps = ?, fields = ?, llm_calls = ?, memory_hits = ?,
          duration_ms = ?, screenshot = ?, trace = ? WHERE id = ?`,
       [
-        now.toISOString(), outcome, detail, stats.steps, stats.fields, stats.llmCalls, stats.memoryHits,
+        now.toISOString(),
+        outcome,
+        detail,
+        stats.steps,
+        stats.fields,
+        stats.llmCalls,
+        stats.memoryHits,
         started ? now.getTime() - new Date(started.started_at).getTime() : null,
-        screenshot, JSON.stringify(trace.slice(-200)), attemptId,
+        screenshot,
+        JSON.stringify(trace.slice(-200)),
+        attemptId,
       ],
     );
   }

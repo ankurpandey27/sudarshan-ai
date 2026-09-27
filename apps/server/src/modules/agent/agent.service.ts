@@ -92,17 +92,29 @@ export class AgentService implements OnApplicationShutdown {
     await this.runDiscovery();
   }
 
-  async rescore(): Promise<number> {
+  /** Scores every job in Review and Skipped again, in the background (progress is in the status). */
+  rescore(): number {
     const n = this.jobs.resetForRescore();
-    await this.scoring.scoreNew(1000);
+    this.scoreInBackground();
     return n;
+  }
+
+  /** Scores only jobs not scored yet, in the background. */
+  scoreUnscored(): number {
+    const n = this.jobs.unscored(1000).length;
+    this.scoreInBackground();
+    return n;
+  }
+
+  private scoreInBackground(): void {
+    void this.scoring.scoreNew(1000).catch((err: Error) => this.log('error', `Scoring failed: ${err.message}`));
   }
 
   async applyNow(jobId: number): Promise<ApplyResult> {
     if (this.applying) return { status: 'busy', detail: 'Another application is in progress' };
     const job = this.jobs.get(jobId);
-    await this.browser.ensure();
-    return this.runApply(job);
+    // The slot is taken before waiting for the browser, so a second click or the agent loop cannot start another.
+    return this.runApply(job, () => this.browser.ensure());
   }
 
   status(): AgentStatus {
@@ -120,6 +132,7 @@ export class AgentService implements OnApplicationShutdown {
       openQuestions: this.pending.openCount(),
       llm: this.llm.describe(),
       appliedToday: this.jobs.appliedToday(),
+      scoring: this.scoring.progress(),
     };
   }
 
@@ -147,6 +160,8 @@ export class AgentService implements OnApplicationShutdown {
         return;
       }
       const platforms = await this.eligiblePlatforms();
+      // Something may have started while platforms were checked (Apply now).
+      if (this.applying) return;
       const job = this.jobs.nextToApply(platforms);
       if (!job) {
         if (this.discovery.isRunning()) {
@@ -178,11 +193,15 @@ export class AgentService implements OnApplicationShutdown {
     }
   }
 
-  private async runApply(job: ReturnType<JobsService['get']>): Promise<ApplyResult> {
+  /** Claims the single apply slot synchronously (no await before it is set), then applies. */
+  private async runApply(job: ReturnType<JobsService['get']>, before?: () => Promise<unknown>): Promise<ApplyResult> {
     this.currentJob = { id: job.id, title: job.title, company: job.company };
     this.idleNote = null;
     this.setPhase(AgentPhase.APPLYING);
-    this.applying = this.apply.apply(job);
+    this.applying = (async () => {
+      await before?.();
+      return this.apply.apply(job);
+    })();
     try {
       return await this.applying;
     } finally {

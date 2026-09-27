@@ -10,3 +10,6 @@ export const ANSWER_SOURCE_TRUST: Record<AnswerSource, number> = {
 };
 
 export const FUZZY_MATCH_THRESHOLD = 0.75;
+
+/** Stand-in labels for fields with no real question; answers to them are never remembered or reused. */
+export const GENERIC_QUESTION = /^(choose an option|select( an?)?( option| one)?|please select|choose|pick one|option|answer|-+)$/i;

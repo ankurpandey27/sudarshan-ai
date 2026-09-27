@@ -10,6 +10,7 @@ import { useAgent, useStats } from '../lib/queries';
 import { useTheme } from '../lib/theme';
 import { AgentToggle } from './agent-toggle';
 import { SudarshanMark } from './sudarshan-logo';
+import { ScoringProgress } from './scoring-progress';
 
 function Item({ to, icon, label, count, tone }: { to: string; icon: ReactNode; label: string; count?: number; tone?: 'warn' }) {
   return (
@@ -95,6 +96,7 @@ export function Layout() {
 
       <main className="min-w-0 flex-1 overflow-y-auto pt-12 md:pt-0">
         <div className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+          <ScoringProgress />
           <Outlet />
         </div>
       </main>

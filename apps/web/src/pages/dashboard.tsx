@@ -62,13 +62,15 @@ export function Dashboard() {
     }
   };
 
-  const status = agent?.running
-    ? [
-        agent.currentJob ? `applying to ${agent.currentJob.title}` : agent.phase,
-        agent.nextApplyAt && `next application ${timeUntil(agent.nextApplyAt)}`,
-        `next search ${timeUntil(agent.nextDiscoveryAt)}`,
-      ]
-    : ['resting', agent?.lastDiscoveryAt && `last search ${timeAgo(agent.lastDiscoveryAt)}`];
+  const status = agent?.scoring
+    ? [`scoring ${agent.scoring.done} of ${agent.scoring.total} jobs`]
+    : agent?.running
+      ? [
+          agent.currentJob ? `applying to ${agent.currentJob.title}` : agent.phase,
+          agent.nextApplyAt && `next application ${timeUntil(agent.nextApplyAt)}`,
+          `next search ${timeUntil(agent.nextDiscoveryAt)}`,
+        ]
+      : ['resting', agent?.lastDiscoveryAt && `last search ${timeAgo(agent.lastDiscoveryAt)}`];
 
   return (
     <div className="mx-auto max-w-[1320px]">

@@ -1,24 +1,22 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
 import { SecretBoxService } from '../../common/crypto/secret-box.service';
 import { DEFAULT_SETTINGS, SETTINGS_SECTIONS } from './constants/default-settings.constants';
-import {
-  AppSettings,
-  LlmSettings,
-  PublicAppSettings,
-  PublicLlmSettings,
-} from './interfaces/app-settings.interface';
+import { AppSettings, LlmSettings, PublicAppSettings, PublicLlmSettings } from './interfaces/app-settings.interface';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { deepMerge, isPlainObject } from '../../common/utils/object.util';
+import { settingsConflict } from './utils/settings-conflict.util';
 
 type Section = (typeof SETTINGS_SECTIONS)[number];
 
 // One JSON row per section, merged over defaults so new settings get sane values after an upgrade.
 @Injectable()
 export class SettingsService {
+  private readonly logger = new Logger(SettingsService.name);
+  private keyUnreadableWarned = false;
   private cache: AppSettings | null = null;
   private readonly listeners: ((s: AppSettings) => void)[] = [];
 
@@ -52,6 +50,17 @@ export class SettingsService {
 
   update(patch: UpdateSettingsDto): PublicAppSettings {
     const current = this.get();
+    // Check the combined result, not just the change: each value can be valid while the pair is not.
+    if (patch.agent) {
+      const conflict = settingsConflict({
+        ...current,
+        agent: deepMerge(
+          current.agent as unknown as Record<string, unknown>,
+          patch.agent as unknown as Record<string, unknown>,
+        ) as unknown as AppSettings['agent'],
+      });
+      if (conflict) throw new BadRequestException(conflict);
+    }
     const now = new Date().toISOString();
     this.storage.transaction(() => {
       for (const key of SETTINGS_SECTIONS) {
@@ -95,7 +104,19 @@ export class SettingsService {
   }
 
   private decryptLlm(llm: LlmSettings): LlmSettings {
-    return { ...llm, apiKey: llm.apiKey ? this.secrets.decrypt(llm.apiKey) : '' };
+    if (!llm.apiKey) return { ...llm, apiKey: '' };
+    try {
+      return { ...llm, apiKey: this.secrets.decrypt(llm.apiKey) };
+    } catch {
+      // secret.key was deleted or replaced, or agent.db was moved without it: start anyway, without the key.
+      if (!this.keyUnreadableWarned) {
+        this.keyUnreadableWarned = true;
+        this.logger.warn(
+          'Your saved AI API key could not be unlocked (secret.key is missing or was replaced). Sudarshan runs without AI until you enter the key again in Settings -> AI model.',
+        );
+      }
+      return { ...llm, apiKey: '' };
+    }
   }
 
   private maskLlm(llm: LlmSettings): PublicLlmSettings {

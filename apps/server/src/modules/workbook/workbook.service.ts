@@ -25,6 +25,9 @@ import {
 import { WorkbookImportResult } from './interfaces/workbook-import.interface';
 import { parseWorkbook } from './utils/workbook-parse.util';
 import { mapPreferences } from './utils/preference-map.util';
+import { dropInvalid } from '../../common/validation/drop-invalid.util';
+import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
+import { UpdateProfileDto } from '../profile/dto/update-profile.dto';
 
 @Injectable()
 export class WorkbookService {
@@ -53,8 +56,16 @@ export class WorkbookService {
     for (const a of parsed.answers) if (this.answers.remember(a.question, a.answer, AnswerSource.EXCEL)) answers++;
     const links = parsed.links.length ? this.jobs.addLinks(parsed.links) : { added: 0, duplicates: 0, invalid: [] };
     const prefs = mapPreferences(parsed.preferences);
+    // Same limits as the Settings and Profile pages (e.g. at most 200 applications a day).
+    for (const p of [...dropInvalid(UpdateSettingsDto, prefs.settings), ...dropInvalid(UpdateProfileDto, prefs.profile)]) {
+      prefs.warnings.push(`Preference not applied - ${p}`);
+    }
     if (prefs.applied.length) {
-      this.settings.update(prefs.settings);
+      try {
+        this.settings.update(prefs.settings);
+      } catch (err) {
+        prefs.warnings.push(`Preferences not applied - ${(err as Error).message}`);
+      }
       if (Object.keys(prefs.profile).length) this.profile.update(prefs.profile);
     }
     const result: WorkbookImportResult = {

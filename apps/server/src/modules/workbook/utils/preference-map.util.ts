@@ -40,12 +40,15 @@ export function mapPreferences(rows: { key: string; value: string }[]): {
   const sources = (settings.sources ??= {});
 
   for (const { key, value } of rows) {
-    const k = key.toLowerCase().replace(/[^a-z ]/g, '').trim();
+    const k = key
+      .toLowerCase()
+      .replace(/[^a-z ]/g, '')
+      .trim();
     const v = value.trim();
     if (!v) continue;
     let ok = true;
-    if (/^keywords?|job titles?|roles?$/.test(k)) search.keywords = list(v);
-    else if (/^locations?|cities$/.test(k)) search.locations = list(v);
+    if (/^(keywords?|job titles?|roles?)$/.test(k)) search.keywords = list(v);
+    else if (/^(locations?|cities)$/.test(k)) search.locations = list(v);
     else if (/remote only/.test(k)) ok = (search.remoteOnly = bool(v) ?? undefined) !== undefined;
     else if (/easy apply/.test(k)) ok = (search.easyApplyOnly = bool(v) ?? undefined) !== undefined;
     else if (/posted within/.test(k)) ok = (search.postedWithinDays = int(v) ?? undefined) !== undefined;

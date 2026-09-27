@@ -1,18 +1,74 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-// Installs and builds only when needed, then starts the server.
-import { spawnSync, spawn } from 'node:child_process';
+// Installs and builds only when needed, then starts the server - showing each step as it happens.
+import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
+import { request } from 'node:http';
 import { join } from 'node:path';
 
 const root = join(import.meta.dirname, '..');
 const p = (...parts) => join(root, ...parts);
+const port = Number(process.env.SUDARSHAN_PORT || process.env.JAA_PORT || 4747);
+const tty = process.stdout.isTTY;
+const started = Date.now();
 
 const [major, minor] = process.versions.node.split('.').map(Number);
 if (major < 22 || (major === 22 && minor < 13)) {
   console.error(`Node.js 22.13 or newer is required (you have ${process.version}). Get it from https://nodejs.org`);
   process.exit(1);
+}
+
+const secs = (ms) => `${(ms / 1000).toFixed(ms < 10_000 ? 1 : 0)}s`;
+const done = (text, since) => console.log(`  ✓ ${text}${since ? ` (${secs(Date.now() - since)})` : ''}`);
+
+/** A one-line spinner with elapsed time; without a terminal, a line every 10 seconds. */
+function step(text) {
+  const since = Date.now();
+  const frames = ['⠋', '⠙', '⠹', '⠸', '⠼', '⠴', '⠦', '⠧', '⠇', '⠏'];
+  let i = 0;
+  const draw = () => process.stdout.write(`\r  ${frames[i++ % frames.length]} ${text} ${secs(Date.now() - since)}   `);
+  if (tty) draw();
+  else console.log(`  - ${text}`);
+  let told = since;
+  const timer = setInterval(
+    () => {
+      if (tty) return draw();
+      if (Date.now() - told < 10_000) return;
+      told = Date.now();
+      console.log(`    still ${text.toLowerCase()} ${secs(Date.now() - since)}`);
+    },
+    tty ? 100 : 1000,
+  );
+  return {
+    stop(finalText) {
+      clearInterval(timer);
+      if (tty) process.stdout.write('\r\x1b[2K');
+      if (finalText) done(finalText, since);
+    },
+  };
+}
+
+/** Runs npm quietly behind a spinner; its output is shown only if it fails. */
+function npm(label, doneText, args) {
+  return new Promise((resolve) => {
+    const s = step(label);
+    const out = [];
+    // One command string: npm is a script on Windows, so it needs a shell.
+    const child = spawn(`npm ${args.join(' ')}`, { cwd: root, shell: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    child.stdout.on('data', (d) => out.push(d));
+    child.stderr.on('data', (d) => out.push(d));
+    child.on('exit', (code) => {
+      if (code === 0) {
+        s.stop(doneText);
+        return resolve();
+      }
+      s.stop();
+      process.stdout.write(Buffer.concat(out));
+      console.error(`\n  ✗ ${label} failed (exit code ${code}). The output above says why.`);
+      process.exit(code ?? 1);
+    });
+  });
 }
 
 const mtime = (file) => (existsSync(file) ? statSync(file).mtimeMs : 0);
@@ -24,32 +80,74 @@ const newest = (dir) =>
       }, 0)
     : 0;
 
-const npm = (...args) => {
-  const r = spawnSync('npm', args, { cwd: root, stdio: 'inherit', shell: true });
-  if (r.status !== 0) process.exit(r.status ?? 1);
-};
+const healthy = () =>
+  new Promise((resolve) => {
+    const req = request({ host: '127.0.0.1', port, path: '/api/health', timeout: 800 }, (res) => {
+      res.resume();
+      resolve(res.statusCode === 200);
+    });
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => req.destroy());
+    req.end();
+  });
+
+console.log(`\n  Sudarshan - goes out, finishes the task, returns.\n`);
 
 // Install on first run or when package-lock changed.
 if (!existsSync(p('node_modules')) || mtime(p('package-lock.json')) > mtime(p('node_modules', '.package-lock.json'))) {
-  console.log('Installing dependencies (first run takes a few minutes)...');
-  npm('install', '--no-audit', '--no-fund');
+  await npm('Installing dependencies (the first run takes a few minutes)', 'Dependencies installed', ['install', '--no-audit', '--no-fund']);
+} else {
+  done('Dependencies ready');
 }
 
 // Rebuild when sources are newer than the build.
 const serverBuilt = mtime(p('apps', 'server', 'dist', 'main.js'));
 const webBuilt = mtime(p('apps', 'web', 'dist', 'index.html'));
-if (!serverBuilt || !webBuilt || newest(p('apps', 'server', 'src')) > serverBuilt || newest(p('apps', 'web', 'src')) > webBuilt) {
-  console.log('Building...');
-  npm('run', 'build');
+const serverStale = !serverBuilt || newest(p('apps', 'server', 'src')) > serverBuilt;
+const webStale = !webBuilt || newest(p('apps', 'web', 'src')) > webBuilt || newest(p('apps', 'web', 'public')) > webBuilt;
+if (serverStale || webStale) {
+  await npm(`Building the app (${!serverBuilt || !webBuilt ? 'first build' : 'code changed since the last build'})`, 'App built', ['run', 'build']);
+} else {
+  done('App is up to date');
 }
 
+// Start the server; the spinner runs until it answers, then its own log takes over.
+const boot = step('Starting the server');
+let booting = true;
 const server = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'dist/main.js', '--open'], {
   cwd: p('apps', 'server'),
-  stdio: 'inherit',
+  stdio: ['inherit', 'pipe', 'pipe'],
+  env: { ...process.env, FORCE_COLOR: tty ? '1' : '0' },
 });
+// Startup chatter (module and route lists) is held back until the server is up, and shown only if it fails.
+const held = [];
+const forward = (stream, target) =>
+  stream.on('data', (d) => {
+    if (booting) held.push(d);
+    else target.write(d);
+  });
+forward(server.stdout, process.stdout);
+forward(server.stderr, process.stderr);
+
+const poll = setInterval(async () => {
+  if (!booting || !(await healthy())) return;
+  booting = false;
+  clearInterval(poll);
+  boot.stop('Server started');
+  console.log(`\n  Ready in ${secs(Date.now() - started)} - open http://localhost:${port}\n  Press Ctrl + C to stop.\n`);
+}, 400);
+
 const stop = () => server.kill('SIGINT');
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
 // Windows does not kill child processes with the parent.
 process.on('exit', () => server.kill());
-server.on('exit', (code) => process.exit(code ?? 0));
+server.on('exit', (code) => {
+  clearInterval(poll);
+  if (booting) {
+    boot.stop();
+    process.stdout.write(Buffer.concat(held));
+    console.error(`\n  ✗ The server stopped while starting (exit code ${code}). The log above says why.`);
+  }
+  process.exit(code ?? 0);
+});

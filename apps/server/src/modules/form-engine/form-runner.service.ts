@@ -116,7 +116,9 @@ export class FormRunnerService {
       if (!action) {
         return { ...out, status: 'stuck', detail: `No way forward found on ${new URL(snap.url).hostname}` };
       }
-      if (action.kind === 'submit' && opts.pauseBeforeSubmit) {
+      // "Apply now" at the end of a form with fields sends it too; on a bare job page it only opens the form.
+      const sends = action.kind === 'submit' || (action.kind === 'apply' && snap.fields.length > 0);
+      if (sends && opts.pauseBeforeSubmit) {
         return { ...out, status: 'ready_to_submit', detail: 'Filled and waiting for you to press Submit' };
       }
       opts.onStep(`Step ${step}: "${action.text}"`);
@@ -197,10 +199,11 @@ export class FormRunnerService {
 
     if (!opts.allowLlm || !this.llm.isAvailable() || usable.length === 0) return null;
     try {
-      const pick = await this.llm.json<{ id?: string }>(
-        buildNavigatePrompt('Submit the job application', snap.text, usable),
-        { purpose: LlmPurpose.NAVIGATE, system: NAVIGATE_SYSTEM_PROMPT, maxTokens: 150 },
-      );
+      const pick = await this.llm.json<{ id?: string }>(buildNavigatePrompt('Submit the job application', snap.text, usable), {
+        purpose: LlmPurpose.NAVIGATE,
+        system: NAVIGATE_SYSTEM_PROMPT,
+        maxTokens: 150,
+      });
       const action = usable.find((a) => a.id === pick.id);
       if (action) this.recipes.learn(opts.domain, 'advance', action.text);
       return action ?? null;

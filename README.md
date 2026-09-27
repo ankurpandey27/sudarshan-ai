@@ -61,7 +61,8 @@ The main page is called **Lakshya** (लक्ष्य, "the target") - the aim
 - **Imports an Excel sheet** of your known answers, extra job links (any site) and preferences.
 - **Searches** LinkedIn, Naukri, Indeed and Instahyre for your keywords and locations, and queues links you add from any career site. Each platform has its own on/off switch under **Apply on**.
 - **Scores every job** against your profile and explains the score (matched / missing skills, salary, location).
-- **Applies** - LinkedIn Easy Apply, Naukri (including its chat-style questions), Indeed ("Easily apply"), Instahyre (one click), and generic career sites - in its own browser window you can watch.
+- **Applies** - LinkedIn Easy Apply, Naukri (including its chat-style questions), Instahyre (one click), and generic career sites - in its own browser window you can watch.
+- **Prepares Indeed applications** - Indeed puts a captcha on every application, so Sudarshan fills the steps and leaves the tab open; you tick "I'm not a robot" and press Submit, and the job turns Applied by itself.
 - **Remembers every answer**, so forms get faster and cheaper over time.
 - **Asks you only what it cannot know**, once, and reuses your answer forever.
 - **Explains itself** - the "What needs attention" panel tells you, in plain words, anything stopping it and how to fix it.
@@ -278,7 +279,7 @@ Look at **Lakshya -> What needs attention** first. Every problem is listed there
 | *Profile is missing ...* | Forms will ask for these | Fill them on **Profile** |
 | *Port 4747 is already in use* (terminal) | Sudarshan is already running | Open http://localhost:4747, or stop the other one |
 | *No Chrome, Edge or Brave found* | No supported browser | Install Google Chrome |
-| A captcha appears | The site wants a human | Solve it in the agent's browser window - Sudarshan waits and continues |
+| A captcha appears | The site wants a human (Indeed: on every application) | The form is already filled and the tab is open in Sudarshan's browser. Solve the captcha and press Submit - the job turns **Applied** by itself. The agent keeps applying to other jobs meanwhile |
 
 Each failed application also keeps a **screenshot** and a **step-by-step trace** (Applications -> open the job -> Attempts).
 
@@ -292,7 +293,7 @@ Each failed application also keeps a **screenshot** and a **step-by-step trace**
 - **Local only** - the server listens on `127.0.0.1` and rejects requests from other websites.
 - The only traffic leaving your machine goes to the job sites you use and the AI provider you chose (none with a local model).
 
-**Indeed is off by default.** Indeed restricts automation more than any other site here and often shows a security check ("Just a moment..."). Sudarshan waits for it to clear, goes slowly (12-18 s between pages, 15 applications a day by default), and hands the check to you if it stays. Turn it on under **Apply on** and log in to Indeed in the agent browser - logged out, Indeed shows only the first page of results and no application form.
+**Indeed is off by default.** Indeed restricts automation more than any other site here and often shows a security check ("Just a moment..."). Sudarshan waits for it to clear, goes slowly (12-18 s between pages, 15 applications a day by default), and hands the check to you if it stays. Turn it on under **Apply on** and log in to Indeed in the agent browser - logged out, Indeed shows only the first page of results and no application form. **Every Indeed application ends with a captcha** ("I'm not a robot"), so Indeed is never applied to on its own: Sudarshan finds the jobs and prepares each application, and you finish it.
 
 **Protect your accounts.** LinkedIn does not allow automated applications and restricts accounts that apply too fast. Defaults are deliberately conservative: **25 LinkedIn / 40 Naukri applications per day**, random 40-110 s gaps, a real visible browser, and captchas always handed to you. Raise limits at your own risk; you are responsible for how you use this tool.
 
@@ -355,7 +356,7 @@ apps/
       scoring       exclusions -> keyword filter -> weighted engine -> batched AI score
       browser       one persistent Chrome/Edge profile, per-site login state
       form-engine   in-page extractor + filler, profile rules, answer engine, recipes
-      apply         LinkedIn Easy Apply, Naukri (incl. chat questions), Indeed Apply, Instahyre, generic career sites
+      apply         LinkedIn Easy Apply, Naukri (incl. chat questions), Instahyre, generic career sites; Indeed Apply up to its captcha
       agent         the loop (discovery, one-at-a-time applying, caps, pacing) + insights
       workbook      Excel import / template / tracker export
   web/      React 19 + Vite + Tailwind v4 + TanStack Query, live updates over SSE
@@ -364,10 +365,21 @@ scripts/    start.mjs (the one command), dev.mjs
 
 ## What Sudarshan can't do on its own
 
-It fills most application forms by itself - LinkedIn Easy Apply, Naukri and company career sites such as Keka, Greenhouse and Lever - and uploads your resume. A few things are left to you, on purpose:
+It fills most application forms by itself - LinkedIn Easy Apply, Naukri, Instahyre and company career sites such as Keka, Greenhouse and Lever - and uploads your resume. A few things are left to you, on purpose:
 
-- **Captchas** - by design, you type them. Sudarshan fills everything else, leaves the tab open, and you type the code and press Submit.
+- **Captchas** ("I'm not a robot", picture puzzles, type-the-code boxes) - Sudarshan never solves them. It fills everything else and hands the application to you.
 - **Sites that make you create an account or log in**, or **verify with a code sent to your email or phone (OTP)** - these become **"Do by hand"** in Applications.
+- **Indeed** - every Indeed application ends with a captcha, so on Indeed you always press Submit yourself. Sudarshan finds the jobs and fills each application up to that point.
+
+### What happens when a form has a captcha
+
+1. **Sudarshan fills the whole form** - contact details, resume, questions, every step it can - and stops at the captcha. It never presses Submit on a captcha form.
+2. **The tab stays open** in Sudarshan's browser window, and the job moves to **Applications -> Do by hand** with the note *"Filled - only the captcha is left"*. The flight log says the same.
+3. **The agent carries on** with the next job in the queue - it does not sit and wait, so one captcha never holds up the rest.
+4. **You finish it whenever you like:** switch to that tab, solve the captcha (tick "I'm not a robot", pick the pictures, or type the code) and press **Submit**.
+5. **Sudarshan is still watching that tab.** When the site confirms the application, it marks the job **Applied** by itself ("Finished by you") - no need to mark it by hand - and remembers any answers you added for next time.
+
+If you close the tab without submitting, the job stays in **Do by hand**: open it from Applications, apply on the site, then press **I applied**.
 
 When it gets stuck on a form, the tab stays open: finish it there and Sudarshan learns your answers and that site's steps for next time. The same list is behind the **(i)** on the **Apply on** card in Lakshya.
 
@@ -375,7 +387,8 @@ When it gets stuck on a form, the tab stays open: finish it there and Sudarshan 
 
 - **Verified against live accounts:** LinkedIn Easy Apply (multi-page forms, screening questions), Naukri one-click apply, Instahyre one-click apply, and company career-site forms (Keka).
 - **Also verified:** resume parsing, Excel import, LinkedIn and Naukri discovery, scoring, the form engine in a real browser, learning from forms you finish, security and key encryption.
-- **Not yet verified live:** the Naukri chat-style questionnaire, and the Indeed Apply form itself (Indeed search is verified; applying needs a logged-in Indeed account). Job sites change their pages often - keep **Stop before the final Submit** on for your first applications on a new site, and report what the flight log shows.
+- **Indeed:** search is verified. Applying cannot be fully automatic - Indeed requires a reCAPTCHA on the review page of every application, and Sudarshan never solves captchas. It fills the steps and hands over; that filling is not yet verified live.
+- **Not yet verified live:** the Naukri chat-style questionnaire. Job sites change their pages often - keep **Stop before the final Submit** on for your first applications on a new site, and report what the flight log shows.
 
 ## Contributing
 

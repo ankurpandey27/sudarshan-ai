@@ -13,7 +13,7 @@ import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
 import { LlmService } from '../../llm/llm.service';
 import { LlmPurpose } from '../../llm/enums/llm-purpose.enum';
-import { APPLIED_BUTTON, CLOSED_TEXT, GENERIC_DIALOG as DIALOG, GENERIC_SUCCESS, LOGIN_WALL } from '../constants/apply.constants';
+import { APPLIED_BUTTON, CLOSED_TEXT, GENERIC_DIALOG as DIALOG, GENERIC_SUCCESS, LOGIN_WALL, ONE_CLICK_SUCCESS } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
@@ -59,8 +59,8 @@ export class WebApplyAdapter implements ApplyAdapter {
         if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (GENERIC_SUCCESS.test(text) && /already/i.test(text))) {
           return result(PrepareStatus.ALREADY_APPLIED, { page: current });
         }
-        confirmedBefore = GENERIC_SUCCESS.test(text);
-      } else if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (!confirmedBefore && GENERIC_SUCCESS.test(text))) {
+        confirmedBefore = ONE_CLICK_SUCCESS.test(text);
+      } else if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (!confirmedBefore && ONE_CLICK_SUCCESS.test(text))) {
         // One-click apply: the confirmation appeared after our click.
         return result(PrepareStatus.APPLIED, { detail: 'Applied in one click', page: current });
       }

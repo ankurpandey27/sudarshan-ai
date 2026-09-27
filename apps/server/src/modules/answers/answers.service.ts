@@ -3,7 +3,7 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
-import { ANSWER_SOURCE_TRUST, FUZZY_MATCH_THRESHOLD } from './constants/answers.constants';
+import { ANSWER_SOURCE_TRUST, FUZZY_MATCH_THRESHOLD, GENERIC_QUESTION } from './constants/answers.constants';
 import { AnswerSource } from './enums/answer-source.enum';
 import { Answer, AnswerMatch, AnswerRow } from './interfaces/answer.interface';
 import { questionKey, questionSimilarity } from './utils/question-key.util';
@@ -17,6 +17,7 @@ export class AnswersService {
   constructor(private readonly storage: StorageService) {}
 
   lookup(question: string): AnswerMatch | null {
+    if (GENERIC_QUESTION.test(question.trim())) return null;
     const key = questionKey(question);
     if (!key) return null;
     const rows = this.rows();
@@ -32,6 +33,8 @@ export class AnswersService {
 
   // A lower-trust source never overwrites a higher-trust answer.
   remember(question: string, answer: string, source: AnswerSource, fieldType: string | null = null): Answer | null {
+    // "Choose an option" is not a question: one answer would be reused for unrelated fields.
+    if (GENERIC_QUESTION.test(question.trim())) return null;
     const key = questionKey(question);
     const value = answer.trim();
     if (!key || !value) return null;
@@ -47,10 +50,15 @@ export class AnswersService {
         existing.id,
       ]);
     } else {
-      this.storage.run(
-        'INSERT INTO answers (key, question, answer, field_type, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [key, question.trim().slice(0, 500), value, fieldType, source, now, now],
-      );
+      this.storage.run('INSERT INTO answers (key, question, answer, field_type, source, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [
+        key,
+        question.trim().slice(0, 500),
+        value,
+        fieldType,
+        source,
+        now,
+        now,
+      ]);
     }
     this.cache = null;
     return toAnswer(this.storage.get<AnswerRow>('SELECT * FROM answers WHERE key = ?', [key])!);

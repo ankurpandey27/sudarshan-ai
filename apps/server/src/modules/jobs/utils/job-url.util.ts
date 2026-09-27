@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+import { isHostOf } from './host.util';
 import { createHash } from 'node:crypto';
 import { JobSource } from '../enums/job-source.enum';
 import { ParsedJobUrl } from '../interfaces/parsed-job-url.interface';
@@ -15,16 +16,15 @@ export function parseJobUrl(raw: string): ParsedJobUrl | null {
   if (!/^https?:$/.test(url.protocol) || !url.hostname.includes('.')) return null;
   const host = url.hostname.toLowerCase();
 
-  if (host.endsWith('linkedin.com')) {
-    const id =
-      /\/jobs\/view\/(?:[^/]*-)?(\d{6,})/.exec(url.pathname)?.[1] ?? url.searchParams.get('currentJobId') ?? undefined;
+  if (isHostOf(host, 'linkedin.com')) {
+    const id = /\/jobs\/view\/(?:[^/]*-)?(\d{6,})/.exec(url.pathname)?.[1] ?? url.searchParams.get('currentJobId') ?? undefined;
     if (id) return { source: JobSource.LINKEDIN, externalId: id, url: `https://www.linkedin.com/jobs/view/${id}/` };
   }
-  if (host.endsWith('naukri.com')) {
+  if (isHostOf(host, 'naukri.com')) {
     const id = /-(\d{9,})(?:[/?#]|$)/.exec(url.pathname)?.[1] ?? /(\d{9,})/.exec(url.pathname)?.[1];
     if (id) return { source: JobSource.NAUKRI, externalId: id, url: `${url.origin}${url.pathname}` };
   }
-  if (host.endsWith('indeed.com')) {
+  if (isHostOf(host, 'indeed.com')) {
     // /viewjob?jk=..., search links (?vjk=...) and redirect links (/rc/clk?jk=...) all carry the job key.
     const id = url.searchParams.get('jk') ?? url.searchParams.get('vjk');
     if (id && /^[0-9a-f]{16}$/i.test(id)) return { source: JobSource.INDEED, externalId: id, url: `https://${host}/viewjob?jk=${id}` };

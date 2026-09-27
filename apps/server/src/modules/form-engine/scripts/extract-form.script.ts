@@ -142,9 +142,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   const CAPTCHA_FIELD = /captcha|security code|enter the (characters|code|text|letters)( shown| above| in the image)?/i;
   let textCaptchaPending = false;
 
-  const controls = Array.from(
-    scope.querySelectorAll('input, select, textarea, [role=combobox]:not(input), [role=radiogroup], [contenteditable=true]'),
-  );
+  const controls = Array.from(scope.querySelectorAll('input, select, textarea, [role=combobox]:not(input), [role=radiogroup], [contenteditable=true]'));
   for (const el of controls) {
     const tagName = el.tagName;
     const input = el as HTMLInputElement;
@@ -164,9 +162,11 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       const groupKey = input.name ? `name:${input.name}` : `c:${tag(container, 'data-jaa-id', 'g')}`;
       if (seenGroups.has(groupKey)) continue;
       seenGroups.add(groupKey);
-      const radios = (input.name
-        ? Array.from(scope.querySelectorAll(`input[type=radio][name="${CSS.escape(input.name)}"]`))
-        : Array.from(container.querySelectorAll('input[type=radio]'))) as HTMLInputElement[];
+      const radios = (
+        input.name
+          ? Array.from(scope.querySelectorAll(`input[type=radio][name="${CSS.escape(input.name)}"]`))
+          : Array.from(container.querySelectorAll('input[type=radio]'))
+      ) as HTMLInputElement[];
       const optionIds = radios.map((r) => tag(r, 'data-jaa-opt', 'o'));
       const options = radios.map((r) => labelFor(r) || r.value);
       const groupEl = el.closest('fieldset, [role=radiogroup]') ?? container;
@@ -191,10 +191,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
         name: input.name,
         placeholder: '',
         required:
-          radios.some((r) => r.required) ||
-          /\*/.test((legend as HTMLElement | null)?.innerText ?? '') ||
-          /\*\s*$/.test(before) ||
-          isRequired(groupEl, label),
+          radios.some((r) => r.required) || /\*/.test((legend as HTMLElement | null)?.innerText ?? '') || /\*\s*$/.test(before) || isRequired(groupEl, label),
         value: checked.join(' | '),
         options,
         optionIds,
@@ -212,7 +209,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       if (opts.length === 0 || el.querySelector('input[type=radio]')) continue;
       const optionIds = opts.map((o) => tag(o, 'data-jaa-opt', 'o'));
       const options = opts.map((o) => textOf(o) || clean(o.getAttribute('aria-label')));
-      const label = labelFor(el, options, 0) || 'Choose an option';
+      const label = labelFor(el, options, 0) || precedingText(el) || 'Choose an option';
       fields.push({
         id: tag(el, 'data-jaa-id', 'f'),
         kind: 'radio' as FieldKind,
@@ -220,7 +217,10 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
         name: '',
         placeholder: '',
         required: el.getAttribute('aria-required') === 'true',
-        value: opts.filter((o) => o.getAttribute('aria-checked') === 'true').map(textOf).join(' | '),
+        value: opts
+          .filter((o) => o.getAttribute('aria-checked') === 'true')
+          .map(textOf)
+          .join(' | '),
         options,
         optionIds,
         error: errorFor(el),
@@ -234,11 +234,13 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
 
     if (tagName === 'INPUT' && type === 'checkbox') {
       const fieldset = el.closest('fieldset');
-      const peers = (input.name
-        ? Array.from(scope.querySelectorAll(`input[type=checkbox][name="${CSS.escape(input.name)}"]`))
-        : fieldset
-          ? Array.from(fieldset.querySelectorAll('input[type=checkbox]'))
-          : [el]) as HTMLInputElement[];
+      const peers = (
+        input.name
+          ? Array.from(scope.querySelectorAll(`input[type=checkbox][name="${CSS.escape(input.name)}"]`))
+          : fieldset
+            ? Array.from(fieldset.querySelectorAll('input[type=checkbox]'))
+            : [el]
+      ) as HTMLInputElement[];
       if (peers.length > 1) {
         const groupEl = fieldset ?? el.parentElement?.parentElement ?? scope;
         const key = `cb:${tag(groupEl, 'data-jaa-id', 'f')}`;
@@ -254,7 +256,10 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
           name: input.name,
           placeholder: '',
           required: peers.some((p) => p.required) || /\*/.test(label),
-          value: peers.filter((p) => p.checked).map((p) => labelFor(p) || p.value).join(' | '),
+          value: peers
+            .filter((p) => p.checked)
+            .map((p) => labelFor(p) || p.value)
+            .join(' | '),
           options,
           optionIds,
           error: errorFor(groupEl),
@@ -305,11 +310,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     } else if (type === 'file') {
       kind = 'file';
       value = input.files && input.files.length ? input.files[0].name : '';
-    } else if (
-      el.getAttribute('role') === 'combobox' ||
-      el.getAttribute('aria-autocomplete') === 'list' ||
-      input.getAttribute('list') !== null
-    ) {
+    } else if (el.getAttribute('role') === 'combobox' || el.getAttribute('aria-autocomplete') === 'list' || input.getAttribute('list') !== null) {
       kind = 'combobox';
       value = input.value ?? textOf(el);
     } else {
@@ -335,18 +336,21 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   }
 
   const actions: FormSnapshot['actions'] = [];
-  const clickables = Array.from(
-    scope.querySelectorAll('button, [role=button], input[type=submit], input[type=button], a[href]'),
-  ).filter(visible);
+  const clickables = Array.from(scope.querySelectorAll('button, [role=button], input[type=submit], input[type=button], a[href]')).filter(visible);
   for (const el of clickables) {
-    const text = clean(
-      (el as HTMLElement).innerText || el.getAttribute('aria-label') || (el as HTMLInputElement).value || el.getAttribute('title'),
-    ).slice(0, 80);
+    const text = clean((el as HTMLElement).innerText || el.getAttribute('aria-label') || (el as HTMLInputElement).value || el.getAttribute('title')).slice(
+      0,
+      80,
+    );
     if (!text) continue;
     const isLink = el.tagName === 'A';
     const lower = text.toLowerCase();
     let kind: FormSnapshot['actions'][number]['kind'] = 'other';
-    if (/^(submit|submit application|send application|send|finish|complete application|apply now|submit & apply|confirm and apply)$/i.test(lower) || /submit application|send application/.test(lower)) kind = 'submit';
+    if (
+      /^(submit|submit application|send application|send|finish|complete application|submit & apply|confirm and apply)$/i.test(lower) ||
+      /submit application|send application/.test(lower)
+    )
+      kind = 'submit';
     else if (/^review\b|review (your )?application/.test(lower)) kind = 'review';
     else if (/^(next|continue|proceed|save and continue|save & continue|save & next|next step)\b/.test(lower)) kind = 'next';
     else if (/^(easy apply|apply|apply now|apply for this job|apply to this job|i'?m interested|quick apply)\b/.test(lower)) kind = 'apply';

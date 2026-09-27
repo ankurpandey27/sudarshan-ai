@@ -34,4 +34,11 @@ describe('matchOption', () => {
     expect(inRange(11, 'More than 10 years')).toBe(true);
     expect(inRange(10, 'More than 10 years')).toBe(false);
   });
+
+  it('does not read words that start with "no" as No', () => {
+    for (const v of ['Noida', 'November 2026', 'Not sure', 'Norway']) expect(matchOption(v, ['Yes', 'No'])).toBe(-1);
+    expect(matchOption('Nope', ['Yes', 'No'])).toBe(1);
+    expect(matchOption('Noida', ['Delhi', 'Noida', 'Gurgaon'])).toBe(1);
+    expect(matchOption('New Delhi', ['Mumbai', 'New Delhi, India'])).toBe(1);
+  });
 });

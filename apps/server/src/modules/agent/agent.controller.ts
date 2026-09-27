@@ -53,8 +53,14 @@ export class AgentController {
 
   @Post('rescore')
   @HttpCode(200)
-  async rescore(): Promise<{ rescored: number }> {
-    return { rescored: await this.agent.rescore() };
+  rescore(): { rescored: number } {
+    return { rescored: this.agent.rescore() };
+  }
+
+  @Post('score-new')
+  @HttpCode(200)
+  scoreNew(): { rescored: number } {
+    return { rescored: this.agent.scoreUnscored() };
   }
 
   @Post('apply/:id')

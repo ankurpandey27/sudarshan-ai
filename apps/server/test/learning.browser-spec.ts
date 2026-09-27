@@ -20,7 +20,7 @@ import { LlmService } from '../src/modules/llm/llm.service';
 const FIXTURE = `file://${join(__dirname, 'fixtures', 'easy-apply-2026.html').replace(/\\/g, '/')}`;
 const noLlm = { isConfigured: () => false, isAvailable: () => false } as unknown as LlmService;
 const until = async (check: () => boolean, ms = 8000) => {
-  for (const end = Date.now() + ms; Date.now() < end; ) {
+  for (const end = Date.now() + ms; Date.now() < end;) {
     if (check()) return;
     await new Promise((r) => setTimeout(r, 100));
   }
@@ -73,8 +73,13 @@ describe('Learning from the user (real browser)', () => {
       successPattern: /application was sent/i,
     });
 
+    // The site fills the phone in by itself (as from a saved profile) - that is not the user's answer.
+    await page.evaluate(() => {
+      const tel = document.querySelector<HTMLInputElement>('input[type=tel]')!;
+      tel.value = '9999999999';
+      tel.dispatchEvent(new Event('input', { bubbles: true }));
+    });
     // The user, with real keystrokes and clicks.
-    await page.type('input[type=tel]', '9812345678');
     await page.click('[data-next]');
     await page.waitForSelector('[data-step="2"]:not([hidden])');
     await page.click('[role=radio]:first-child');
@@ -83,7 +88,7 @@ describe('Learning from the user (real browser)', () => {
 
     await until(() => jobs.get(jobId).status === JobStatus.APPLIED);
     expect(jobs.get(jobId).status).toBe(JobStatus.APPLIED);
-    expect(answers.lookup('Mobile phone number')?.answer).toBe('9812345678');
+    expect(answers.lookup('Mobile phone number')).toBeNull();
     expect(answers.lookup("Are you comfortable commuting to this job's location?")?.answer).toBe('Yes');
     expect(answers.lookup('How many years of work experience do you have with React?')?.answer).toBe('4');
     expect(recipes.get('fixture.local').advanceTexts).toContain('next');

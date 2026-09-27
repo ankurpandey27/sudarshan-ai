@@ -29,4 +29,11 @@ describe('parseJobUrl', () => {
   it('rejects non-URLs', () => {
     expect(parseJobUrl('not a link')).toBeNull();
   });
+
+  it('only trusts the real job-board domains, not look-alikes', () => {
+    expect(parseJobUrl('https://www.evilnaukri.com/job-listings-x-123456789012')?.source).not.toBe(JobSource.NAUKRI);
+    expect(parseJobUrl('https://evilindeed.com/viewjob?jk=556f9e899af87808')?.source).not.toBe(JobSource.INDEED);
+    expect(parseJobUrl('https://notlinkedin.com/jobs/view/1234567890/')?.source).not.toBe(JobSource.LINKEDIN);
+    expect(parseJobUrl('https://in.indeed.com/viewjob?jk=556f9e899af87808')?.source).toBe(JobSource.INDEED);
+  });
 });

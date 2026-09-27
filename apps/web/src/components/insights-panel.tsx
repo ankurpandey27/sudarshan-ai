@@ -52,7 +52,7 @@ function InsightCard({ insight: i }: { insight: Insight }) {
   const run = useMutation({
     mutationFn: (path: string) => api.post<{ rescored?: number }>(path),
     onSuccess: (r) => {
-      toast('ok', typeof r?.rescored === 'number' ? `Scoring ${r.rescored} job(s) again` : 'Done');
+      toast('ok', typeof r?.rescored === 'number' ? `Scoring ${r.rescored} job(s) - the progress bar shows how far it has got` : 'Done');
       void qc.invalidateQueries();
     },
     onError: (e: Error) => toast('error', e.message),

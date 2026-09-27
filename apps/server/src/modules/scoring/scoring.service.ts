@@ -16,7 +16,9 @@ import { SettingsService } from '../settings/settings.service';
 import { AgentMode } from '../settings/enums/agent-mode.enum';
 import { LLM_SCORE_BATCH, LLM_SCORE_WEIGHT, TITLE_MISMATCH_PENALTY } from './constants/scoring.constants';
 import { titleTokens } from './utils/title.util';
+import { containsTerm } from './utils/whole-term.util';
 import { LastScoringRun, LlmJobScore, ScoringRunResult } from './interfaces/llm-score.interface';
+import { ScoringProgress } from './interfaces/scoring-progress.interface';
 import { SkipRule } from './enums/skip-rule.enum';
 import { SKIP_RULE_TEXT } from './constants/skip-rule.constants';
 import { ProfileSnapshot } from './interfaces/snapshots.interface';
@@ -30,6 +32,7 @@ export class ScoringService {
   private readonly logger = new Logger(ScoringService.name);
   private last: LastScoringRun | null = null;
   private inFlight: Promise<ScoringRunResult> | null = null;
+  private current: ScoringProgress | null = null;
 
   constructor(
     private readonly jobs: JobsService,
@@ -53,6 +56,28 @@ export class ScoringService {
     const out: ScoringRunResult = { scored: 0, review: 0, queued: 0, skipped: 0, llmCalls: 0, skippedBy: {} };
     const pending = this.jobs.unscored(limit);
     if (pending.length === 0) return out;
+    const startedAt = Date.now();
+    const p: ScoringProgress = { total: pending.length, done: 0, stage: 'rules', skipped: 0, startedAt: new Date(startedAt).toISOString(), etaSeconds: null };
+    this.current = p;
+    const tick = (done: number) => {
+      p.done = done;
+      const perJob = (Date.now() - startedAt) / Math.max(1, done);
+      p.etaSeconds = done >= 3 ? Math.round((perJob * (p.total - done)) / 1000) : null;
+    };
+    this.events.emit({ type: AgentEventType.LOG, message: `Scoring ${pending.length} job(s) against your profile...` });
+    try {
+      return await this.scoreAll(pending, out, p, tick);
+    } finally {
+      this.current = null;
+    }
+  }
+
+  /** The run currently scoring, if any. */
+  progress(): ScoringProgress | null {
+    return this.current ? { ...this.current } : null;
+  }
+
+  private async scoreAll(pending: Job[], out: ScoringRunResult, p: ScoringProgress, tick: (done: number) => void): Promise<ScoringRunResult> {
     const profile = this.profile.get();
     const snap = toProfileSnapshot(profile, this.settings.get().search.locations);
     const s = this.settings.get();
@@ -67,6 +92,8 @@ export class ScoringService {
       if (gate) {
         this.jobs.setScore(job.id, 0, { ...emptyDetail(gate.reason), skipRule: gate.rule }, JobStatus.SKIPPED, gate.reason);
         skip(gate.rule);
+        p.skipped++;
+        tick(p.skipped);
         continue;
       }
       const jsnap = toJobSnapshot(job);
@@ -87,12 +114,18 @@ export class ScoringService {
       });
     }
 
-    if (s.agent.llmScoring && this.llm.isAvailable() && survivors.length) {
+    const gated = p.skipped;
+    const useAi = s.agent.llmScoring && this.llm.isAvailable() && survivors.length > 0;
+    if (useAi) {
+      p.stage = 'ai';
       for (let i = 0; i < survivors.length; i += LLM_SCORE_BATCH) {
         // Model paused mid-run: finish with rule-based scores.
         if (!this.llm.isAvailable()) break;
         const batch = survivors.slice(i, i + LLM_SCORE_BATCH);
-        const scores = await this.llmScores(snap, batch.map((b) => b.job));
+        const scores = await this.llmScores(
+          snap,
+          batch.map((b) => b.job),
+        );
         out.llmCalls++;
         for (const b of batch) {
           const l = scores.get(b.job.id);
@@ -102,13 +135,14 @@ export class ScoringService {
           if (l.matched?.length) b.detail.matchedSkills = l.matched.slice(0, 15);
           if (l.missing?.length) b.detail.missingSkills = l.missing.slice(0, 15);
         }
+        tick(gated + Math.min(survivors.length, i + batch.length));
       }
     }
 
     const titleTerms = titleTokens([...s.search.keywords, profile.currentTitle, profile.headline].join(' '));
-    for (const { job, detail } of survivors) {
-      let score =
-        detail.llm === null ? detail.engine : Math.round(detail.engine * (1 - LLM_SCORE_WEIGHT) + detail.llm * LLM_SCORE_WEIGHT);
+    p.stage = 'saving';
+    for (const [n, { job, detail }] of survivors.entries()) {
+      let score = detail.llm === null ? detail.engine : Math.round(detail.engine * (1 - LLM_SCORE_WEIGHT) + detail.llm * LLM_SCORE_WEIGHT);
       if (detail.llm === null && titleTerms.size && ![...titleTokens(job.title)].some((t) => titleTerms.has(t))) {
         score = Math.max(0, score - TITLE_MISMATCH_PENALTY);
         detail.summary ||= 'Title does not match your search';
@@ -121,7 +155,9 @@ export class ScoringService {
         reason = detail.summary || `Strong match (${score})`;
       } else if (score >= s.agent.minReviewScore) {
         status = JobStatus.REVIEW;
-        reason = external ? 'Applies on the company site - turn on "Company career sites" under Apply on, or apply by hand' : detail.summary || `Partial match (${score})`;
+        reason = external
+          ? 'Applies on the company site - turn on "Company career sites" under Apply on, or apply by hand'
+          : detail.summary || `Partial match (${score})`;
       } else {
         status = JobStatus.SKIPPED;
         reason = detail.summary || `Match score ${score} is below your review threshold (${s.agent.minReviewScore})`;
@@ -129,6 +165,7 @@ export class ScoringService {
       }
       this.jobs.setScore(job.id, score, detail, status, reason);
       out.scored++;
+      if (!useAi) tick(gated + n + 1);
       if (status === JobStatus.APPROVED) out.queued++;
       else if (status === JobStatus.REVIEW) out.review++;
       else skip(SkipRule.LOW_SCORE);
@@ -156,11 +193,11 @@ export class ScoringService {
   private gate(job: Job, snap: ProfileSnapshot): { rule: SkipRule; reason: string } | null {
     const prefs = this.settings.get().search;
     const company = job.company.toLowerCase();
-    if (prefs.excludeCompanies.some((c) => c.trim() && company.includes(c.trim().toLowerCase()))) {
+    if (prefs.excludeCompanies.some((c) => containsTerm(company, c))) {
       return { rule: SkipRule.EXCLUDED_COMPANY, reason: `${job.company} is on your "never apply" list` };
     }
     const title = job.title.toLowerCase();
-    const word = prefs.excludeTitleWords.find((w) => w.trim() && new RegExp(`\\b${w.trim().toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`).test(title));
+    const word = prefs.excludeTitleWords.find((w) => containsTerm(title, w));
     if (word) return { rule: SkipRule.EXCLUDED_TITLE, reason: `Title contains "${word}", which you chose to skip` };
     if (prefs.remoteOnly && !job.isRemote) return { rule: SkipRule.NOT_REMOTE, reason: 'Not remote (you chose remote only)' };
     if (this.jobs.isAlreadyApplied(job.company, job.title)) return { rule: SkipRule.DUPLICATE, reason: 'You already applied to this role' };

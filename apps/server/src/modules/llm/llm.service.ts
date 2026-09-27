@@ -72,11 +72,7 @@ export class LlmService {
       return extractJson<T>(first);
     } catch (err) {
       this.logger.warn(`Unparseable JSON from model (${opts.purpose}), retrying once: ${(err as Error).message}`);
-      const retry = await this.call(
-        `${prompt}\n\nYour previous reply was not valid JSON. Return ONLY the JSON value.`,
-        { ...opts, system },
-        true,
-      );
+      const retry = await this.call(`${prompt}\n\nYour previous reply was not valid JSON. Return ONLY the JSON value.`, { ...opts, system }, true);
       return extractJson<T>(retry);
     }
   }
@@ -131,12 +127,11 @@ export class LlmService {
   }
 
   private period(since: string | null): LlmUsagePeriod {
-    const r =
-      this.storage.get<{ calls: number; failed: number | null; p: number; c: number }>(
-        `SELECT COUNT(*) calls, SUM(ok = 0) failed, COALESCE(SUM(prompt_tokens),0) p, COALESCE(SUM(completion_tokens),0) c
+    const r = this.storage.get<{ calls: number; failed: number | null; p: number; c: number }>(
+      `SELECT COUNT(*) calls, SUM(ok = 0) failed, COALESCE(SUM(prompt_tokens),0) p, COALESCE(SUM(completion_tokens),0) c
          FROM llm_usage ${since ? 'WHERE at >= ?' : ''}`,
-        since ? [since] : [],
-      ) ?? { calls: 0, failed: 0, p: 0, c: 0 };
+      since ? [since] : [],
+    ) ?? { calls: 0, failed: 0, p: 0, c: 0 };
     const p = Number(r.p);
     const c = Number(r.c);
     return { calls: Number(r.calls), failedCalls: Number(r.failed ?? 0), promptTokens: p, completionTokens: c, tokens: p + c };
@@ -145,13 +140,24 @@ export class LlmService {
   private async call(prompt: string, opts: LlmCallOptions, json: boolean): Promise<string> {
     if (this.chain.length === 0) throw new LlmUnavailableError();
     const errors: string[] = [];
+    let overBudget: LlmBudgetExceededError | null = null;
     for (const transport of this.chain) {
       const benched = this.benchedUntil.get(transport) ?? 0;
       if (benched > Date.now()) {
         errors.push(`${transport.kind}/${transport.model}: paused after "${this.lastFailure?.message ?? 'an error'}"`);
         continue;
       }
-      if (!transport.local) this.assertBudget();
+      // Over today's budget: skip paid models but still try a free local one further down the chain.
+      if (!transport.local) {
+        try {
+          this.assertBudget();
+        } catch (err) {
+          if (!(err instanceof LlmBudgetExceededError)) throw err;
+          overBudget = err;
+          errors.push(`${transport.kind}/${transport.model}: ${err.message}`);
+          continue;
+        }
+      }
       const started = Date.now();
       try {
         const res = await transport.complete({ system: opts.system, prompt, maxTokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS, json });
@@ -188,6 +194,8 @@ export class LlmService {
         }
       }
     }
+    // Only the budget stood in the way: say so, as before.
+    if (overBudget && errors.length === 1) throw overBudget;
     throw new LlmUnavailableError(`All AI models failed: ${errors.join(' | ')}`);
   }
 
@@ -201,7 +209,7 @@ export class LlmService {
   private assertBudget(): void {
     if (this.budget <= 0) return;
     const used = this.storage.get<{ t: number }>(
-      'SELECT COALESCE(SUM(prompt_tokens + completion_tokens), 0) t FROM llm_usage WHERE at >= ? AND provider NOT IN (\'ollama\', \'lmstudio\')',
+      "SELECT COALESCE(SUM(prompt_tokens + completion_tokens), 0) t FROM llm_usage WHERE at >= ? AND provider NOT IN ('ollama', 'lmstudio')",
       [localDayStartIso()],
     )?.t;
     if (Number(used) >= this.budget) throw new LlmBudgetExceededError(Number(used), this.budget);

@@ -110,6 +110,16 @@ export interface AgentStatus {
   openQuestions: number;
   llm: string | null;
   appliedToday: number;
+  scoring: ScoringProgress | null;
+}
+
+export interface ScoringProgress {
+  total: number;
+  done: number;
+  stage: 'rules' | 'ai' | 'saving';
+  skipped: number;
+  startedAt: string;
+  etaSeconds: number | null;
 }
 
 export interface AgentEvent {

@@ -68,7 +68,8 @@ export class InsightsService {
         id: 'llm-none',
         severity: 'info',
         title: 'No AI model connected',
-        detail: 'The agent is running on your profile and saved answers only. That works, but scoring is rule-based and new free-text questions come to you instead of being drafted.',
+        detail:
+          'The agent is running on your profile and saved answers only. That works, but scoring is rule-based and new free-text questions come to you instead of being drafted.',
         fix: 'Add a model in Settings - Google Gemini and Groq have free tiers, Ollama is free on your PC.',
         actions: [{ label: 'Add a model', to: '/settings' }],
       });
@@ -146,7 +147,9 @@ export class InsightsService {
         detail: login
           ? `There are ${sourceLabel(b.source)} jobs waiting in the queue, but the agent's browser is not logged in, so it cannot apply.`
           : `${b.reason}. This protects your account; the agent continues tomorrow.`,
-        fix: login ? `Click "Log in", sign in to ${sourceLabel(b.source)} in the window that opens, then come back.` : 'Nothing to do, or raise the limit in Settings if you are sure.',
+        fix: login
+          ? `Click "Log in", sign in to ${sourceLabel(b.source)} in the window that opens, then come back.`
+          : 'Nothing to do, or raise the limit in Settings if you are sure.',
         actions: login ? [{ label: 'Log in', to: '/settings#sites' }] : [{ label: 'Limits', to: '/settings' }],
       });
     }
@@ -189,7 +192,7 @@ export class InsightsService {
         title: `${fresh} new job${fresh === 1 ? '' : 's'} not scored yet`,
         detail: 'They were found but have not been matched against your profile.',
         fix: 'Start the agent, or score them now.',
-        actions: [{ label: 'Score now', api: '/agent/rescore' }],
+        actions: [{ label: 'Score now', api: '/agent/score-new' }],
       });
     }
     const questions = this.pending.openCount();

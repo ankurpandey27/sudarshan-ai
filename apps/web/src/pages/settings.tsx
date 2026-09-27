@@ -44,7 +44,7 @@ export function SettingsPage() {
   });
   const rescore = useMutation({
     mutationFn: () => api.post<{ rescored: number }>('/agent/rescore'),
-    onSuccess: (r) => toast('ok', `Re-scored ${r.rescored} jobs with the new settings`),
+    onSuccess: (r) => toast('ok', `Scoring ${r.rescored} jobs again with the new settings - progress shows on Lakshya`),
   });
   const importSheet = useMutation({
     mutationFn: (f: File) => api.upload<WorkbookImportResult>('/workbook/import', f),

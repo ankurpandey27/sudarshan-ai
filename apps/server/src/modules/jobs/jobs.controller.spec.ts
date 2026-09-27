@@ -58,4 +58,20 @@ describe('moving jobs between Review, the queue and Skipped', () => {
     expect(jobs.get(applying).status).toBe(JobStatus.APPLYING);
     expect(jobs.get(applied).status).toBe(JobStatus.APPLIED);
   });
+
+  it("rescoring re-checks the agent's own decisions but never undoes yours", () => {
+    const { jobs, add, ctl } = make();
+    const agentSkipped = add('100007', JobStatus.SKIPPED);
+    const agentReview = add('100008', JobStatus.REVIEW);
+    const youSkipped = add('100009', JobStatus.REVIEW);
+    const youReviewed = add('100010', JobStatus.APPROVED);
+    ctl.skip({ ids: [youSkipped] });
+    ctl.unqueue({ ids: [youReviewed] });
+
+    expect(jobs.resetForRescore()).toBe(2);
+    expect(jobs.get(agentSkipped).status).toBe(JobStatus.NEW);
+    expect(jobs.get(agentReview).status).toBe(JobStatus.NEW);
+    expect(jobs.get(youSkipped).status).toBe(JobStatus.SKIPPED);
+    expect(jobs.get(youReviewed).status).toBe(JobStatus.REVIEW);
+  });
 });

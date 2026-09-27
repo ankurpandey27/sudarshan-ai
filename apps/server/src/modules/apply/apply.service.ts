@@ -14,13 +14,13 @@ import { AnswerContext } from '../form-engine/interfaces/answer-context.interfac
 import { FormRunOutcome } from '../form-engine/interfaces/form-run.interface';
 import { JobsService } from '../jobs/jobs.service';
 import { JobStatus } from '../jobs/enums/job-status.enum';
-import { JobSource } from '../jobs/enums/job-source.enum';
 import { Job } from '../jobs/interfaces/job.interface';
 import { ProfileService } from '../profile/profile.service';
 import { SettingsService } from '../settings/settings.service';
 import { LinkedInApplyAdapter } from './adapters/linkedin.adapter';
 import { NaukriApplyAdapter } from './adapters/naukri.adapter';
 import { WebApplyAdapter } from './adapters/web.adapter';
+import { SITE_OF_PLATFORM } from './constants/site-of-platform.constants';
 import { IndeedApplyAdapter } from './adapters/indeed.adapter';
 import { LearningService } from '../learning/learning.service';
 import { WatchTarget } from '../learning/interfaces/watch-target.interface';
@@ -50,7 +50,12 @@ export class ApplyService {
     this.adapters = [linkedin, naukri, indeed, web];
   }
 
-  async apply(job: Job): Promise<ApplyResult> {
+  apply(job: Job): Promise<ApplyResult> {
+    // The browser must not be restarted (e.g. for a login window) while an application runs.
+    return this.browser.busyWith(() => this.applyTo(job));
+  }
+
+  private async applyTo(job: Job): Promise<ApplyResult> {
     const s = this.settings.get();
     const trace: string[] = [];
     const step = (m: string) => {
@@ -116,7 +121,13 @@ export class ApplyService {
             successPattern: prep.successPattern,
           };
         }
-      } else if (prep.status === PrepareStatus.LOGIN_REQUIRED || prep.status === PrepareStatus.CAPTCHA) {
+      } else if (prep.status === PrepareStatus.LOGIN_REQUIRED) {
+        const site = SITE_OF_PLATFORM[job.platform];
+        // A job board's session ended: pause that board until you log in again, and close the tab.
+        if (site) await this.browser.markLoggedOut(site);
+        // A company site: the job waits in "Do by hand" with its login page open for you.
+        else keepOpen = true;
+      } else if (prep.status === PrepareStatus.CAPTCHA) {
         keepOpen = true;
       }
     } catch (err) {
@@ -168,8 +179,8 @@ export class ApplyService {
       case PrepareStatus.CLOSED:
         return { status: JobStatus.SKIPPED, detail: prep.detail ?? 'No longer accepting applications' };
       case PrepareStatus.LOGIN_REQUIRED:
-        // LinkedIn and Naukri stay queued (the board is paused until login); anything else would retry in a loop.
-        return job.source !== JobSource.LINKEDIN && job.source !== JobSource.NAUKRI
+        // Job boards stay queued (the board is paused until you log in again); other sites need you.
+        return !SITE_OF_PLATFORM[job.platform]
           ? { status: JobStatus.MANUAL, detail: prep.detail ?? 'Log in to this site in the agent browser, then approve again' }
           : { status: JobStatus.APPROVED, detail: prep.detail ?? 'Waiting for you to log in' };
       case PrepareStatus.CAPTCHA:

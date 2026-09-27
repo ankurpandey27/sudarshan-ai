@@ -12,6 +12,12 @@ const fact = (value: string | number | null | undefined): RuleAnswer | null =>
   value === null || value === undefined || value === '' ? null : { value: String(value), confident: true };
 const guess = (value: string): RuleAnswer => ({ value, confident: false });
 
+/** The job's location names your country, state or city. */
+function jobInHomeCountry(c: AnswerContext): boolean {
+  const where = c.job.location.toLowerCase();
+  return [c.profile.country, c.profile.state, c.profile.city].some((place) => !!place && where.includes(place.toLowerCase()));
+}
+
 // Forms want integers; round down rather than overclaim.
 const wholeYears = (y: number): number => Math.max(0, Math.floor(y));
 
@@ -114,7 +120,8 @@ const RULES: ProfileRule[] = [
   },
   {
     test: /(legally\s*)?(authori[sz]ed|eligible|permitted)\s*to\s*work|work\s*authori[sz]ation|right to work/,
-    answer: (c) => fact(yes(!c.profile.needsSponsorship)),
+    // Only claimed when the profile states it, or the job is where you live; otherwise you are asked once.
+    answer: (c) => (c.profile.workAuthorization.trim() || jobInHomeCountry(c) ? fact(yes(!c.profile.needsSponsorship)) : null),
   },
   {
     test: /\b(comfortable|okay|ok|willing|able)\b.*\b(office|onsite|on-site|hybrid|in person|commute|work from office|wfo|remote)\b/,
