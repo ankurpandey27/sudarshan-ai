@@ -1,19 +1,23 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Controller, Get, HttpCode, Param, ParseIntPipe, Post, ServiceUnavailableException } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, ParseIntPipe, Post, ServiceUnavailableException, ParseEnumPipe } from '@nestjs/common';
 import { ApplyResult } from '../apply/interfaces/apply-adapter.interface';
 import { BrowserUnavailableError } from '../browser/errors/browser-unavailable.error';
 import { AgentService } from './agent.service';
 import { AgentStatus } from './interfaces/agent-status.interface';
 import { Insight } from './interfaces/insight.interface';
 import { InsightsService } from './insights.service';
+import { PlatformHealthService } from '../platform-health/platform-health.service';
+import { PlatformHealth } from '../platform-health/interfaces/platform-health.interface';
+import { JobPlatform } from '../jobs/enums/job-platform.enum';
 
 @Controller('agent')
 export class AgentController {
   constructor(
     private readonly agent: AgentService,
     private readonly insights: InsightsService,
+    private readonly health: PlatformHealthService,
   ) {}
 
   @Get('insights')
@@ -61,6 +65,13 @@ export class AgentController {
   @HttpCode(200)
   scoreNew(): { rescored: number } {
     return { rescored: this.agent.scoreUnscored() };
+  }
+
+  /** Resume a platform that was paused because its pages seemed to change; it stops before Submit until one works. */
+  @Post('platforms/:platform/retry')
+  @HttpCode(200)
+  retryPlatform(@Param('platform', new ParseEnumPipe(JobPlatform)) platform: JobPlatform): PlatformHealth {
+    return this.health.retry(platform);
   }
 
   @Post('apply/:id')

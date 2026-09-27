@@ -11,6 +11,7 @@ import { AgentEventType } from '../../common/events/enums/agent-event-type.enum'
 import { SettingsService } from '../settings/settings.service';
 import { BROWSER_ARGS, SITES } from './constants/sites.constants';
 import { authFingerprint } from './utils/auth-fingerprint.util';
+import { BrowserBusyError } from './errors/browser-busy.error';
 import { BrowserStatus, SiteId } from './interfaces/site-session.interface';
 import { findBrowserExecutable } from './utils/browser-executable.util';
 import { BrowserUnavailableError } from './errors/browser-unavailable.error';
@@ -51,7 +52,7 @@ export class BrowserService implements OnApplicationShutdown {
       if (!(this.launchedHeadless && !wantHeadless)) return this.browser;
       // Logging in needs a visible window, which means restarting the hidden one - never mid-task.
       if (this.inUse > 0) {
-        throw new Error(
+        throw new BrowserBusyError(
           'Sudarshan is using the hidden browser for an application or search right now - try Log in again in a minute, or stop the agent first.',
         );
       }

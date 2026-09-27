@@ -20,6 +20,7 @@ import { SettingsService } from '../settings/settings.service';
 import { AgentPhase } from './enums/agent-phase.enum';
 import { AgentStatus } from './interfaces/agent-status.interface';
 import { SiteId } from '../browser/interfaces/site-session.interface';
+import { PlatformHealthService } from '../platform-health/platform-health.service';
 
 const TICK_MS = 10_000;
 
@@ -40,6 +41,7 @@ export class AgentService implements OnApplicationShutdown {
   private applying: Promise<ApplyResult> | null = null;
 
   constructor(
+    private readonly health: PlatformHealthService,
     private readonly discovery: DiscoveryService,
     private readonly scoring: ScoringService,
     private readonly apply: ApplyService,
@@ -133,6 +135,7 @@ export class AgentService implements OnApplicationShutdown {
       llm: this.llm.describe(),
       appliedToday: this.jobs.appliedToday(),
       scoring: this.scoring.progress(),
+      platformHealth: this.health.all().filter((h) => h.status !== 'ok'),
     };
   }
 
@@ -234,6 +237,10 @@ export class AgentService implements OnApplicationShutdown {
       if (!cfg.enabled) {
         // Approved jobs on a switched-off platform wait; they are not lost.
         if (queued > 0) blocked.push({ source: platform, reason: `switched off - ${queued} approved job(s) wait until you turn it on` });
+        return;
+      }
+      if (this.health.state(platform).status === 'broken') {
+        blocked.push({ source: platform, reason: 'paused - the last applications got stuck, the site may have changed its pages' });
         return;
       }
       if (this.jobs.appliedToday(platform) >= cfg.dailyLimit) {

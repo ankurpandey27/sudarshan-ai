@@ -7,7 +7,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Inbox, Rocket, SkipForward, Undo2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { cn } from '../lib/format';
-import { useJobs, useSettings } from '../lib/queries';
+import { useJobs, useSettings, useTaste } from '../lib/queries';
 import type { JobPlatform } from '../lib/types';
 import { PlatformFilter } from '../components/platform-filter';
 import { JobRow } from '../components/job-row';
@@ -35,11 +35,13 @@ export function Review() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>(() => TABS.find((t) => t.id === params.get('tab'))?.id ?? 'review');
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const [platform, setPlatform] = useState<JobPlatform | ''>('');
+  const [sort, setSort] = useState<'score' | 'taste'>('score');
+  const { data: taste } = useTaste();
   const current = TABS.find((t) => t.id === tab)!;
   const { data, isLoading } = useJobs({
     status: current.status,
     platform,
-    sort: 'score',
+    sort,
     limit: 100,
   });
   const { data: settings } = useSettings();
@@ -114,6 +116,26 @@ export function Review() {
             Select all) to move many at once, and use the platform chips to see only LinkedIn, Naukri or Instahyre jobs.
           </InfoTip>
         </div>
+        {taste?.status === 'ready' && (
+          <div className="flex rounded-lg border border-line bg-surface p-0.5 text-[12.5px]" role="radiogroup" aria-label="Sort">
+            {(
+              [
+                ['score', 'Best match'],
+                ['taste', 'Your taste'],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={sort === id}
+                onClick={() => setSort(id)}
+                className={cn('rounded-md px-2.5 py-1', sort === id ? 'bg-surface-2 font-semibold' : 'text-ink-3 hover:text-ink')}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <PlatformFilter
           counts={data?.platforms}
           value={platform}

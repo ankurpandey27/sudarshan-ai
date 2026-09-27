@@ -6,6 +6,7 @@ import { api } from './api';
 import type {
   AgentStatus,
   AnalyticsReport,
+  TasteState,
   Answer,
   BrowserStatus,
   JobList,
@@ -53,3 +54,5 @@ export const useAnalytics = (days: number, platform: string) =>
     placeholderData: (prev) => prev,
     refetchInterval: 30000,
   });
+
+export const useTaste = () => useQuery({ queryKey: ['taste'], queryFn: () => api.get<TasteState>('/taste'), refetchInterval: 60000 });

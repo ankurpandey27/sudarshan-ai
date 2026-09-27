@@ -10,15 +10,11 @@ import { FieldKind } from './enums/field-kind.enum';
 import { AnswerContext } from './interfaces/answer-context.interface';
 import { FillInstruction } from './interfaces/fill-instruction.interface';
 import { FormField } from './interfaces/form-field.interface';
-import {
-  LlmFieldAnswer,
-  ResolveOptions,
-  ResolveResult,
-  UnresolvedField,
-} from './interfaces/resolve-result.interface';
+import { LlmFieldAnswer, ResolveOptions, ResolveResult, UnresolvedField } from './interfaces/resolve-result.interface';
 import { ANSWER_SYSTEM_PROMPT, buildAnswerPrompt } from './utils/answer-prompt.util';
 import { needsAnswer, toInstruction } from './utils/field-value.util';
-import { answerFromProfile } from './utils/profile-rules.util';
+import { answerFromProfile, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
+import { GENERIC_QUESTION } from '../answers/constants/answers.constants';
 
 const RESUME_FIELD = /resume|cv\b|curriculum|bio ?data/i;
 const COVER_LETTER = /cover\s*letter|motivation letter/i;
@@ -69,7 +65,9 @@ export class AnswerEngineService {
       }
       if (field.kind === FieldKind.CHECKBOX && !field.required && !forced) continue;
 
-      const remembered = this.answers.lookup(field.label || field.placeholder);
+      // A saved "Yes, authorized" from a job at home must not be reused for a job abroad.
+      const authAbroad = WORK_AUTH_QUESTION.test(field.label.toLowerCase()) && !workAuthorizationKnown(ctx);
+      const remembered = authAbroad ? null : this.answers.lookup(field.label || field.placeholder);
       if (remembered && !forced) {
         const ins = toInstruction(field, remembered.answer);
         if (ins) {
@@ -105,7 +103,12 @@ export class AnswerEngineService {
         continue;
       }
       if (field.required || opts.force?.has(field.id)) {
-        result.unresolved.push({ field, suggestion: a?.value?.trim() || null });
+        // Without a real question it cannot be asked once and remembered - it would come back on every attempt.
+        if (GENERIC_QUESTION.test((field.label || field.placeholder).trim())) {
+          result.blockers.push('A required question on this form has no label, so it cannot be remembered - answer it in the open tab');
+        } else {
+          result.unresolved.push({ field, suggestion: a?.value?.trim() || null });
+        }
       }
     }
     return result;

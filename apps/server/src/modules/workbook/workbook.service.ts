@@ -25,9 +25,7 @@ import {
 import { WorkbookImportResult } from './interfaces/workbook-import.interface';
 import { parseWorkbook } from './utils/workbook-parse.util';
 import { mapPreferences } from './utils/preference-map.util';
-import { dropInvalid } from '../../common/validation/drop-invalid.util';
-import { UpdateSettingsDto } from '../settings/dto/update-settings.dto';
-import { UpdateProfileDto } from '../profile/dto/update-profile.dto';
+import { validPreferenceRows } from './utils/preference-validate.util';
 
 @Injectable()
 export class WorkbookService {
@@ -55,16 +53,18 @@ export class WorkbookService {
     let answers = 0;
     for (const a of parsed.answers) if (this.answers.remember(a.question, a.answer, AnswerSource.EXCEL)) answers++;
     const links = parsed.links.length ? this.jobs.addLinks(parsed.links) : { added: 0, duplicates: 0, invalid: [] };
-    const prefs = mapPreferences(parsed.preferences);
-    // Same limits as the Settings and Profile pages (e.g. at most 200 applications a day).
-    for (const p of [...dropInvalid(UpdateSettingsDto, prefs.settings), ...dropInvalid(UpdateProfileDto, prefs.profile)]) {
-      prefs.warnings.push(`Preference not applied - ${p}`);
-    }
+    // Same limits as the Settings and Profile pages (e.g. at most 200 applications a day), row by row.
+    const checked = validPreferenceRows(parsed.preferences);
+    const prefs = mapPreferences(checked.rows);
+    prefs.warnings.push(...checked.warnings);
     if (prefs.applied.length) {
       try {
         this.settings.update(prefs.settings);
       } catch (err) {
-        prefs.warnings.push(`Preferences not applied - ${(err as Error).message}`);
+        // Refused as a whole (e.g. a review score above the apply score): those rows were not applied.
+        const settingRows = checked.rows.filter((r) => Object.values(mapPreferences([r]).settings).some((v) => v && Object.keys(v).length));
+        prefs.applied = prefs.applied.filter((k) => !settingRows.some((r) => r.key === k));
+        prefs.warnings.push(`Settings from the spreadsheet not applied - ${(err as Error).message}`);
       }
       if (Object.keys(prefs.profile).length) this.profile.update(prefs.profile);
     }

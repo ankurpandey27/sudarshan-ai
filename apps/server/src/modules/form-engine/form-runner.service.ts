@@ -16,8 +16,10 @@ import { extractFormInPage } from './scripts/extract-form.script';
 import { fillFieldsInPage } from './scripts/fill-fields.script';
 import { documentTextInPage, pickTypeaheadOptionInPage } from './scripts/page-helpers.script';
 import { NAVIGATE_SYSTEM_PROMPT, buildNavigatePrompt } from './utils/navigate-prompt.util';
+import { CAPTCHA_WAIT_MS, MAX_OTHER_MOVES, RESUME_ON_PAGE, UNSAFE_ACTION } from './constants/form-runner.constants';
+import { PlaybookService } from './playbook.service';
+import { stepSignature } from './utils/step-signature.util';
 
-const CAPTCHA_WAIT_MS = 180_000;
 const ACTION_PRIORITY: Record<FormAction['kind'], number> = { submit: 4, review: 3, next: 2, apply: 1, dismiss: -1, other: 0 };
 
 @Injectable()
@@ -28,6 +30,7 @@ export class FormRunnerService {
     private readonly answers: AnswerEngineService,
     private readonly recipes: RecipesService,
     private readonly llm: LlmService,
+    private readonly playbook: PlaybookService,
   ) {}
 
   snapshot(page: Page, scopeSelector: string | null): Promise<FormSnapshot> {
@@ -46,10 +49,13 @@ export class FormRunnerService {
       llmCalls: 0,
     };
     const maxSteps = opts.maxSteps ?? 15;
-    let lastFingerprint = '';
     let repeats = 0;
+    // Buttons that did nothing on a kind of step during this run, so another one is tried.
+    const tried = new Map<string, Set<string>>();
+    let otherMoves = 0;
     let force = new Set<string>();
-    const uploadedOn = new Set<string>();
+    // The resume is uploaded at most once per application: a file input always reads empty after the page redraws.
+    let uploaded = false;
 
     for (let step = 1; step <= maxSteps; step++) {
       out.steps = step;
@@ -64,9 +70,12 @@ export class FormRunnerService {
 
       // Upload files first: many sites read the resume and fill fields themselves,
       // which would overwrite answers typed before the upload finished.
-      const emptyFiles = snap.fields.filter((f) => f.kind === FieldKind.FILE && !f.value);
-      if (emptyFiles.length && !uploadedOn.has(snap.url)) {
-        uploadedOn.add(snap.url);
+      // A step that already shows a resume (e.g. Indeed's saved one) needs no upload unless the site insists.
+      const resumeShown = RESUME_ON_PAGE.test(snap.text);
+      const needsUpload = (f: FormSnapshot['fields'][number]) => f.kind === FieldKind.FILE && !f.value && !uploaded && (f.required || !resumeShown);
+      const emptyFiles = snap.fields.filter(needsUpload);
+      if (emptyFiles.length) {
+        uploaded = true;
         const up = await this.answers.resolve(emptyFiles, opts.ctx, { allowLlm: false });
         const files = up.instructions.filter((i) => i.kind === FieldKind.FILE);
         if (files.length) {
@@ -78,7 +87,8 @@ export class FormRunnerService {
         }
       }
 
-      const resolved = await this.answers.resolve(snap.fields, opts.ctx, { allowLlm: opts.allowLlm, force });
+      const fillable = snap.fields.filter((f) => f.kind !== FieldKind.FILE || needsUpload(f));
+      const resolved = await this.answers.resolve(fillable, opts.ctx, { allowLlm: opts.allowLlm, force });
       out.fields += resolved.stats.fields;
       out.memoryHits += resolved.stats.memoryHits;
       out.profileHits += resolved.stats.profileHits;
@@ -112,8 +122,19 @@ export class FormRunnerService {
         }
       }
 
-      const action = await this.chooseAction(page, snap, opts);
+      const signature = stepSignature(snap);
+      const triedHere = tried.get(signature) ?? new Set<string>();
+      const action = await this.chooseAction(page, snap, opts, signature, triedHere);
       if (!action) {
+        // Submit greyed out until something is done - usually a captcha that loads late (Indeed's review page).
+        if (snap.actions.some((a) => a.disabled && (a.kind === 'submit' || a.kind === 'apply'))) {
+          await sleep(3000);
+          const again = await this.snapshot(page, opts.scopeSelector).catch(() => snap);
+          const detail = again.captcha
+            ? 'Filled - only the captcha is left; solve it and press Submit in the open tab'
+            : 'Filled - the Submit button is waiting for you (usually a captcha); finish it in the open tab';
+          return { ...out, status: 'captcha', detail };
+        }
         return { ...out, status: 'stuck', detail: `No way forward found on ${new URL(snap.url).hostname}` };
       }
       // "Apply now" at the end of a form with fields sends it too; on a bare job page it only opens the form.
@@ -128,7 +149,8 @@ export class FormRunnerService {
       const after = await this.snapshot(page, opts.scopeSelector);
       const fp = fingerprint(after);
       const errored = after.fields.filter((f) => f.error);
-      if (fp === lastFingerprint || (fingerprint(snap) === fp && errored.length)) {
+      const moved = fp !== fingerprint(snap) || after.text !== snap.text;
+      if (errored.length && !moved) {
         repeats++;
         if (repeats >= 2) {
           const why = [...errored.map((f) => `${f.label}: ${f.error}`), ...after.errors].slice(0, 3).join('; ');
@@ -136,11 +158,18 @@ export class FormRunnerService {
         }
         // Validation failed: re-answer only those fields, with the error as context.
         force = new Set(errored.map((f) => f.id));
+      } else if (!moved) {
+        // The click changed nothing: remember that, and try another way forward on this step.
+        this.playbook.record(opts.domain, signature, action.text, false);
+        triedHere.add(action.text.trim().toLowerCase());
+        tried.set(signature, triedHere);
+        if (++otherMoves > MAX_OTHER_MOVES) return { ...out, status: 'stuck', detail: 'The form did not move forward' };
+        opts.onStep(`Step ${step}: "${action.text}" did nothing - trying another way`);
       } else {
+        this.playbook.record(opts.domain, signature, action.text, true);
         repeats = 0;
         force = new Set();
       }
-      lastFingerprint = fp;
     }
     return { ...out, status: 'stuck', detail: `Gave up after ${maxSteps} steps` };
   }
@@ -189,8 +218,16 @@ export class FormRunnerService {
   }
 
   // Learned recipe first, then submit > review > next > apply, then one AI pick (remembered per domain).
-  private async chooseAction(page: Page, snap: FormSnapshot, opts: RunFormOptions): Promise<FormAction | null> {
-    const usable = snap.actions.filter((a) => !a.disabled && a.kind !== 'dismiss');
+  private async chooseAction(page: Page, snap: FormSnapshot, opts: RunFormOptions, signature: string, tried: Set<string>): Promise<FormAction | null> {
+    const retrying = tried.size > 0;
+    const usable = snap.actions.filter(
+      (a) => !a.disabled && a.kind !== 'dismiss' && !tried.has(a.text.trim().toLowerCase()) && !(retrying && UNSAFE_ACTION.test(a.text)),
+    );
+    // What moved this kind of step forward before, on this site.
+    for (const text of this.playbook.preferred(opts.domain, signature)) {
+      const known = usable.find((a) => a.text.trim().toLowerCase() === text);
+      if (known) return known;
+    }
     const recipe = this.recipes.get(opts.domain);
     const learned = usable.find((a) => recipe.advanceTexts.includes(a.text.toLowerCase()));
     if (learned) return learned;

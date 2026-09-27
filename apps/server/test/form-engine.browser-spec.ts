@@ -8,6 +8,7 @@ import { AnswersService } from '../src/modules/answers/answers.service';
 import { AnswerSource } from '../src/modules/answers/enums/answer-source.enum';
 import { AnswerEngineService } from '../src/modules/form-engine/answer-engine.service';
 import { FormRunnerService } from '../src/modules/form-engine/form-runner.service';
+import { PlaybookService } from '../src/modules/form-engine/playbook.service';
 import { RecipesService } from '../src/modules/form-engine/recipes.service';
 import { AnswerContext } from '../src/modules/form-engine/interfaces/answer-context.interface';
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
@@ -71,7 +72,7 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
   beforeEach(async () => {
     storage = new StorageService(':memory:');
     answers = new AnswersService(storage);
-    runner = new FormRunnerService(new AnswerEngineService(answers, noLlm), new RecipesService(storage), noLlm);
+    runner = new FormRunnerService(new AnswerEngineService(answers, noLlm), new RecipesService(storage), noLlm, new PlaybookService(storage));
     page = await browser.newPage();
     await page.goto(FIXTURE);
     await page.click('#easy');
@@ -101,11 +102,7 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
   });
 
   it('submits end to end once the answer is in memory, with correct values', async () => {
-    answers.remember(
-      'Why do you want to join Acme?',
-      'I build Node.js and React systems and want to grow with a product team like Acme.',
-      AnswerSource.USER,
-    );
+    answers.remember('Why do you want to join Acme?', 'I build Node.js and React systems and want to grow with a product team like Acme.', AnswerSource.USER);
     const out = await run();
     expect(out).toMatchObject({ status: 'applied', llmCalls: 0 });
     const submitted = await page.evaluate(() => (window as unknown as { __submitted: Record<string, unknown> }).__submitted);
@@ -122,6 +119,56 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
       follow: true, // marketing checkbox left alone
     });
     expect(out.memoryHits).toBe(1);
+  });
+
+  it('tries another button when one does nothing, and goes straight to it next time', async () => {
+    const url = `file://${join(__dirname, 'fixtures', 'dead-continue.html').replace(/\\/g, '/')}`;
+    const runOnce = async () => {
+      const steps: string[] = [];
+      await page.goto(url);
+      const out = await runner.run(page, {
+        scopeSelector: null,
+        successPattern: /application has been submitted/i,
+        ctx,
+        domain: 'changed.example',
+        allowLlm: false,
+        pauseBeforeSubmit: false,
+        onStep: (m) => steps.push(m),
+      });
+      return { out, steps };
+    };
+
+    const first = await runOnce();
+    expect(first.out.status).toBe('applied');
+    expect(first.steps.some((m) => /"Continue" did nothing - trying another way/.test(m))).toBe(true);
+
+    // Learned: this kind of step moves on with "Save & Next".
+    const second = await runOnce();
+    expect(second.out.status).toBe('applied');
+    expect(second.steps.some((m) => /did nothing/.test(m))).toBe(false);
+    expect(second.steps.some((m) => /"Save & Next"/.test(m))).toBe(true);
+  });
+
+  it('keeps the resume a site already shows, and hands over a Submit that waits for a captcha (Indeed)', async () => {
+    // Offline: the captcha frame must not really load.
+    await page.setRequestInterception(true);
+    const block = (r: import('puppeteer-core').HTTPRequest) => (r.url().startsWith('file:') ? r.continue() : r.abort());
+    page.on('request', block);
+    await page.goto(`file://${join(__dirname, 'fixtures', 'resume-step-captcha.html').replace(/\\/g, '/')}`);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    page.off('request', block);
+    await page.setRequestInterception(false);
+    expect(await page.evaluate(() => (window as unknown as { __uploads: number }).__uploads)).toBe(0);
+    expect(out.status).toBe('captcha');
+    expect(out.detail).toMatch(/captcha/i);
   });
 
   it('recognises a one-click apply (Instahyre) instead of reporting "no apply button"', async () => {

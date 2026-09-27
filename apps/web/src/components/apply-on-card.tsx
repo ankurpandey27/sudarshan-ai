@@ -4,7 +4,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/api';
 import { cn, PLATFORMS } from '../lib/format';
-import { useSettings, useStats } from '../lib/queries';
+import { useAgent, useSettings, useStats } from '../lib/queries';
 import type { Settings } from '../lib/types';
 import { PlatformDot } from './platform-badge';
 import { Card, CardHeader } from './ui';
@@ -29,6 +29,8 @@ export function ApplyOnCard() {
     onError: (e: Error) => toast('error', e.message),
   });
   const on = PLATFORMS.filter((p) => settings?.sources[p.setting].enabled).length;
+  const { data: agent } = useAgent();
+  const healthOf = (p: string) => agent?.platformHealth.find((h) => h.platform === p)?.status;
 
   return (
     <Card>
@@ -80,7 +82,15 @@ export function ApplyOnCard() {
                 </>
               }
               meta={
-                (enabled ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}` : queued ? `off · ${queued} waiting` : 'off') +
+                (healthOf(p.key) === 'broken'
+                  ? 'paused - site changed?'
+                  : healthOf(p.key) === 'careful'
+                    ? 'careful mode'
+                    : enabled
+                      ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}`
+                      : queued
+                        ? `off · ${queued} waiting`
+                        : 'off') +
                 // Indeed puts a captcha on every application: Sudarshan prepares it, you submit.
                 (p.key === 'indeed' ? ' · you submit' : '')
               }

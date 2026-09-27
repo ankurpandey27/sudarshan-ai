@@ -25,6 +25,7 @@ import { ApplyModule } from './modules/apply/apply.module';
 import { AgentModule } from './modules/agent/agent.module';
 import { WorkbookModule } from './modules/workbook/workbook.module';
 import { HealthModule } from './modules/health/health.module';
+import { TasteModule } from './modules/taste/taste.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { HealthModule } from './modules/health/health.module';
     LlmModule,
     ProfileModule,
     HousekeepingModule,
+    TasteModule,
     JobsModule,
     AnalyticsModule,
     AnswersModule,

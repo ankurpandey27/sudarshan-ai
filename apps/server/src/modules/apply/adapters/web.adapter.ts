@@ -13,7 +13,15 @@ import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
 import { LlmService } from '../../llm/llm.service';
 import { LlmPurpose } from '../../llm/enums/llm-purpose.enum';
-import { APPLIED_BUTTON, CLOSED_TEXT, GENERIC_DIALOG as DIALOG, GENERIC_SUCCESS, LOGIN_WALL, ONE_CLICK_SUCCESS } from '../constants/apply.constants';
+import {
+  ALREADY_APPLIED_TEXT,
+  APPLIED_BUTTON,
+  CLOSED_TEXT,
+  GENERIC_DIALOG as DIALOG,
+  GENERIC_SUCCESS,
+  LOGIN_WALL,
+  ONE_CLICK_SUCCESS,
+} from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
@@ -56,7 +64,7 @@ export class WebApplyAdapter implements ApplyAdapter {
       if (CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED);
       if (hop === 0) {
         // The site's own button says it is done, e.g. Instahyre's "Application sent!".
-        if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (GENERIC_SUCCESS.test(text) && /already/i.test(text))) {
+        if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || ALREADY_APPLIED_TEXT.test(text)) {
           return result(PrepareStatus.ALREADY_APPLIED, { page: current });
         }
         confirmedBefore = ONE_CLICK_SUCCESS.test(text);

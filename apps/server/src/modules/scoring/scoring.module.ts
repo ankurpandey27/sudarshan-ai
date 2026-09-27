@@ -7,9 +7,10 @@ import { ProfileModule } from '../profile/profile.module';
 import { KeywordFilterService } from './keyword-filter.service';
 import { ScoringEngine } from './scoring-engine.service';
 import { ScoringService } from './scoring.service';
+import { TasteModule } from '../taste/taste.module';
 
 @Module({
-  imports: [JobsModule, ProfileModule],
+  imports: [JobsModule, ProfileModule, TasteModule],
   providers: [ScoringService, ScoringEngine, KeywordFilterService],
   exports: [ScoringService],
 })

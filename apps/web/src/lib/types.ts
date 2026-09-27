@@ -3,17 +3,7 @@
 
 // Mirrors the server's response types.
 
-export type JobStatus =
-  | 'new'
-  | 'skipped'
-  | 'review'
-  | 'approved'
-  | 'applying'
-  | 'needs_input'
-  | 'applied'
-  | 'manual'
-  | 'failed'
-  | 'dismissed';
+export type JobStatus = 'new' | 'skipped' | 'review' | 'approved' | 'applying' | 'needs_input' | 'applied' | 'manual' | 'failed' | 'dismissed';
 
 export type JobSource = 'linkedin' | 'naukri' | 'web';
 
@@ -51,6 +41,9 @@ export interface Job {
   score: number | null;
   scoreDetail: ScoreDetail | null;
   reason: string | null;
+  /** Chance you would approve it (0-1), learned from your decisions; null while still learning. */
+  taste: number | null;
+  tasteReasons: string[];
   attempts: number;
   origin: string;
   discoveredAt: string;
@@ -111,6 +104,7 @@ export interface AgentStatus {
   llm: string | null;
   appliedToday: number;
   scoring: ScoringProgress | null;
+  platformHealth: { platform: JobPlatform; status: 'ok' | 'broken' | 'careful'; recent: string[] }[];
 }
 
 export interface ScoringProgress {
@@ -133,17 +127,7 @@ export interface AgentEvent {
   data?: Record<string, unknown>;
 }
 
-export type LlmProviderKind =
-  | 'none'
-  | 'anthropic'
-  | 'openai'
-  | 'gemini'
-  | 'groq'
-  | 'openrouter'
-  | 'ollama'
-  | 'lmstudio'
-  | 'opencode'
-  | 'custom';
+export type LlmProviderKind = 'none' | 'anthropic' | 'openai' | 'gemini' | 'groq' | 'openrouter' | 'ollama' | 'lmstudio' | 'opencode' | 'custom';
 
 export interface LlmPreset {
   kind: LlmProviderKind;
@@ -323,4 +307,16 @@ export interface AnalyticsReport {
   scores: { bucket: number; jobs: number; applied: number }[];
   skipReasons: { rule: string; label: string; fix: string; jobs: number }[];
   missingSkills: { skill: string; jobs: number }[];
+}
+
+export interface TasteState {
+  status: 'learning' | 'ready';
+  decisions: number;
+  wanted: number;
+  unwanted: number;
+  needed: number;
+  accuracy: number | null;
+  likes: string[];
+  dislikes: string[];
+  trainedAt: string | null;
 }

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnApplicationBootstrap, Optional } from '@nestjs/common';
 import { SQLInputValue } from 'node:sqlite';
 import { StorageService } from '../../common/storage/storage.service';
 import { EventsService } from '../../common/events/events.service';
@@ -22,6 +22,7 @@ import { JobLinkDto } from './dto/job-link.dto';
 import { toJob } from './utils/job.mapper.util';
 import { toAttempt } from './utils/attempt.mapper.util';
 import { parseJobUrl } from './utils/job-url.util';
+import { TasteService } from '../taste/taste.service';
 
 @Injectable()
 export class JobsService implements OnApplicationBootstrap {
@@ -30,6 +31,8 @@ export class JobsService implements OnApplicationBootstrap {
   constructor(
     private readonly storage: StorageService,
     private readonly events: EventsService,
+    // Optional so the jobs list works in tests and tools without the taste model.
+    @Optional() private readonly taste?: TasteService,
   ) {}
 
   // Rows left in APPLYING by a crash go back to the queue.
@@ -180,7 +183,14 @@ export class JobsService implements OnApplicationBootstrap {
       params.push(q.platform);
     }
     const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
-    const order = q.sort === 'recent' ? 'updated_at DESC' : q.sort === 'applied' ? 'applied_at DESC' : 'COALESCE(score, -1) DESC, discovered_at DESC';
+    const order =
+      q.sort === 'recent'
+        ? 'updated_at DESC'
+        : q.sort === 'applied'
+          ? 'applied_at DESC'
+          : q.sort === 'taste'
+            ? 'COALESCE(taste, -1) DESC, COALESCE(score, -1) DESC'
+            : 'COALESCE(score, -1) DESC, discovered_at DESC';
     const limit = q.limit ?? 50;
     const offset = ((q.page ?? 1) - 1) * limit;
     const total = this.storage.get<{ n: number }>(`SELECT COUNT(*) n FROM jobs ${clause}`, params)?.n ?? 0;
@@ -254,6 +264,14 @@ export class JobsService implements OnApplicationBootstrap {
   }
 
   /** When `from` is given, only jobs currently in one of those statuses move. */
+  /** "I applied": counted as applied, and as your decision for the taste model. */
+  markAppliedByYou(id: number): Job {
+    this.storage.run('UPDATE jobs SET user_decided = 1 WHERE id = ?', [id]);
+    const job = this.setStatus(id, JobStatus.APPLIED, 'Marked applied by you');
+    this.taste?.refreshSoon();
+    return job;
+  }
+
   /** `byUser` marks it as your decision, which rescoring never overrides. */
   setStatusMany(ids: number[], status: JobStatus, reason?: string, from?: JobStatus[], byUser = false): number {
     if (ids.length === 0) return 0;
@@ -264,6 +282,8 @@ export class JobsService implements OnApplicationBootstrap {
       [status, reason ?? null, now, ...ids, ...(from ?? [])],
     );
     this.events.emit({ type: AgentEventType.JOB_UPDATED, message: `${changes} job(s) -> ${status}`, data: { ids, status } });
+    // Your decisions teach the taste model.
+    if (byUser && changes) this.taste?.refreshSoon();
     return changes;
   }
 
@@ -299,12 +319,21 @@ export class JobsService implements OnApplicationBootstrap {
     return this.storage.run('INSERT INTO attempts (job_id, started_at) VALUES (?, ?)', [jobId, new Date().toISOString()]).lastInsertRowid;
   }
 
-  finishAttempt(attemptId: number, outcome: string, detail: string | null, stats: AttemptStats, trace: string[], screenshot: string | null): void {
+  /** `result` is how the attempt ended in detail (e.g. "run:stuck", "prep:no_apply_button"), used for platform health. */
+  finishAttempt(
+    attemptId: number,
+    outcome: string,
+    detail: string | null,
+    stats: AttemptStats,
+    trace: string[],
+    screenshot: string | null,
+    result: string | null = null,
+  ): void {
     const started = this.storage.get<{ started_at: string }>('SELECT started_at FROM attempts WHERE id = ?', [attemptId]);
     const now = new Date();
     this.storage.run(
       `UPDATE attempts SET finished_at = ?, outcome = ?, detail = ?, steps = ?, fields = ?, llm_calls = ?, memory_hits = ?,
-         duration_ms = ?, screenshot = ?, trace = ? WHERE id = ?`,
+         duration_ms = ?, screenshot = ?, trace = ?, result = ? WHERE id = ?`,
       [
         now.toISOString(),
         outcome,
@@ -316,6 +345,7 @@ export class JobsService implements OnApplicationBootstrap {
         started ? now.getTime() - new Date(started.started_at).getTime() : null,
         screenshot,
         JSON.stringify(trace.slice(-200)),
+        result,
         attemptId,
       ],
     );

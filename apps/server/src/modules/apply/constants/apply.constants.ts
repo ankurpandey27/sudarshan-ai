@@ -38,3 +38,9 @@ export const INDEED_CHALLENGE = /just a moment|security check|verify you are hum
  */
 export const ONE_CLICK_SUCCESS =
   /thank(s| you) for applying|application (has been |was )?(received|submitted|sent)|successfully (applied|submitted)|we('ve| have) received your application|you('ve| have) (successfully )?applied/i;
+/**
+ * The page says this job was already applied to. Not just "already" anywhere - career sign-in
+ * pages say "Already have an account?".
+ */
+export const ALREADY_APPLIED_TEXT =
+  /you('ve| have) already applied|already applied (to|for) this|application (was |has been )?already (submitted|sent|received)/i;

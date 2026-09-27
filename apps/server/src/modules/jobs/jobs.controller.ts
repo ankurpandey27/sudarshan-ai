@@ -75,7 +75,7 @@ export class JobsController {
   @Post(':id/mark-applied')
   @HttpCode(200)
   markApplied(@Param('id', ParseIntPipe) id: number): Job {
-    return this.jobs.setStatus(id, JobStatus.APPLIED, 'Marked applied by you');
+    return this.jobs.markAppliedByYou(id);
   }
 
   @Post('links')

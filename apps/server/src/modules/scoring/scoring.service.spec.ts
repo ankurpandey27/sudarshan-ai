@@ -9,6 +9,7 @@ import { SettingsService } from '../settings/settings.service';
 import { KeywordFilterService } from './keyword-filter.service';
 import { ScoringEngine } from './scoring-engine.service';
 import { ScoringService } from './scoring.service';
+import { TasteService } from '../taste/taste.service';
 import { DEFAULT_SETTINGS } from '../settings/constants/default-settings.constants';
 import { EMPTY_PROFILE } from '../profile/constants/profile.constants';
 
@@ -68,6 +69,45 @@ describe('ScoringService.scoreNew', () => {
     await svc.scoreNew();
     expect(seen).toEqual(['ai 0/20', 'ai 8/20', 'ai 16/20']);
     expect(svc.progress()).toBeNull();
+  });
+
+  it('in Auto mode, holds a strong match for your review when it is unlike the jobs you approve', async () => {
+    const setScore = jest.fn();
+    const job = {
+      id: 1,
+      title: 'Sales Manager',
+      company: 'Acme',
+      location: '',
+      isRemote: true,
+      skills: [],
+      description: '',
+      source: 'linkedin',
+      platform: 'linkedin',
+      easyApply: true,
+    };
+    const settings = { ...DEFAULT_SETTINGS, agent: { ...DEFAULT_SETTINGS.agent, mode: 'auto', llmScoring: false, minApplyScore: 60 } };
+    const make = (p: number) => {
+      const svc = new ScoringService(
+        { unscored: () => [job], setScore } as unknown as JobsService,
+        { get: () => EMPTY_PROFILE } as unknown as ProfileService,
+        { get: () => settings } as unknown as SettingsService,
+        { isAvailable: () => false } as unknown as LlmService,
+        { score: () => ({ technicalScore: 90, salaryScore: 90, locationScore: 90, overallScore: 90 }) } as unknown as ScoringEngine,
+        {} as KeywordFilterService,
+        new EventsService(),
+        { predict: () => ({ p, reasons: [] }), refresh: () => undefined } as unknown as TasteService,
+      );
+      jest.spyOn(svc as unknown as { gate: () => null }, 'gate').mockReturnValue(null);
+      return svc;
+    };
+
+    await make(0.1).scoreNew();
+    expect(setScore.mock.calls[0][3]).toBe('review');
+    expect(setScore.mock.calls[0][4]).toMatch(/Held for your review.*10% your taste/);
+
+    setScore.mockClear();
+    await make(0.8).scoreNew();
+    expect(setScore.mock.calls[0][3]).toBe('approved');
   });
 
   it('starts a fresh run once the previous one has finished', async () => {

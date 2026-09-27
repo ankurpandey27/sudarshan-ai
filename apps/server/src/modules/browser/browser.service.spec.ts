@@ -1,10 +1,14 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+// These tests never open a browser; puppeteer-core (ESM-only) cannot load in Jest before Node 24.9.
+jest.mock('puppeteer-core', () => ({}));
+
 import { ConfigService } from '@nestjs/config';
-import { EventsService } from '../src/common/events/events.service';
-import { SettingsService } from '../src/modules/settings/settings.service';
-import { BrowserService } from '../src/modules/browser/browser.service';
+import { EventsService } from '../../common/events/events.service';
+import { SettingsService } from '../settings/settings.service';
+import { BrowserService } from './browser.service';
+import { BrowserBusyError } from './errors/browser-busy.error';
 
 describe('BrowserService logins', () => {
   const make = () => {
@@ -33,7 +37,7 @@ describe('BrowserService logins', () => {
     Object.assign(svc as unknown as Record<string, unknown>, { launchedHeadless: true, settings: { get: () => ({ agent: { headless: true } }) } });
     let release!: () => void;
     const work = svc.busyWith(() => new Promise<void>((r) => (release = r)));
-    await expect(svc.ensure({ visible: true })).rejects.toThrow(/using the hidden browser/);
+    await expect(svc.ensure({ visible: true })).rejects.toBeInstanceOf(BrowserBusyError);
     release();
     await work;
   });

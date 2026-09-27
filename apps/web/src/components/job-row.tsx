@@ -57,6 +57,7 @@ export function JobRow({
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1">
             <PlatformBadge platform={job.platform} site={job.site} />
+            {job.taste !== null && <TasteChip taste={job.taste} reasons={job.tasteReasons} />}
             {job.isRemote && <Badge tone="info">Remote</Badge>}
             {job.easyApply && job.source !== 'web' && <Badge tone="good">Easy Apply</Badge>}
             {job.origin === 'link' && <Badge tone="accent">Your list</Badge>}
@@ -80,7 +81,12 @@ export function JobRow({
           <a href={job.url} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-ink-3 hover:bg-surface-2 hover:text-ink" title="Open posting">
             <ExternalLink className="size-4" />
           </a>
-          <button onClick={() => setOpen((o) => !o)} className="rounded-lg p-2 text-ink-3 hover:bg-surface-2 hover:text-ink" aria-label="Details" aria-expanded={open}>
+          <button
+            onClick={() => setOpen((o) => !o)}
+            className="rounded-lg p-2 text-ink-3 hover:bg-surface-2 hover:text-ink"
+            aria-label="Details"
+            aria-expanded={open}
+          >
             <ChevronDown className={cn('size-4 transition-transform', open && 'rotate-180')} />
           </button>
         </div>
@@ -119,12 +125,26 @@ function JobDetail({ job }: { job: Job }) {
                 <summary className="cursor-pointer text-ink-2">
                   {a.outcome ?? 'running'} - {timeAgo(a.startedAt)} - {a.fields} fields, {a.llmCalls} AI
                 </summary>
-                <pre className="mt-1 max-h-40 overflow-auto rounded bg-surface p-2 font-mono text-[11px] whitespace-pre-wrap">{a.trace.join('\n') || a.detail}</pre>
+                <pre className="mt-1 max-h-40 overflow-auto rounded bg-surface p-2 font-mono text-[11px] whitespace-pre-wrap">
+                  {a.trace.join('\n') || a.detail}
+                </pre>
               </details>
             ))}
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/** "87% your taste" - how likely you are to approve it, from your own past decisions. */
+function TasteChip({ taste, reasons }: { taste: number; reasons: string[] }) {
+  const pct = Math.round(taste * 100);
+  const tone = pct >= 65 ? 'good' : pct <= 30 ? 'warn' : 'neutral';
+  const why = reasons.map((r) => r.replace(/^\+ /, 'likes ').replace(/^- /, 'dislikes ').replace(/: /, ' '));
+  return (
+    <span title={`Learned from the jobs you approved and skipped${why.length ? `: ${why.join(', ')}` : ''}`}>
+      <Badge tone={tone}>{pct}% your taste</Badge>
+    </span>
   );
 }

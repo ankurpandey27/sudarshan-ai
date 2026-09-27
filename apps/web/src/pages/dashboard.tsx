@@ -13,6 +13,7 @@ import { useEvents } from '../lib/events';
 import { useAgent, useAnalytics, useSettings, useStats, useUsage } from '../lib/queries';
 import type { AnalyticsReport, JobPlatform } from '../lib/types';
 import { AiUsageCard } from '../components/ai-usage-card';
+import { TasteCard } from '../components/taste-card';
 import { ApplyOnCard } from '../components/apply-on-card';
 import { PLATFORM_COLOR } from '../components/platform-badge';
 import { Button, Card, CardHeader } from '../components/ui';
@@ -208,7 +209,10 @@ export function Dashboard() {
       <ApplyOnCard />
       <div className="mt-5 grid gap-5 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
         <RecentActivity />
-        <AiUsageCard usage={usage} />
+        <div className="space-y-5">
+          <TasteCard />
+          <AiUsageCard usage={usage} />
+        </div>
       </div>
     </div>
   );

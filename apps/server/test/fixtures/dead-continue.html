@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Apply - changed layout</title></head>
+<body>
+<!-- A site after a redesign: the obvious "Continue" button no longer does anything, and the way
+     forward is now "Save & Next". -->
+<main>
+  <section data-step="1">
+    <h2>Your details</h2>
+    <label for="notice">Notice period (in days)</label>
+    <input id="notice" type="number">
+    <button id="dead">Continue</button>
+    <button id="live">Save &amp; Next</button>
+  </section>
+  <section data-step="2" hidden>
+    <h2>Thank you for applying</h2>
+    <p>Your application has been submitted.</p>
+  </section>
+</main>
+<script>
+  document.getElementById('live').addEventListener('click', () => {
+    document.querySelector('[data-step="1"]').hidden = true;
+    document.querySelector('[data-step="2"]').hidden = false;
+  });
+</script>
+</body>
+</html>

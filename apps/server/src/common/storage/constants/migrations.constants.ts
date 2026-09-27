@@ -146,4 +146,22 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE jobs ADD COLUMN user_decided INTEGER NOT NULL DEFAULT 0;
   UPDATE jobs SET user_decided = 1 WHERE reason IN ('Skipped by you', 'Moved back to review by you', 'Approved by you', 'Dismissed by you');
   `,
+  `
+  ALTER TABLE attempts ADD COLUMN result TEXT;
+  CREATE TABLE platform_health (
+    platform  TEXT PRIMARY KEY,
+    reset_at  TEXT NOT NULL
+  );
+  CREATE TABLE playbook_steps (
+    domain     TEXT NOT NULL,
+    signature  TEXT NOT NULL,
+    action     TEXT NOT NULL,
+    ok         INTEGER NOT NULL DEFAULT 0,
+    fail       INTEGER NOT NULL DEFAULT 0,
+    updated_at TEXT NOT NULL,
+    PRIMARY KEY (domain, signature, action)
+  );
+  ALTER TABLE jobs ADD COLUMN taste REAL;
+  ALTER TABLE jobs ADD COLUMN taste_reasons TEXT;
+  `,
 ];

@@ -6,10 +6,11 @@ import { AnswersModule } from '../answers/answers.module';
 import { AnswerEngineService } from './answer-engine.service';
 import { FormRunnerService } from './form-runner.service';
 import { RecipesService } from './recipes.service';
+import { PlaybookService } from './playbook.service';
 
 @Module({
   imports: [AnswersModule],
-  providers: [AnswerEngineService, FormRunnerService, RecipesService],
-  exports: [AnswerEngineService, FormRunnerService, RecipesService],
+  providers: [AnswerEngineService, FormRunnerService, RecipesService, PlaybookService],
+  exports: [AnswerEngineService, FormRunnerService, RecipesService, PlaybookService],
 })
 export class FormEngineModule {}

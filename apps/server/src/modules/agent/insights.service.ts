@@ -16,6 +16,7 @@ import { AgentMode } from '../settings/enums/agent-mode.enum';
 import { AgentService } from './agent.service';
 import { Insight } from './interfaces/insight.interface';
 import { sourceLabel } from '../jobs/utils/source-label.util';
+import { PlatformHealthService } from '../platform-health/platform-health.service';
 
 const FIELD_NAMES: Record<string, string> = {
   firstName: 'first name',
@@ -41,6 +42,7 @@ export class InsightsService {
     private readonly browser: BrowserService,
     private readonly pending: PendingQuestionsService,
     private readonly discovery: DiscoveryService,
+    private readonly health: PlatformHealthService,
   ) {}
 
   async list(): Promise<Insight[]> {
@@ -127,7 +129,35 @@ export class InsightsService {
         actions: [{ label: 'Settings', to: '/settings' }],
       });
     }
+    // A platform whose pages seem to have changed: paused, or resumed carefully.
+    for (const h of this.health.all()) {
+      const name = sourceLabel(h.platform);
+      if (h.status === 'broken') {
+        out.push({
+          id: `changed-${h.platform}`,
+          severity: 'error',
+          title: `${name} may have changed its pages - paused`,
+          detail: `The last few ${name} applications got stuck (latest: "${(h.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan stopped applying on ${name}.`,
+          fix: `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again carefully": it resumes and stops before every Submit until one works.`,
+          actions: [
+            { label: 'Try again carefully', api: `/agent/platforms/${h.platform}/retry` },
+            { label: 'See what happened', to: '/applications' },
+          ],
+        });
+      } else if (h.status === 'careful') {
+        out.push({
+          id: `careful-${h.platform}`,
+          severity: 'info',
+          title: `${name}: careful mode`,
+          detail: `After recent trouble, Sudarshan fills ${name} applications and stops before Submit, so you check each one.`,
+          fix: 'Press Submit in the open tab. After one application goes through, careful mode ends by itself.',
+          actions: [{ label: 'Applications', to: '/applications' }],
+        });
+      }
+    }
+
     for (const b of status.blockedSources) {
+      if (/may have changed/i.test(b.reason)) continue;
       const login = /log in/i.test(b.reason);
       if (/switched off/i.test(b.reason)) {
         out.push({

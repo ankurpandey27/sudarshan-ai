@@ -3,6 +3,7 @@
 
 import { ScoringProgress } from '../../scoring/interfaces/scoring-progress.interface';
 import { AgentPhase } from '../enums/agent-phase.enum';
+import { PlatformHealth } from '../../platform-health/interfaces/platform-health.interface';
 
 export interface AgentStatus {
   running: boolean;
@@ -19,4 +20,6 @@ export interface AgentStatus {
   appliedToday: number;
   /** Set while jobs are being scored. */
   scoring: ScoringProgress | null;
+  /** Platforms that are paused (pages seem to have changed) or in careful mode; healthy ones are left out. */
+  platformHealth: PlatformHealth[];
 }

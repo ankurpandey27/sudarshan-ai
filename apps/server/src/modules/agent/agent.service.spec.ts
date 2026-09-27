@@ -1,6 +1,9 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+// These tests never open a browser; puppeteer-core (ESM-only) cannot load in Jest before Node 24.9.
+jest.mock('puppeteer-core', () => ({}));
+
 import { AgentService } from './agent.service';
 
 describe('AgentService.applyNow', () => {

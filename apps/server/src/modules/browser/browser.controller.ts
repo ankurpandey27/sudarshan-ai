@@ -1,11 +1,12 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Body, Controller, Get, HttpCode, Post, ServiceUnavailableException } from '@nestjs/common';
+import { Body, ConflictException, Controller, Get, HttpCode, Post, ServiceUnavailableException } from '@nestjs/common';
 import { BrowserService } from './browser.service';
 import { OpenLoginDto } from './dto/open-login.dto';
 import { OpenUrlDto } from './dto/open-url.dto';
 import { BrowserUnavailableError } from './errors/browser-unavailable.error';
+import { BrowserBusyError } from './errors/browser-busy.error';
 import { BrowserStatus } from './interfaces/site-session.interface';
 
 @Controller('browser')
@@ -50,6 +51,7 @@ export class BrowserController {
       await fn();
     } catch (err) {
       if (err instanceof BrowserUnavailableError) throw new ServiceUnavailableException(err.message);
+      if (err instanceof BrowserBusyError) throw new ConflictException(err.message);
       throw err;
     }
   }

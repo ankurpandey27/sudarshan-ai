@@ -12,9 +12,10 @@ import { ScoringModule } from '../scoring/scoring.module';
 import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
 import { InsightsService } from './insights.service';
+import { PlatformHealthModule } from '../platform-health/platform-health.module';
 
 @Module({
-  imports: [AnswersModule, ApplyModule, BrowserModule, DiscoveryModule, JobsModule, ProfileModule, ScoringModule],
+  imports: [PlatformHealthModule, AnswersModule, ApplyModule, BrowserModule, DiscoveryModule, JobsModule, ProfileModule, ScoringModule],
   controllers: [AgentController],
   providers: [AgentService, InsightsService],
 })

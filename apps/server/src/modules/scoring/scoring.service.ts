@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
 import { canonicalSkill } from '../discovery/utils/job-normalizer.util';
@@ -26,6 +26,8 @@ import { emptyDetail, toJobSnapshot, toProfileSnapshot } from './utils/snapshot.
 import { KeywordFilterService } from './keyword-filter.service';
 import { ScoringEngine } from './scoring-engine.service';
 import { SCORE_SYSTEM_PROMPT, buildBatchScorePrompt } from './utils/score-prompt.util';
+import { TasteService } from '../taste/taste.service';
+import { HOLD_BACK_BELOW } from '../taste/constants/taste.constants';
 
 @Injectable()
 export class ScoringService {
@@ -42,6 +44,7 @@ export class ScoringService {
     private readonly engine: ScoringEngine,
     private readonly filter: KeywordFilterService,
     private readonly events: EventsService,
+    @Optional() private readonly taste?: TasteService,
   ) {}
 
   /** Concurrent callers share one run, so no job is scored (or paid for) twice. */
@@ -153,6 +156,12 @@ export class ScoringService {
       if (score >= s.agent.minApplyScore && !external) {
         status = s.agent.mode === AgentMode.AUTO ? JobStatus.APPROVED : JobStatus.REVIEW;
         reason = detail.summary || `Strong match (${score})`;
+        // Auto mode: a job unlike the ones you approve waits for your review instead of being sent.
+        const taste = status === JobStatus.APPROVED ? this.taste?.predict({ ...job, detail, score }) : null;
+        if (taste && taste.p < HOLD_BACK_BELOW) {
+          status = JobStatus.REVIEW;
+          reason = `Held for your review - unlike the jobs you usually approve (${Math.round(taste.p * 100)}% your taste)`;
+        }
       } else if (score >= s.agent.minReviewScore) {
         status = JobStatus.REVIEW;
         reason = external
@@ -183,6 +192,8 @@ export class ScoringService {
       data: { ...out },
     });
     this.last = { ...out, total: pending.length, at: new Date().toISOString() };
+    // Give the new jobs their "your taste" score.
+    this.taste?.refresh();
     return out;
   }
 

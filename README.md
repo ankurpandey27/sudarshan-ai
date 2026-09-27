@@ -49,9 +49,10 @@ The main page is called **Lakshya** (लक्ष्य, "the target") - the aim
 10. [Configuration](#configuration)
 11. [Updating and removing](#updating-and-removing)
 12. [For developers](#for-developers)
-13. [What Sudarshan can't do on its own](#what-sudarshan-cant-do-on-its-own)
-14. [Status and known gaps](#status-and-known-gaps)
-15. [Contributing](#contributing)
+13. [How Sudarshan learns](#how-sudarshan-learns)
+14. [What Sudarshan can't do on its own](#what-sudarshan-cant-do-on-its-own)
+15. [Status and known gaps](#status-and-known-gaps)
+16. [Contributing](#contributing)
 
 ---
 
@@ -66,6 +67,7 @@ The main page is called **Lakshya** (लक्ष्य, "the target") - the aim
 - **Remembers every answer**, so forms get faster and cheaper over time.
 - **Asks you only what it cannot know**, once, and reuses your answer forever.
 - **Explains itself** - the "What needs attention" panel tells you, in plain words, anything stopping it and how to fix it.
+- **Learns and recovers** - see [How Sudarshan learns](#how-sudarshan-learns).
 
 ## Why it is fast
 
@@ -362,6 +364,20 @@ apps/
   web/      React 19 + Vite + Tailwind v4 + TanStack Query, live updates over SSE
 scripts/    start.mjs (the one command), dev.mjs
 ```
+
+## How Sudarshan learns
+
+Everything below runs and is stored on your computer. None of it needs an AI model.
+
+**Your answers.** Every answer - yours, from your profile, or from the AI - goes into **Answer memory** and is reused for the same question on any site. Your own answers always win.
+
+**Each site's steps.** For every site and every kind of step (for example Indeed's resume step), Sudarshan remembers which button moved the form forward. Next time it presses that one first. If a click changes nothing - the site was redesigned - it notes that, tries the next safe button (never *Save and close*, *Withdraw* or *Delete*), and remembers whichever works.
+
+**From you, when it gets stuck.** A stuck application stays open in its tab. When you finish it by hand, Sudarshan saves the answers you typed or picked (only those - not what the site filled in itself) and the buttons you pressed, and marks the job Applied.
+
+**When a site changes.** If a platform's last three applications all got stuck - with no success since - Sudarshan stops applying there instead of failing quietly, and **What needs attention** says so. Finish one stuck application by hand (it learns the new steps), or press **Try again carefully**: it resumes and stops before every Submit until one application goes through. Captchas, questions for you and logins never count as the site changing.
+
+**Your taste.** Every job you approve or mark applied counts as "want"; every job you skip or dismiss as "don't want". After about 20 of your decisions (some of each), a small model on your computer learns which titles, platforms and kinds of fit you prefer. You then see **"87% your taste"** on each job in Review (hover for why), can sort Review by **Your taste**, and in **Auto** mode a job you would very likely skip waits for your review instead of being sent. Lakshya's **Your taste** card shows what it has learned. It only ranks - your own rules (score, skip lists, limits) always come first.
 
 ## What Sudarshan can't do on its own
 

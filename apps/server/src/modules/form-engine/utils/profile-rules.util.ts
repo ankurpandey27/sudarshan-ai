@@ -13,6 +13,14 @@ const fact = (value: string | number | null | undefined): RuleAnswer | null =>
 const guess = (value: string): RuleAnswer => ({ value, confident: false });
 
 /** The job's location names your country, state or city. */
+/** "Are you authorized / eligible to work ...?" */
+export const WORK_AUTH_QUESTION = /(legally\s*)?(authori[sz]ed|eligible|permitted)\s*to\s*work|work\s*authori[sz]ation|right to work/;
+
+/** Whether "authorized to work" can be answered for this job: stated in the profile, or the job is where you live. */
+export function workAuthorizationKnown(c: AnswerContext): boolean {
+  return !!c.profile.workAuthorization.trim() || jobInHomeCountry(c);
+}
+
 function jobInHomeCountry(c: AnswerContext): boolean {
   const where = c.job.location.toLowerCase();
   return [c.profile.country, c.profile.state, c.profile.city].some((place) => !!place && where.includes(place.toLowerCase()));
@@ -119,9 +127,9 @@ const RULES: ProfileRule[] = [
     answer: (c) => fact(yes(c.profile.needsSponsorship)),
   },
   {
-    test: /(legally\s*)?(authori[sz]ed|eligible|permitted)\s*to\s*work|work\s*authori[sz]ation|right to work/,
+    test: WORK_AUTH_QUESTION,
     // Only claimed when the profile states it, or the job is where you live; otherwise you are asked once.
-    answer: (c) => (c.profile.workAuthorization.trim() || jobInHomeCountry(c) ? fact(yes(!c.profile.needsSponsorship)) : null),
+    answer: (c) => (workAuthorizationKnown(c) ? fact(yes(!c.profile.needsSponsorship)) : null),
   },
   {
     test: /\b(comfortable|okay|ok|willing|able)\b.*\b(office|onsite|on-site|hybrid|in person|commute|work from office|wfo|remote)\b/,

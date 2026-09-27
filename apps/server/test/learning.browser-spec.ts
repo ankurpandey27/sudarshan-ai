@@ -10,6 +10,7 @@ import { LINKEDIN_SCOPE } from '../src/modules/apply/constants/apply.constants';
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
 import { AnswerEngineService } from '../src/modules/form-engine/answer-engine.service';
 import { FormRunnerService } from '../src/modules/form-engine/form-runner.service';
+import { PlaybookService } from '../src/modules/form-engine/playbook.service';
 import { RecipesService } from '../src/modules/form-engine/recipes.service';
 import { JobSource } from '../src/modules/jobs/enums/job-source.enum';
 import { JobStatus } from '../src/modules/jobs/enums/job-status.enum';
@@ -46,8 +47,9 @@ describe('Learning from the user (real browser)', () => {
     const answers = new AnswersService(storage);
     const recipes = new RecipesService(storage);
     const jobs = new JobsService(storage, events);
-    const runner = new FormRunnerService(new AnswerEngineService(answers, noLlm), recipes, noLlm);
-    const learning = new LearningService(runner, answers, recipes, jobs, events);
+    const playbook = new PlaybookService(storage);
+    const runner = new FormRunnerService(new AnswerEngineService(answers, noLlm), recipes, noLlm, playbook);
+    const learning = new LearningService(runner, answers, recipes, playbook, jobs, events);
     const [jobId] = jobs.saveDiscovered([
       {
         source: JobSource.LINKEDIN,

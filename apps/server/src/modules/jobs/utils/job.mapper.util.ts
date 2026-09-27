@@ -30,6 +30,8 @@ export function toJob(row: JobRow): Job {
     score: row.score,
     scoreDetail: row.score_detail ? (JSON.parse(row.score_detail) as ScoreDetail) : null,
     reason: row.reason,
+    taste: row.taste ?? null,
+    tasteReasons: row.taste_reasons ? (JSON.parse(row.taste_reasons) as string[]) : [],
     attempts: row.attempts,
     origin: row.origin,
     discoveredAt: row.discovered_at,

@@ -21,6 +21,8 @@ import { LearningSession } from './interfaces/learning-session.interface';
 import { WatchTarget } from './interfaces/watch-target.interface';
 import { learnRecorderInPage } from './scripts/recorder.script';
 import { formFingerprint, learnedSummary } from './utils/learning.util';
+import { PlaybookService } from '../form-engine/playbook.service';
+import { stepSignature } from '../form-engine/utils/step-signature.util';
 
 /**
  * Learning by demonstration. When the agent leaves a form to the user, it watches
@@ -37,6 +39,7 @@ export class LearningService {
     private readonly runner: FormRunnerService,
     private readonly answers: AnswersService,
     private readonly recipes: RecipesService,
+    private readonly playbook: PlaybookService,
     private readonly jobs: JobsService,
     private readonly events: EventsService,
   ) {}
@@ -90,7 +93,12 @@ export class LearningService {
   private onClick(page: Page, target: WatchTarget, session: LearningSession, text: string, before: FormSnapshot): void {
     const action = before.actions.find((a) => a.text.trim().toLowerCase() === text.trim().toLowerCase());
     if (action && action.kind !== 'dismiss') {
-      session.pending = { kind: action.kind === 'apply' ? 'apply' : 'advance', text: action.text, fingerprint: formFingerprint(before) };
+      session.pending = {
+        kind: action.kind === 'apply' ? 'apply' : 'advance',
+        text: action.text,
+        fingerprint: formFingerprint(before),
+        signature: stepSignature(before),
+      };
     }
     // A final submit shows a confirmation instead of new questions.
     setTimeout(() => {
@@ -108,6 +116,8 @@ export class LearningService {
     const p = session.pending;
     if (!p || (now && formFingerprint(now) === p.fingerprint)) return;
     this.recipes.learn(target.domain, p.kind, p.text);
+    // Your click moved the form on: next time, this button is tried first on this kind of step.
+    this.playbook.record(target.domain, p.signature, p.text, true);
     session.steps++;
     session.pending = null;
   }

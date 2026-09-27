@@ -29,8 +29,8 @@ export class ListJobsQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsIn(['score', 'recent', 'applied'])
-  sort?: 'score' | 'recent' | 'applied';
+  @IsIn(['score', 'recent', 'applied', 'taste'])
+  sort?: 'score' | 'recent' | 'applied' | 'taste';
 
   @IsOptional()
   @IsInt()

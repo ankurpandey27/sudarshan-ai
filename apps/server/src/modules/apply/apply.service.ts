@@ -26,6 +26,7 @@ import { LearningService } from '../learning/learning.service';
 import { WatchTarget } from '../learning/interfaces/watch-target.interface';
 import { PrepareStatus } from './enums/prepare-status.enum';
 import { ApplyAdapter, ApplyResult, PrepareResult } from './interfaces/apply-adapter.interface';
+import { PlatformHealthService } from '../platform-health/platform-health.service';
 
 @Injectable()
 export class ApplyService {
@@ -46,6 +47,7 @@ export class ApplyService {
     private readonly settings: SettingsService,
     private readonly events: EventsService,
     private readonly learning: LearningService,
+    private readonly health: PlatformHealthService,
   ) {
     this.adapters = [linkedin, naukri, indeed, web];
   }
@@ -71,7 +73,8 @@ export class ApplyService {
     let keepOpen = false;
     let learnFrom: WatchTarget | null = null;
     let outcome: FormRunOutcome | null = null;
-    let final: { status: JobStatus; detail: string };
+    // `ended` says how the attempt ended (e.g. "run:stuck"); platform health reads it.
+    let final: { status: JobStatus; detail: string; ended?: string };
     try {
       page = await this.browser.newPage();
       const adapter = this.adapters.find((a) => a.matches(job)) ?? this.web;
@@ -84,6 +87,7 @@ export class ApplyService {
           final = {
             status: JobStatus.MANUAL,
             detail: `Not applied - this job applies on the company's own site. Turn on "Company career sites" under Apply on, or apply by hand: ${prep.externalUrl ?? job.url}`,
+            ended: 'prep:external_off',
           };
           return this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
         }
@@ -93,7 +97,7 @@ export class ApplyService {
         active = this.web;
       }
 
-      final = this.mapPrepare(prep, job);
+      final = { ...this.mapPrepare(prep, job), ended: `prep:${prep.status}` };
       if (prep.status === PrepareStatus.READY) {
         const ctx = this.context(job);
         const opts = {
@@ -102,12 +106,13 @@ export class ApplyService {
           ctx,
           domain: new URL(page.url()).hostname.replace(/^www\./, ''),
           allowLlm: true,
-          pauseBeforeSubmit: s.agent.pauseBeforeSubmit,
+          // Careful mode (the site seemed to change): stop before Submit until one application works again.
+          pauseBeforeSubmit: s.agent.pauseBeforeSubmit || this.health.state(job.platform).status === 'careful',
           onStep: step,
         };
         const run: FormRunOutcome = active.runForm ? await active.runForm(page, prep, opts) : await this.runner.run(page, opts);
         outcome = run;
-        final = this.mapOutcome(job, run);
+        final = { ...this.mapOutcome(job, run), ended: `run:${run.status}` };
         this.recipes.outcome(opts.domain, run.status === 'applied');
         if (run.status === 'applied') await active.afterSuccess?.(page);
         // Left to the user: keep the tab and learn from how they finish it.
@@ -133,7 +138,7 @@ export class ApplyService {
     } catch (err) {
       const msg = (err as Error).message;
       this.logger.warn(`Apply failed for job ${job.id}: ${msg}`);
-      final = { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}` };
+      final = { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}`, ended: 'error' };
     }
     const result = await this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
     if (page && learnFrom) await this.learning.watch(page, learnFrom);
@@ -143,7 +148,7 @@ export class ApplyService {
   private async finish(
     job: Job,
     attemptId: number,
-    final: { status: JobStatus; detail: string },
+    final: { status: JobStatus; detail: string; ended?: string },
     outcome: FormRunOutcome | null,
     trace: string[],
     page: Page | null,
@@ -162,6 +167,7 @@ export class ApplyService {
       },
       trace,
       screenshot,
+      final.ended ?? null,
     );
     this.jobs.setStatus(job.id, final.status, final.detail);
     const level = final.status === JobStatus.APPLIED ? 'success' : final.status === JobStatus.FAILED ? 'error' : 'warn';

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { APPLIED_BUTTON, ONE_CLICK_SUCCESS, LINKEDIN_SUCCESS, NAUKRI_APPLIED_URL, NAUKRI_SUCCESS } from './apply.constants';
+import { ALREADY_APPLIED_TEXT, APPLIED_BUTTON, ONE_CLICK_SUCCESS, LINKEDIN_SUCCESS, NAUKRI_APPLIED_URL, NAUKRI_SUCCESS } from './apply.constants';
 
 describe('application confirmations', () => {
   it("recognises Naukri's one-click confirmation page", () => {
@@ -32,5 +32,11 @@ describe('application confirmations', () => {
     expect(ONE_CLICK_SUCCESS.test('Thank you for your interest in careers at Acme. Sign in to continue.')).toBe(false);
     expect(ONE_CLICK_SUCCESS.test('Your application has been submitted')).toBe(true);
     expect(ONE_CLICK_SUCCESS.test('Thank you for applying!')).toBe(true);
+  });
+
+  it('takes only real "already applied" wording, not a sign-in page', () => {
+    expect(ALREADY_APPLIED_TEXT.test('Thank you for your interest in Acme. Already have an account? Sign in')).toBe(false);
+    expect(ALREADY_APPLIED_TEXT.test("You've already applied to this job")).toBe(true);
+    expect(ALREADY_APPLIED_TEXT.test('Your application was already submitted on 3 May')).toBe(true);
   });
 });
