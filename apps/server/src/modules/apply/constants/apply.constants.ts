@@ -46,3 +46,5 @@ export const ALREADY_APPLIED_TEXT =
   /you('ve| have) already applied|already applied (to|for) this|application (was |has been )?already (submitted|sent|received)/i;
 /** Indeed's own confirmation after Submit - its forms mention "applied" everywhere else. */
 export const INDEED_SUCCESS = /your application has been submitted|application (has been )?submitted to|we('ve| have) received your application/i;
+/** A Naukri chat question that asks for a file (resume, CV); only then is the resume sent. */
+export const NAUKRI_FILE_QUESTION = /\b(resume|cv|curriculum vitae|upload|attach)/i;

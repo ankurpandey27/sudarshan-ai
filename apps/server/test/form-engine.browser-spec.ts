@@ -14,7 +14,8 @@ import { AnswerContext } from '../src/modules/form-engine/interfaces/answer-cont
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
 import { LlmService } from '../src/modules/llm/llm.service';
 import { EMPTY_PROFILE } from '../src/modules/profile/constants/profile.constants';
-import { GENERIC_SUCCESS, LINKEDIN_SCOPE } from '../src/modules/apply/constants/apply.constants';
+import { GENERIC_SUCCESS, LINKEDIN_SCOPE, NAUKRI_DRAWER, NAUKRI_SUCCESS } from '../src/modules/apply/constants/apply.constants';
+import { NaukriApplyAdapter } from '../src/modules/apply/adapters/naukri.adapter';
 import { WebApplyAdapter } from '../src/modules/apply/adapters/web.adapter';
 import { PrepareStatus } from '../src/modules/apply/enums/prepare-status.enum';
 
@@ -147,6 +148,40 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     expect(second.out.status).toBe('applied');
     expect(second.steps.some((m) => /did nothing/.test(m))).toBe(false);
     expect(second.steps.some((m) => /"Save & Next"/.test(m))).toBe(true);
+  });
+
+  it('answers the Naukri chat from your saved answers and profile, never with the resume, and waits for it to close', async () => {
+    // Your answer from the Questions page, as in the screenshots.
+    answers.remember('Are you available for a interview?(Virtual)', 'Yes', AnswerSource.USER);
+    answers.remember('Are you currently serving Notice Period? If yes, when is your LWD?', 'Yes, 16-Oct-2026', AnswerSource.USER);
+    const naukri = new NaukriApplyAdapter({} as never, runner, new AnswerEngineService(answers, noLlm));
+    await page.goto(`file://${join(__dirname, 'fixtures', 'naukri-chat.html').replace(/\\/g, '/')}`);
+    const steps: string[] = [];
+    const out = await naukri.runForm(
+      page,
+      { status: PrepareStatus.READY, scopeSelector: NAUKRI_DRAWER, successPattern: NAUKRI_SUCCESS, page },
+      {
+        scopeSelector: NAUKRI_DRAWER,
+        successPattern: NAUKRI_SUCCESS,
+        ctx: { ...ctx, resumePath: join(__dirname, 'fixtures', 'resume.pdf') },
+        domain: 'naukri.com',
+        allowLlm: false,
+        pauseBeforeSubmit: false,
+        onStep: (m) => steps.push(m),
+      },
+    );
+    const seen = await page.evaluate(() => ({
+      uploads: (window as unknown as { __uploads: number }).__uploads,
+      answers: (window as unknown as { __answers: string[] }).__answers,
+    }));
+    expect(seen.uploads).toBe(0);
+    // Your saved answers, and the notice length only where it is asked - never "30 days" for an LWD question.
+    expect(seen.answers).toEqual(['Yes', 'Yes, 16-Oct-2026', '30']);
+    expect(out.status).toBe('applied');
+    // Every step names a real question - never the empty "typing" bubble.
+    expect(steps.every((m) => !/Naukri: ""/.test(m))).toBe(true);
+    // Every answer sent is in the flight log, with where it came from.
+    expect(steps).toContain('Naukri: "Are you currently serving Notice Period? If yes, when is your LWD?" -> "Yes, 16-Oct-2026" (your saved answer)');
   });
 
   it('uploads the resume when the page only mentions ".pdf" in a hint', async () => {

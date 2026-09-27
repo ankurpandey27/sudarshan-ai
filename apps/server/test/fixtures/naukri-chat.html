@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Senior Software Engineer - Vlink - Naukri</title>
+<style>
+  .chatbot_Uploader { position: absolute; width: 1px; height: 1px; opacity: 0.01; }
+  .typing span { display: inline-block; width: 6px; height: 6px; margin: 1px; border-radius: 50%; background: #999; }
+  .send.disabled .sendMsg { opacity: 0.4; }
+</style>
+</head>
+<body>
+<!-- Mirrors Naukri's live apply chat (dumped 2026-09-28): greeting and question bubbles, a
+     contenteditable answer box, "Save" wrapped in sendMsgbtn_container > .send.disabled (the
+     wrapper does nothing when clicked; Save works only once an answer is typed or picked), a
+     hidden file input, and the "typing" dots between questions. -->
+<h1>Senior Software Engineer (MERN stack)</h1>
+<div class="chatbot_DrawerContentWrapper" id="drawer">
+  <div class="chatbot_MessageContainer">
+    <ul class="list" id="list"></ul>
+    <div class="footerWrapper"><div class="chatbot_InputContainer" id="answer"></div></div>
+  </div>
+  <div class="sendMsgbtn_container">
+    <div class="send disabled" id="sendWrap"><div class="sendMsg" id="send" tabindex="0">Save</div></div>
+  </div>
+  <form><input class="chatbot_Uploader" type="file" id="attach"></form>
+</div>
+<script>
+  window.__uploads = 0;
+  window.__answers = [];
+  let step = 0;
+  let fileSent = false;
+  const list = document.getElementById('list');
+  const answer = document.getElementById('answer');
+  const wrap = document.getElementById('sendWrap');
+  const setEnabled = (on) => wrap.classList.toggle('disabled', !on);
+  const bot = (text) => {
+    const li = document.createElement('li');
+    li.className = 'botItem chatbot_ListItem';
+    li.innerHTML = '<div class="botMsg msg "><div><span></span></div></div>';
+    li.querySelector('span').textContent = text;
+    list.appendChild(li);
+  };
+  const typing = () => {
+    const li = document.createElement('li');
+    li.className = 'botItem chatbot_ListItem';
+    li.innerHTML = '<div class="botMsg typing"><span></span><span></span><span></span></div>';
+    list.appendChild(li);
+    return li;
+  };
+  const textBox = () => {
+    answer.innerHTML = '<div class="textAreaWrapper"><div class="textArea" contenteditable="true" data-placeholder="Type message here..."></div></div>';
+    answer.querySelector('.textArea').addEventListener('input', (e) => setEnabled(!!e.target.innerText.trim()));
+    setEnabled(false);
+  };
+  const QUESTIONS = [
+    () => {
+      bot('Are you available for a interview?(Virtual)');
+      answer.innerHTML = '<label><input type="radio" name="q" value="Yes"> Yes</label><label><input type="radio" name="q" value="No"> No</label>';
+      answer.querySelectorAll('input').forEach((r) => r.addEventListener('change', () => setEnabled(true)));
+      setEnabled(false);
+    },
+    () => {
+      bot('Are you currently serving Notice Period? If yes, when is your LWD?');
+      textBox();
+    },
+    () => {
+      bot('What is your notice period (in days)?');
+      textBox();
+    },
+  ];
+  const next = () => {
+    answer.innerHTML = '';
+    setEnabled(false);
+    if (step >= QUESTIONS.length) {
+      document.getElementById('drawer').remove();
+      const done = document.createElement('p');
+      done.textContent = 'Applied to "Senior Software Engineer (MERN stack)"';
+      document.body.appendChild(done);
+      return;
+    }
+    const t = typing();
+    setTimeout(() => {
+      t.remove();
+      QUESTIONS[step]();
+    }, 900);
+  };
+  document.getElementById('attach').addEventListener('change', () => {
+    window.__uploads++;
+    fileSent = true;
+  });
+  document.getElementById('send').addEventListener('click', () => {
+    if (wrap.classList.contains('disabled')) return;
+    if (fileSent) {
+      fileSent = false;
+      bot('File upload was unsuccessful. Please try again.');
+      return;
+    }
+    const picked = answer.querySelector('input[name="q"]:checked');
+    const text = picked ? picked.value : (answer.querySelector('.textArea')?.innerText ?? '').trim();
+    if (!text) return;
+    window.__answers.push(text);
+    step++;
+    next();
+  });
+  bot("Hi ANKUR PANDEY, thank you for showing interest. Kindly answer all the recruiter's questions to successfully apply for the job.");
+  QUESTIONS[0]();
+</script>
+</body>
+</html>

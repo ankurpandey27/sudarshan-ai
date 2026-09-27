@@ -404,7 +404,7 @@ When it gets stuck on a form, the tab stays open: finish it there and Sudarshan 
 - **Verified against live accounts:** LinkedIn Easy Apply (multi-page forms, screening questions), Naukri one-click apply, Instahyre one-click apply, and company career-site forms (Keka).
 - **Also verified:** resume parsing, Excel import, LinkedIn and Naukri discovery, scoring, the form engine in a real browser, learning from forms you finish, security and key encryption.
 - **Indeed:** search is verified. Applying cannot be fully automatic - Indeed requires a reCAPTCHA on the review page of every application, and Sudarshan never solves captchas. It fills the steps and hands over; that filling is not yet verified live.
-- **Not yet verified live:** the Naukri chat-style questionnaire. Job sites change their pages often - keep **Stop before the final Submit** on for your first applications on a new site, and report what the flight log shows.
+- **Naukri chat questionnaire:** tested against a replica of Naukri's chat (Yes/No and typed questions, the "typing" pause, the hidden file input), using your saved answers and profile first; not yet verified on a live application end to end. Job sites change their pages often - keep **Stop before the final Submit** on for your first applications on a new site, and report what the flight log shows.
 
 ## Contributing
 

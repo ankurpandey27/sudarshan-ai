@@ -106,7 +106,12 @@ const RULES: ProfileRule[] = [
     answer: (c) => fact(c.profile.currentTitle),
   },
   { test: /headline/, answer: (c) => fact(c.profile.headline || c.profile.currentTitle) },
-  { test: /notice\s*period/, answer: (c, f) => noticePeriod(c.profile.noticePeriodDays, f) },
+  {
+    test: /notice\s*period/,
+    // "Are you serving your notice? When is your LWD?" asks for a yes and a date, not the notice length.
+    not: /currently serving|serving (your |the )?notice|\blwd\b|last working/,
+    answer: (c, f) => noticePeriod(c.profile.noticePeriodDays, f),
+  },
   {
     test: /(join|start)\s*(immediately|within)|immediate\s*joiner|earliest (start|joining)/,
     kinds: [FieldKind.RADIO, FieldKind.SELECT, FieldKind.CHECKBOX],
