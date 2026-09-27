@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Body, Controller, Get, HttpCode, Post } from '@nestjs/common';
 import { SettingsService } from '../settings/settings.service';
 import { LlmSettings } from '../settings/interfaces/app-settings.interface';
@@ -22,7 +25,7 @@ export class LlmController {
 
   @Get('usage')
   usage(): LlmUsageSummary {
-    return this.llm.usageToday();
+    return this.llm.usage();
   }
 
   @Post('test')

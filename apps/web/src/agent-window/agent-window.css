@@ -1,0 +1,558 @@
+/* Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License. */
+/* SPDX-License-Identifier: MIT */
+
+@import '../tokens.css';
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+[hidden] {
+  display: none !important;
+}
+
+html {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter Tight', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  /* A faint marigold halo at the top; paper everywhere else. */
+  background:
+    radial-gradient(70rem 30rem at 30% -10rem, color-mix(in srgb, var(--accent) 11%, transparent), transparent 70%),
+    var(--bg);
+}
+
+.shell {
+  max-width: 88rem;
+  margin: 0 auto;
+  padding: 1.25rem 2rem 2.5rem;
+}
+
+/* Top bar */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  padding-bottom: 1.1rem;
+  border-bottom: 1px solid var(--line);
+}
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.brand-name {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.75rem;
+  letter-spacing: -0.01em;
+}
+.brand-tag {
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.state {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--ink-2);
+}
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+[data-tone='work'] .dot {
+  background: var(--good);
+  animation: pulse 1.8s ease-out infinite;
+}
+[data-tone='attention'] .dot {
+  background: var(--warn);
+}
+[data-tone='offline'] .dot {
+  background: var(--bad);
+}
+@keyframes pulse {
+  from {
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 45%, transparent);
+  }
+  to {
+    box-shadow: 0 0 0 0.55rem transparent;
+  }
+}
+
+/* Grid */
+.grid {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 1.1rem;
+  margin-top: 1.25rem;
+}
+.card {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+  min-width: 0;
+}
+.card-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 1rem 1.25rem 0.6rem;
+}
+.card-head.sub {
+  padding-top: 1.1rem;
+  border-top: 1px solid var(--line);
+}
+.card h2 {
+  margin: 0;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.muted {
+  color: var(--ink-3);
+  font-size: 0.8rem;
+}
+.small {
+  font-size: 0.75rem;
+}
+.link {
+  text-decoration: none;
+}
+.link:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+/* Hero */
+.hero {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  padding: 2rem 2.25rem;
+  position: relative;
+  overflow: hidden;
+}
+.chakra-wrap {
+  flex: none;
+  width: 150px;
+  height: 150px;
+  filter: drop-shadow(0 12px 28px color-mix(in srgb, var(--accent) 32%, transparent));
+}
+.chakra-wrap svg {
+  width: 100%;
+  height: 100%;
+  transition: opacity 400ms ease;
+}
+/* Always turning: slowly at rest, faster while the agent works. */
+.chakra-wrap svg {
+  animation: turn 24s linear infinite;
+}
+.chakra-wrap.spinning svg {
+  animation-duration: 8s;
+}
+.chakra-wrap.resting svg {
+  opacity: 0.7;
+}
+@keyframes turn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.hero-text {
+  min-width: 0;
+}
+h1 {
+  margin: 0 0 0.6rem;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-weight: 400;
+  font-size: clamp(2rem, 3.2vw, 3rem);
+  line-height: 1.05;
+  letter-spacing: -0.015em;
+  text-wrap: balance;
+}
+h1 em {
+  font-style: italic;
+  color: var(--accent);
+}
+.detail {
+  margin: 0;
+  max-width: 36rem;
+  color: var(--ink-2);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+.now {
+  display: inline-block;
+  margin: 0.9rem 0 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 8px;
+  background: var(--surface-2);
+  font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-top: 1.1rem;
+}
+.actions:empty {
+  display: none;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  height: 2.4rem;
+  padding: 0 1rem;
+  border: 1px solid var(--line-strong);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    background 150ms ease,
+    transform 150ms ease;
+}
+.button:hover {
+  background: var(--surface-2);
+}
+.button:active {
+  transform: translateY(1px);
+}
+.button.primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.button.primary:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--ink));
+}
+.button:focus-visible,
+.link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Today */
+.today-main {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1.5rem;
+  align-items: center;
+  padding: 0.25rem 1.25rem 1rem;
+}
+.big {
+  margin: 0;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 4rem;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+.sites {
+  display: grid;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.site-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  color: var(--ink-2);
+}
+.site-row b {
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink);
+}
+.bar {
+  height: 6px;
+  margin-top: 0.3rem;
+  border-radius: 999px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 500ms ease;
+}
+.bar.full i {
+  background: var(--good);
+}
+
+.kpis,
+.usage {
+  display: grid;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+.kpis {
+  grid-template-columns: repeat(3, 1fr);
+}
+.kpis div,
+.usage div {
+  padding: 0.8rem 1.25rem;
+  border-bottom: 1px solid var(--line);
+}
+.kpis div:nth-child(3n + 2),
+.kpis div:nth-child(3n + 3),
+.usage div + div {
+  border-left: 1px solid var(--line);
+}
+.kpis div:nth-last-child(-n + 3) {
+  border-bottom: 0;
+}
+dt {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.kpis dd,
+.usage dd {
+  margin: 0.25rem 0 0;
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.85rem;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+dd.hot {
+  color: var(--warn);
+}
+
+/* Activity */
+.feed {
+  margin: 0;
+  padding: 0 0.5rem 0.75rem;
+  list-style: none;
+  max-height: 22rem;
+  overflow-y: auto;
+}
+.feed li {
+  display: grid;
+  grid-template-columns: 4.2rem 1.1rem 1fr;
+  gap: 0.5rem;
+  align-items: baseline;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+.feed li:nth-child(odd) {
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+}
+.feed time {
+  font-family: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+  font-size: 0.75rem;
+  color: var(--ink-3);
+}
+.feed .mark {
+  font-weight: 700;
+  text-align: center;
+}
+.feed .success .mark {
+  color: var(--good);
+}
+.feed .warn .mark {
+  color: var(--warn);
+}
+.feed .error .mark {
+  color: var(--bad);
+}
+.feed .info .mark {
+  color: var(--ink-3);
+}
+.feed .empty {
+  display: block;
+  color: var(--ink-3);
+  padding: 1rem 0.75rem;
+}
+
+/* Side */
+.usage {
+  grid-template-columns: repeat(3, 1fr);
+  border-bottom: 1px solid var(--line);
+}
+.usage div {
+  border-bottom: 0;
+}
+#ai-calls {
+  margin: 0;
+  padding: 0.6rem 1.25rem 0;
+}
+.rows {
+  margin: 0;
+  padding: 0 1.25rem 1rem;
+}
+.rows div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+.rows div:last-child {
+  border-bottom: 0;
+}
+.rows dt {
+  font-size: 0.85rem;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--ink-2);
+}
+.rows dd {
+  margin: 0;
+  font-weight: 600;
+  text-align: right;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Guide */
+.guide {
+  margin-top: 1.75rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+.guide h2 {
+  margin: 0 0 1.1rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+.guide ol {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1.75rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.guide li {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  gap: 0.75rem;
+}
+.num {
+  font-family: 'Instrument Serif', Georgia, serif;
+  font-size: 1.9rem;
+  line-height: 1;
+  color: var(--accent);
+}
+.guide h3 {
+  margin: 0.1rem 0 0.3rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+.guide p {
+  margin: 0;
+  color: var(--ink-2);
+  font-size: 0.88rem;
+  line-height: 1.55;
+}
+
+.foot {
+  margin-top: 2rem;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--ink-3);
+}
+
+/* Laptop: keep two columns, tighten the hero. */
+@media (max-width: 1180px) {
+  .hero {
+    gap: 1.5rem;
+    padding: 1.75rem;
+  }
+  .chakra-wrap {
+    width: 116px;
+    height: 116px;
+  }
+}
+
+/* Narrow windows: one column. */
+@media (max-width: 900px) {
+  .shell {
+    padding: 1rem 1rem 2rem;
+  }
+  .grid,
+  .guide ol {
+    grid-template-columns: 1fr;
+  }
+  .hero {
+    flex-direction: column;
+    text-align: center;
+  }
+  .actions {
+    justify-content: center;
+  }
+  .brand-tag {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chakra-wrap svg,
+  .chakra-wrap.spinning svg {
+    animation-duration: 60s;
+  }
+  [data-tone='work'] .dot,
+  .bar i {
+    animation: none;
+    transition: none;
+  }
+}
+
+.sites li.off {
+  opacity: 0.45;
+}

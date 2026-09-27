@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Attempt, AttemptRow } from '../interfaces/attempt.interface';
 
 export function toAttempt(r: AttemptRow): Attempt {

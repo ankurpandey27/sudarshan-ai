@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger } from '@nestjs/common';
 import { Page } from 'puppeteer-core';
 import { sleep } from '../../../common/utils/sleep.util';
@@ -10,12 +13,10 @@ import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
 import { LlmService } from '../../llm/llm.service';
 import { LlmPurpose } from '../../llm/enums/llm-purpose.enum';
-import { CLOSED_TEXT, GENERIC_SUCCESS, LOGIN_WALL } from '../constants/apply.constants';
+import { APPLIED_BUTTON, CLOSED_TEXT, GENERIC_DIALOG as DIALOG, GENERIC_SUCCESS, LOGIN_WALL } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
-
-const DIALOG = '[role=dialog], [aria-modal=true], .modal.show, .modal[open]';
 
 @Injectable()
 export class WebApplyAdapter implements ApplyAdapter {
@@ -48,17 +49,28 @@ export class WebApplyAdapter implements ApplyAdapter {
     let current = page;
     const domain = new URL(current.url()).hostname.replace(/^www\./, '');
 
+    let confirmedBefore = false;
     for (let hop = 0; hop < 3; hop++) {
       const snap = await this.runner.snapshot(current, null);
       const text = await current.evaluate(documentTextInPage);
       if (CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED);
-      if (GENERIC_SUCCESS.test(text) && /already/i.test(text)) return result(PrepareStatus.ALREADY_APPLIED);
-      if (snap.captcha) return result(PrepareStatus.CAPTCHA, { page: current });
-      if (this.looksLikeLogin(snap, text)) return result(PrepareStatus.LOGIN_REQUIRED, { detail: `Log in to ${domain} in the agent browser`, page: current });
+      if (hop === 0) {
+        // The site's own button says it is done, e.g. Instahyre's "Application sent!".
+        if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (GENERIC_SUCCESS.test(text) && /already/i.test(text))) {
+          return result(PrepareStatus.ALREADY_APPLIED, { page: current });
+        }
+        confirmedBefore = GENERIC_SUCCESS.test(text);
+      } else if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (!confirmedBefore && GENERIC_SUCCESS.test(text))) {
+        // One-click apply: the confirmation appeared after our click.
+        return result(PrepareStatus.APPLIED, { detail: 'Applied in one click', page: current });
+      }
+      // A form with a captcha at the bottom is still a form: fill it, then hand the captcha over.
       if (this.hasApplicationForm(snap)) {
         const dialog = await current.$(DIALOG);
         return result(PrepareStatus.READY, { scopeSelector: dialog ? DIALOG : null, page: current });
       }
+      if (snap.captcha) return result(PrepareStatus.CAPTCHA, { page: current });
+      if (this.looksLikeLogin(snap, text)) return result(PrepareStatus.LOGIN_REQUIRED, { detail: `Log in to ${domain} in the agent browser`, page: current });
 
       const action = await this.findApplyAction(snap, domain, text);
       if (!action) return result(PrepareStatus.NO_APPLY_BUTTON, { page: current });
@@ -86,14 +98,16 @@ export class WebApplyAdapter implements ApplyAdapter {
     const recipe = this.recipes.get(domain);
     const learned = usable.find((a) => recipe.applyTexts.includes(a.text.toLowerCase()));
     if (learned) return learned;
-    const obvious = usable.find((a) => a.kind === 'apply');
+    // "Apply now" on a job page is often classed as a submit button (Instahyre's one-click apply).
+    const obvious = usable.find((a) => a.kind === 'apply') ?? usable.find((a) => /^(easy |quick )?apply( now| for this job)?!?$/i.test(a.text.trim()));
     if (obvious) return obvious;
     if (!this.llm.isAvailable() || usable.length === 0) return null;
     try {
-      const pick = await this.llm.json<{ id?: string; applicationDone?: boolean }>(
-        buildNavigatePrompt('Open the job application form', text, usable),
-        { purpose: LlmPurpose.NAVIGATE, system: NAVIGATE_SYSTEM_PROMPT, maxTokens: 150 },
-      );
+      const pick = await this.llm.json<{ id?: string; applicationDone?: boolean }>(buildNavigatePrompt('Open the job application form', text, usable), {
+        purpose: LlmPurpose.NAVIGATE,
+        system: NAVIGATE_SYSTEM_PROMPT,
+        maxTokens: 150,
+      });
       const action = usable.find((a) => a.id === pick.id) ?? null;
       if (action) this.recipes.learn(domain, 'apply', action.text);
       return action;

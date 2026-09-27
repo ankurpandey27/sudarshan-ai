@@ -1,10 +1,14 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger } from '@nestjs/common';
 import { HTTPResponse, Page } from 'puppeteer-core';
 import { jitter } from '../../../common/utils/sleep.util';
 import { BrowserService } from '../../browser/browser.service';
 import { JobSource } from '../../jobs/enums/job-source.enum';
+import { JobPlatform } from '../../jobs/enums/job-platform.enum';
 import { DiscoveredJob } from '../../jobs/interfaces/discovered-job.interface';
-import { NAUKRI_PAGE_SIZE, NAUKRI_SEARCH_API } from '../constants/platform.constants';
+import { NAUKRI_MAX_PAGES, NAUKRI_SEARCH_API } from '../constants/platform.constants';
 import { DiscoverySource, SearchQuery } from '../interfaces/discovery-source.interface';
 import { NaukriSearchResponse } from '../interfaces/naukri-api.interface';
 import { naukriJobToDiscovered, slug } from '../utils/naukri.util';
@@ -17,6 +21,7 @@ import { detectRemote } from '../utils/job-normalizer.util';
 @Injectable()
 export class NaukriSource implements DiscoverySource {
   readonly source = JobSource.NAUKRI;
+  readonly platform = JobPlatform.NAUKRI;
   private readonly logger = new Logger(NaukriSource.name);
 
   constructor(private readonly browser: BrowserService) {}
@@ -24,15 +29,19 @@ export class NaukriSource implements DiscoverySource {
   search(q: SearchQuery): Promise<DiscoveredJob[]> {
     return this.browser.withPage(async (page) => {
       const jobs = new Map<string, DiscoveredJob>();
-      const pages = Math.ceil(q.prefs.maxPerSearch / NAUKRI_PAGE_SIZE);
-      for (let n = 1; n <= pages && jobs.size < q.prefs.maxPerSearch; n++) {
+      let fresh = 0;
+      for (let n = 1; n <= NAUKRI_MAX_PAGES && fresh < q.prefs.maxPerSearch; n++) {
         const found = await this.searchPage(page, q, n);
-        if (found.length === 0) break;
-        for (const j of found) jobs.set(j.externalId, j);
-        q.onProgress(`Naukri: ${jobs.size} jobs for "${q.keyword}" in ${q.location}`);
+        const before = jobs.size;
+        for (const j of found) {
+          if (!jobs.has(j.externalId) && !q.isKnown(j.externalId)) fresh++;
+          jobs.set(j.externalId, j);
+        }
+        if (jobs.size === before) break;
+        q.onProgress(`Naukri: checked ${jobs.size} listings, ${fresh} new so far ("${q.keyword}" in ${q.location})`);
         await jitter(1200, 2500);
       }
-      return [...jobs.values()].slice(0, q.prefs.maxPerSearch);
+      return [...jobs.values()];
     });
   }
 

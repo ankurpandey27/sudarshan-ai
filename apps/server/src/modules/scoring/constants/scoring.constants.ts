@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 export const SCORE_WEIGHTS = { technical: 0.5, salary: 0.25, location: 0.25 } as const;
 
 /** Share of the final score given to the AI's verdict. */

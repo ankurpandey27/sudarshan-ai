@@ -1,5 +1,8 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, Query } from '@nestjs/common';
-import { Paginated } from '../../common/interfaces/paginated.interface';
+import { JobList } from './interfaces/job-list.interface';
 import { AddLinksDto } from './dto/add-links.dto';
 import { JobIdsDto } from './dto/job-ids.dto';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
@@ -14,7 +17,7 @@ export class JobsController {
   constructor(private readonly jobs: JobsService) {}
 
   @Get()
-  list(@Query() q: ListJobsQueryDto): Paginated<Job> {
+  list(@Query() q: ListJobsQueryDto): JobList {
     return this.jobs.list(q);
   }
 
@@ -41,6 +44,19 @@ export class JobsController {
         JobStatus.NEW,
       ]),
     };
+  }
+
+  /** Out of the queue and back to review; a job being applied to right now is not touched. */
+  @Post('unqueue')
+  @HttpCode(200)
+  unqueue(@Body() dto: JobIdsDto): { updated: number } {
+    return { updated: this.jobs.setStatusMany(dto.ids, JobStatus.REVIEW, 'Moved back to review by you', [JobStatus.APPROVED, JobStatus.SKIPPED]) };
+  }
+
+  @Post('skip')
+  @HttpCode(200)
+  skip(@Body() dto: JobIdsDto): { updated: number } {
+    return { updated: this.jobs.setStatusMany(dto.ids, JobStatus.SKIPPED, 'Skipped by you', [JobStatus.NEW, JobStatus.REVIEW, JobStatus.APPROVED]) };
   }
 
   @Post('dismiss')

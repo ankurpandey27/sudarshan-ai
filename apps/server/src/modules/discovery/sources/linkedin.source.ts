@@ -1,16 +1,15 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import axios, { AxiosError } from 'axios';
 import { Injectable, Logger } from '@nestjs/common';
 import { parse } from 'node-html-parser';
 import { decodeEntities, parseSearchCards } from '../utils/linkedin-guest.util';
 import { jitter, sleep } from '../../../common/utils/sleep.util';
 import { JobSource } from '../../jobs/enums/job-source.enum';
+import { JobPlatform } from '../../jobs/enums/job-platform.enum';
 import { DiscoveredJob } from '../../jobs/interfaces/discovered-job.interface';
-import {
-  GUEST_HEADERS,
-  LINKEDIN_GUEST_POSTING,
-  LINKEDIN_GUEST_SEARCH,
-  LINKEDIN_PAGE_SIZE,
-} from '../constants/platform.constants';
+import { GUEST_HEADERS, LINKEDIN_GUEST_POSTING, LINKEDIN_GUEST_SEARCH, LINKEDIN_MAX_PAGES, LINKEDIN_PAGE_SIZE } from '../constants/platform.constants';
 import { DiscoverySource, SearchQuery } from '../interfaces/discovery-source.interface';
 import { detectRemote } from '../utils/job-normalizer.util';
 
@@ -18,11 +17,14 @@ import { detectRemote } from '../utils/job-normalizer.util';
 @Injectable()
 export class LinkedInSource implements DiscoverySource {
   readonly source = JobSource.LINKEDIN;
+  readonly platform = JobPlatform.LINKEDIN;
   private readonly logger = new Logger(LinkedInSource.name);
 
   async search(q: SearchQuery): Promise<DiscoveredJob[]> {
     const jobs = new Map<string, DiscoveredJob>();
-    for (let start = 0; jobs.size < q.prefs.maxPerSearch; start += LINKEDIN_PAGE_SIZE) {
+    let fresh = 0;
+    for (let page = 0; page < LINKEDIN_MAX_PAGES && fresh < q.prefs.maxPerSearch; page++) {
+      const start = page * LINKEDIN_PAGE_SIZE;
       const params = new URLSearchParams({
         keywords: q.keyword,
         location: q.location,
@@ -37,12 +39,17 @@ export class LinkedInSource implements DiscoverySource {
       const remote = params.get('f_WT') === '2';
       // f_WT=2 is LinkedIn's remote filter.
       const cards = parseSearchCards(html, q.prefs.easyApplyOnly).map((c) => (remote ? { ...c, isRemote: true } : c));
-      if (cards.length === 0) break;
-      for (const c of cards) jobs.set(c.externalId, c);
-      q.onProgress(`LinkedIn: ${jobs.size} jobs for "${q.keyword}" in ${q.location}`);
+      const before = jobs.size;
+      for (const c of cards) {
+        if (!jobs.has(c.externalId) && !q.isKnown(c.externalId)) fresh++;
+        jobs.set(c.externalId, c);
+      }
+      // Past the last result LinkedIn repeats earlier cards.
+      if (jobs.size === before) break;
+      q.onProgress(`LinkedIn: checked ${jobs.size} listings, ${fresh} new so far ("${q.keyword}" in ${q.location})`);
       await jitter(700, 1600);
     }
-    return [...jobs.values()].slice(0, q.prefs.maxPerSearch);
+    return [...jobs.values()];
   }
 
   async enrich(job: DiscoveredJob): Promise<DiscoveredJob> {

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { EMPTY_PROFILE } from '../../profile/constants/profile.constants';
 import { FieldKind } from '../enums/field-kind.enum';
 import { AnswerContext } from '../interfaces/answer-context.interface';
@@ -70,6 +73,30 @@ describe('answerFromProfile', () => {
   it('answers work authorization and sponsorship', () => {
     expect(ask('Are you legally authorized to work in India?', FieldKind.RADIO)).toBe('Yes');
     expect(ask('Will you now or in the future require sponsorship?', FieldKind.RADIO)).toBe('No');
+  });
+
+  it('never answers a question about someone else with your own name', () => {
+    expect(ask('Full Name')).toBe('Priya Sharma');
+    expect(ask('Do you know anyone currently working at ConveGenius? If yes, please mention the full name.')).toBeUndefined();
+    expect(ask('Referrer full name')).toBeUndefined();
+  });
+
+  it('fills education and "currently working here" from the profile', () => {
+    const withHistory: AnswerContext = {
+      ...ctx,
+      profile: {
+        ...ctx.profile,
+        currentCompany: 'Acme',
+        education: [{ degree: 'B.Tech', field: 'Computer Science', institution: 'IIT Delhi', startYear: 2014, endYear: 2018, grade: '' }],
+      },
+    };
+    const on = (label: string, kind = FieldKind.TEXT) => answerFromProfile(withHistory, field(label, kind))?.value;
+    expect(on('Course')).toBe('B.Tech');
+    expect(on('Branch/ Specialization')).toBe('Computer Science');
+    expect(on('University/ College')).toBe('IIT Delhi');
+    expect(on('Start of Course')).toBeUndefined();
+    expect(on('Currently working here', FieldKind.CHECKBOX)).toBe('true');
+    expect(ask('Currently working here', FieldKind.CHECKBOX)).toBe('false');
   });
 
   it('ticks consent boxes but leaves marketing ones alone', () => {

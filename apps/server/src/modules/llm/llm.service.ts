@@ -1,8 +1,11 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
-import { localDay, localDayStartIso } from '../../common/utils/date.util';
+import { localDay, localDayStartIso, localMonthStartIso } from '../../common/utils/date.util';
 import { SettingsService } from '../settings/settings.service';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
 import { LlmPurpose } from './enums/llm-purpose.enum';
@@ -11,6 +14,7 @@ import { LlmUnavailableError } from './errors/llm-unavailable.error';
 import { LlmCallOptions } from './interfaces/llm-call-options.interface';
 import { LlmTransport } from './interfaces/llm-transport.interface';
 import { LlmUsageSummary } from './interfaces/llm-usage-summary.interface';
+import { LlmUsagePeriod } from './interfaces/llm-usage-period.interface';
 import { extractJson } from './utils/json-extract.util';
 import { describeLlmError, isAuthError, isQuotaError } from './utils/llm-error.util';
 import { LlmFailure } from './interfaces/llm-failure.interface';
@@ -101,25 +105,41 @@ export class LlmService {
     return (await transport.listModels()).sort();
   }
 
-  usageToday(): LlmUsageSummary {
-    const since = localDayStartIso();
-    const totals = this.storage.get<{ calls: number; failed: number; p: number; c: number }>(
-      'SELECT COUNT(*) calls, SUM(ok = 0) failed, COALESCE(SUM(prompt_tokens),0) p, COALESCE(SUM(completion_tokens),0) c FROM llm_usage WHERE at >= ?',
-      [since],
-    ) ?? { calls: 0, failed: 0, p: 0, c: 0 };
-    const byPurpose = this.storage.all<{ purpose: string; calls: number; tokens: number }>(
-      'SELECT purpose, COUNT(*) calls, COALESCE(SUM(prompt_tokens + completion_tokens),0) tokens FROM llm_usage WHERE at >= ? GROUP BY purpose ORDER BY tokens DESC',
-      [since],
-    );
+  /** Usage is kept forever: today, this month and all time. */
+  usage(): LlmUsageSummary {
+    const today = localDayStartIso();
+    const byPurpose = (since: string | null) =>
+      this.storage.all<{ purpose: string; calls: number; tokens: number }>(
+        `SELECT purpose, COUNT(*) calls, COALESCE(SUM(prompt_tokens + completion_tokens),0) tokens FROM llm_usage
+         ${since ? 'WHERE at >= ?' : ''} GROUP BY purpose ORDER BY tokens DESC`,
+        since ? [since] : [],
+      );
+    const first = this.storage.get<{ at: string | null }>('SELECT MIN(at) at FROM llm_usage');
     return {
       day: localDay(),
-      calls: Number(totals.calls),
-      failedCalls: Number(totals.failed ?? 0),
-      promptTokens: Number(totals.p),
-      completionTokens: Number(totals.c),
       budget: this.budget,
-      byPurpose,
+      today: this.period(today),
+      month: this.period(localMonthStartIso()),
+      allTime: { ...this.period(null), since: first?.at ?? null },
+      byPurpose: byPurpose(today),
+      byPurposeAllTime: byPurpose(null),
+      byModel: this.storage.all<{ model: string; calls: number; tokens: number }>(
+        `SELECT provider || ' / ' || model model, COUNT(*) calls, COALESCE(SUM(prompt_tokens + completion_tokens),0) tokens
+         FROM llm_usage GROUP BY provider, model ORDER BY tokens DESC`,
+      ),
     };
+  }
+
+  private period(since: string | null): LlmUsagePeriod {
+    const r =
+      this.storage.get<{ calls: number; failed: number | null; p: number; c: number }>(
+        `SELECT COUNT(*) calls, SUM(ok = 0) failed, COALESCE(SUM(prompt_tokens),0) p, COALESCE(SUM(completion_tokens),0) c
+         FROM llm_usage ${since ? 'WHERE at >= ?' : ''}`,
+        since ? [since] : [],
+      ) ?? { calls: 0, failed: 0, p: 0, c: 0 };
+    const p = Number(r.p);
+    const c = Number(r.c);
+    return { calls: Number(r.calls), failedCalls: Number(r.failed ?? 0), promptTokens: p, completionTokens: c, tokens: p + c };
   }
 
   private async call(prompt: string, opts: LlmCallOptions, json: boolean): Promise<string> {
@@ -151,9 +171,9 @@ export class LlmService {
             level: kind === 'other' ? 'warn' : 'error',
             message:
               kind === 'quota'
-                ? `AI model (${transport.kind}) has no credits left - continuing without AI. Add credits or switch to a free model in Settings.`
+                ? `AI model (${transport.kind}) has no credits left - paused for 10 minutes, continuing without AI. Add credits or switch to a free model in Settings.`
                 : kind === 'auth'
-                  ? `AI model (${transport.kind}) rejected the API key - continuing without AI. Fix the key in Settings.`
+                  ? `AI model (${transport.kind}) rejected the API key - paused for 10 minutes, continuing without AI. Fix the key in Settings.`
                   : `AI model (${transport.kind}) failed: ${detail}`,
           });
         }
@@ -161,9 +181,10 @@ export class LlmService {
         if (kind !== 'other') {
           // Retrying cannot help until the key or credits are fixed.
           this.benchedUntil.set(transport, Date.now() + AUTH_BENCH_MS);
-          this.logger.error(`${msg} - pausing this model for 10 minutes; the agent continues without it`);
+          this.logger.debug(`${msg} - paused for 10 minutes`);
         } else {
-          this.logger.warn(`LLM call failed (${opts.purpose}) - ${msg}`);
+          // Already shown once in the flight log; repeats go to the debug log only.
+          this.logger.debug(`LLM call failed (${opts.purpose}) - ${msg}`);
         }
       }
     }

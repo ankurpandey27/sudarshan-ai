@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { LlmSettings } from '../../settings/interfaces/app-settings.interface';
 import { presetFor } from '../constants/llm-presets.constants';
 import { LlmProviderKind } from '../enums/llm-provider-kind.enum';

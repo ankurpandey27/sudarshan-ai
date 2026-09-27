@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import TransportStream from 'winston-transport';
 import * as fs from 'fs';
 import * as path from 'path';

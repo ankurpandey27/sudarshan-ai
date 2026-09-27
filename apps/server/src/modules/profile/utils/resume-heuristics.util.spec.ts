@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pdfToText } from './pdf-text.util';

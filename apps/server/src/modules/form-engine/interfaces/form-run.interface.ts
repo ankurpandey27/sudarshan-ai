@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { AnswerContext } from './answer-context.interface';
 import { UnresolvedField } from './resolve-result.interface';
 

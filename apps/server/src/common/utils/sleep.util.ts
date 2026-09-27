@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 export const sleep = (ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms));
 
 export const jitter = (minMs: number, maxMs: number): Promise<void> =>

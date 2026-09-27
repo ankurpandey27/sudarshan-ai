@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Place, Proximity } from '../interfaces/geo.interface';
 import { CITIES, COUNTRIES, NEARBY_KM, REACHABLE_KM } from '../constants/geo.constants';
 

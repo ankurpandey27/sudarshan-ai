@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { AlertOctagon, AlertTriangle, CheckCircle2, Info, Wrench } from 'lucide-react';
@@ -20,7 +23,7 @@ export function InsightsPanel() {
   const items = data ?? [];
   if (items.length === 0) {
     return (
-      <div className="mb-4 flex items-center gap-2 rounded-xl border border-good/30 bg-good-soft/60 px-4 py-3 text-[13.5px]">
+      <div className="mb-5 flex items-center gap-2 rounded-2xl border border-good/25 bg-good-soft/50 px-5 py-3 text-[13.5px]">
         <CheckCircle2 className="size-4 text-good" />
         <span>
           <b>All clear.</b> Nothing is blocking the agent.
@@ -29,8 +32,8 @@ export function InsightsPanel() {
     );
   }
   return (
-    <section className="mb-4" aria-label="What needs attention">
-      <h2 className="mb-2 flex items-center gap-2 text-[12px] font-semibold tracking-wide text-ink-3 uppercase">
+    <section className="mb-5" aria-label="What needs attention">
+      <h2 className="mb-2 flex items-center gap-2 text-[13px] font-semibold text-ink-3">
         <Wrench className="size-3.5" /> What needs attention
       </h2>
       <div className="space-y-2">
@@ -56,7 +59,7 @@ function InsightCard({ insight: i }: { insight: Insight }) {
   });
   const t = tone[i.severity];
   return (
-    <article className={cn('rounded-xl border px-4 py-3', t.box)}>
+    <article className={cn('rounded-2xl border px-5 py-3.5', t.box)}>
       <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
         <span className="mt-0.5">{t.icon}</span>
         <div className="min-w-0 flex-1">

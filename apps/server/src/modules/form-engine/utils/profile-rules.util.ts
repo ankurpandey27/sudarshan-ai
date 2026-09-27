@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { extractSkills } from '../../discovery/utils/job-normalizer.util';
 import { FieldKind } from '../enums/field-kind.enum';
 import { AnswerContext, RuleAnswer } from '../interfaces/answer-context.interface';
@@ -48,7 +51,8 @@ const RULES: ProfileRule[] = [
   { test: /\bmiddle\s*name\b/, answer: () => guess('') },
   {
     test: /^(your\s+)?(full\s+)?name$|\bfull\s*name\b|\bcandidate('s)?\s*name\b|^name\b/,
-    not: /company|employer|school|university|college|reference|father|mother|spouse|manager|recruiter/,
+    // "Do you know anyone working here? Mention the full name" asks about someone else.
+    not: /company|employer|school|university|college|reference|referr|refer\b|father|mother|spouse|manager|recruiter|anyone|someone|know|friend|relative|employee|working (at|in|with)|contact person/,
     answer: (c) => fact(`${c.profile.firstName} ${c.profile.lastName}`.trim()),
   },
   { test: /e-?mail/, not: /manager|reference|referr/, answer: (c) => fact(c.profile.email) },
@@ -128,6 +132,16 @@ const RULES: ProfileRule[] = [
     answer: (c) => fact(c.profile.education[0]?.degree),
   },
   {
+    test: /^(course|degree)$|\bcourse\s*name\b|\bdegree\s*(name|title)?$|name of (the )?(course|degree)/,
+    not: /start|end|year|duration|date|percent|grade/,
+    answer: (c) => fact(c.profile.education[0]?.degree),
+  },
+  {
+    test: /branch|speciali[sz]ation|\bmajor\b|field\s*of\s*study|\bstream\b|discipline/,
+    not: /year|date|percent|grade/,
+    answer: (c) => fact(c.profile.education[0]?.field),
+  },
+  {
     test: /\b(university|college|institution|school)\b/,
     not: /year|gpa|grade|degree|percent/,
     answer: (c) => fact(c.profile.education[0]?.institution),
@@ -181,6 +195,11 @@ export function answerFromProfile(ctx: AnswerContext, field: FormField): RuleAns
   if (field.kind === FieldKind.CHECKBOX) {
     const skill = skillYearsRule(ctx, field);
     if (skill) return { ...skill, value: skill.value === 'Yes' ? 'true' : 'false' };
+    // "Currently working here" next to the current-company fields.
+    if (/currently\s*(work|employ)|presently\s*(work|employ)|i\s*(still\s*)?work\s*here|current\s*(job|employer|company)/i.test(field.label)) {
+      const current = ctx.profile.experience[0]?.current ?? !!ctx.profile.currentCompany;
+      return fact(current ? 'true' : 'false');
+    }
     return checkboxRule(field);
   }
   const skill = skillYearsRule(ctx, field);

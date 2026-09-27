@@ -1,5 +1,10 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 export enum PrepareStatus {
   READY = 'ready',
+  /** One-click apply: the site confirmed the application right after "Apply". */
+  APPLIED = 'applied',
   ALREADY_APPLIED = 'already_applied',
   EXTERNAL = 'external',
   CLOSED = 'closed',

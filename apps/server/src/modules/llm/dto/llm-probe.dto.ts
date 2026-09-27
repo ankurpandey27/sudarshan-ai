@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { IsEnum, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 import { LlmProviderKind } from '../enums/llm-provider-kind.enum';
 

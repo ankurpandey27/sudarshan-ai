@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { ValidationPipe } from '@nestjs/common';
@@ -18,8 +21,8 @@ export function configureApp(app: NestExpressApplication): string {
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
-          fontSrc: ["'self'", 'https://fonts.gstatic.com', 'data:'],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          fontSrc: ["'self'", 'data:'],
           imgSrc: ["'self'", 'data:', 'blob:'],
           connectSrc: ["'self'"],
         },

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger } from '@nestjs/common';
 import { AnswersService } from '../answers/answers.service';
 import { AnswerSource } from '../answers/enums/answer-source.enum';

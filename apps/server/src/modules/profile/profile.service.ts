@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { extname, join } from 'node:path';
 import { BadRequestException, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';

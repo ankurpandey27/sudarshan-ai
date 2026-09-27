@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 // Dev: server in watch mode + Vite UI on http://localhost:5173.
 import { spawn } from 'node:child_process';
 

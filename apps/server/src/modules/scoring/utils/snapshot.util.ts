@@ -1,8 +1,11 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Job, ScoreDetail } from '../../jobs/interfaces/job.interface';
 import { CandidateProfile } from '../../profile/interfaces/candidate-profile.interface';
 import { JobSnapshot, ProfileSnapshot } from '../interfaces/snapshots.interface';
 
-export function toProfileSnapshot(p: CandidateProfile): ProfileSnapshot {
+export function toProfileSnapshot(p: CandidateProfile, searchLocations: string[] = []): ProfileSnapshot {
   return {
     currentRole: p.currentTitle,
     yearsExperience: p.totalYearsExperience,
@@ -11,6 +14,8 @@ export function toProfileSnapshot(p: CandidateProfile): ProfileSnapshot {
     salaryCurrency: p.currency,
     location: [p.city, p.country].filter(Boolean).join(', ') || 'India',
     remotePreferred: p.remotePreferred,
+    willingToRelocate: p.willingToRelocate === true,
+    searchLocations: searchLocations.filter((l) => l.trim() && !/^remote$/i.test(l.trim())),
     summary: p.summary,
   };
 }

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import axios from 'axios';
 import { LlmProviderKind } from '../enums/llm-provider-kind.enum';
 import { Completion, CompletionRequest } from '../interfaces/completion.interface';
@@ -5,6 +8,7 @@ import { LlmTransport } from '../interfaces/llm-transport.interface';
 import { GeminiResponse, OpencodeProtocol } from '../interfaces/opencode.interface';
 import { estimateTokens } from '../utils/json-extract.util';
 import { isProtocolMismatch } from '../utils/llm-error.util';
+import { RequestParams } from '../utils/request-params.util';
 
 const TIMEOUT_MS = 90_000;
 const ALL_PROTOCOLS: OpencodeProtocol[] = ['chat', 'messages', 'responses', 'gemini'];
@@ -23,6 +27,7 @@ export class OpencodeTransport implements LlmTransport {
   readonly kind = LlmProviderKind.OPENCODE;
   readonly local = false;
   private resolved: OpencodeProtocol | null = null;
+  private readonly params = new RequestParams();
 
   constructor(
     readonly model: string,
@@ -36,7 +41,7 @@ export class OpencodeTransport implements LlmTransport {
     let lastErr: unknown;
     for (const protocol of candidates) {
       try {
-        const res = await this.call(protocol, req);
+        const res = await this.params.send(() => this.call(protocol, req));
         this.resolved = protocol;
         return res;
       } catch (err) {
@@ -66,7 +71,12 @@ export class OpencodeTransport implements LlmTransport {
       case 'chat': {
         const { data } = await axios.post(
           `${base}/chat/completions`,
-          { model: this.model, messages: [{ role: 'user', content: prompt }], temperature: 0, max_tokens: maxTokens },
+          {
+            model: this.model,
+            messages: [{ role: 'user', content: prompt }],
+            [this.params.maxTokensField]: maxTokens,
+            ...(this.params.allows('temperature') ? { temperature: 0 } : {}),
+          },
           { headers: this.headers(), timeout: TIMEOUT_MS },
         );
         text = String(data.choices?.[0]?.message?.content ?? '');
@@ -106,7 +116,7 @@ export class OpencodeTransport implements LlmTransport {
           `${base}/models/${encodeURIComponent(this.model)}:generateContent`,
           {
             contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0, maxOutputTokens: maxTokens },
+            generationConfig: { maxOutputTokens: maxTokens, ...(this.params.allows('temperature') ? { temperature: 0 } : {}) },
           },
           { headers: this.headers(), timeout: TIMEOUT_MS },
         );

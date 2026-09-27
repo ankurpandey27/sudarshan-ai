@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -5,13 +8,20 @@ import { Briefcase, CheckCheck, Download, Link2, RotateCcw, Search } from 'lucid
 import { api } from '../lib/api';
 import { cn } from '../lib/format';
 import { useJobs } from '../lib/queries';
+import type { JobPlatform } from '../lib/types';
+import { PlatformFilter } from '../components/platform-filter';
 import { JobRow } from '../components/job-row';
 import { Button, Card, Empty, Input, PageTitle, Textarea } from '../components/ui';
 import { useToast } from '../components/toast';
+import { InfoTip } from '../components/info-tip';
 
 const TABS = [
   { id: 'applied', label: 'Applied', status: 'applied' },
-  { id: 'attention', label: 'Needs attention', status: 'needs_input,manual,failed' },
+  {
+    id: 'attention',
+    label: 'Needs attention',
+    status: 'needs_input,manual,failed',
+  },
   { id: 'all', label: 'Everything', status: '' },
 ] as const;
 
@@ -20,9 +30,17 @@ export function Applications() {
   const [tab, setTab] = useState<(typeof TABS)[number]['id']>(() => TABS.find((t) => t.id === params.get('tab'))?.id ?? 'applied');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
+  const [platform, setPlatform] = useState<JobPlatform | ''>('');
   const [adding, setAdding] = useState(false);
   const current = TABS.find((t) => t.id === tab)!;
-  const { data, isLoading } = useJobs({ status: current.status, search, sort: tab === 'applied' ? 'applied' : 'recent', page, limit: 50 });
+  const { data, isLoading } = useJobs({
+    status: current.status,
+    platform,
+    search,
+    sort: tab === 'applied' ? 'applied' : 'recent',
+    page,
+    limit: 50,
+  });
   const qc = useQueryClient();
   const toast = useToast();
   const refresh = () => {
@@ -59,7 +77,10 @@ export function Applications() {
             <Button icon={<Link2 className="size-4" />} onClick={() => setAdding((a) => !a)}>
               Add job links
             </Button>
-            <a href="/api/workbook/export/file" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3.5 text-sm font-medium hover:bg-surface-2">
+            <a
+              href="/api/workbook/export/file"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3.5 text-sm font-medium hover:bg-surface-2"
+            >
               <Download className="size-4" /> Export to Excel
             </a>
           </>
@@ -67,19 +88,26 @@ export function Applications() {
       />
       {adding && <AddLinks onDone={() => setAdding(false)} />}
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div className="flex rounded-lg border border-line bg-surface p-0.5">
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => {
-                setTab(t.id);
-                setPage(1);
-              }}
-              className={cn('rounded-md px-3 py-1 text-[13px]', tab === t.id ? 'bg-surface-2 font-semibold' : 'text-ink-3 hover:text-ink')}
-            >
-              {t.label}
-            </button>
-          ))}
+        <div className="flex items-center gap-1">
+          <div className="flex rounded-lg border border-line bg-surface p-0.5">
+            {TABS.map((t) => (
+              <button
+                key={t.id}
+                onClick={() => {
+                  setTab(t.id);
+                  setPage(1);
+                }}
+                className={cn('rounded-md px-3 py-1 text-[13px]', tab === t.id ? 'bg-surface-2 font-semibold' : 'text-ink-3 hover:text-ink')}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          <InfoTip title="Jobs that need attention" align="left">
+            <b>Open in agent browser</b> opens the job in Sudarshan's own window, where you are already logged in, so you can finish it yourself.{' '}
+            <b>I applied</b> marks it as applied once you have. <b>Retry</b> puts it back in the queue for Sudarshan to try again. Open a job's title to see
+            every step Sudarshan took.
+          </InfoTip>
         </div>
         <div className="relative w-full sm:w-64">
           <Search className="pointer-events-none absolute top-2.5 left-2.5 size-4 text-ink-3" />
@@ -93,6 +121,16 @@ export function Applications() {
             className="pl-8"
           />
         </div>
+      </div>
+      <div className="mb-3">
+        <PlatformFilter
+          counts={data?.platforms}
+          value={platform}
+          onChange={(p) => {
+            setPlatform(p);
+            setPage(1);
+          }}
+        />
       </div>
       <Card>
         {!isLoading && !data?.items.length && (
@@ -166,7 +204,13 @@ function AddLinks({ onDone }: { onDone: () => void }) {
   return (
     <Card className="mb-4 p-4">
       <p className="mb-2 text-[13px] font-semibold">Paste job links - one per line, any site</p>
-      <Textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder={'https://www.linkedin.com/jobs/view/...\nhttps://www.instahyre.com/job-...\nhttps://jobs.lever.co/...'} className="font-mono text-[12.5px]" />
+      <Textarea
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        rows={4}
+        placeholder={'https://www.linkedin.com/jobs/view/...\nhttps://www.instahyre.com/job-...\nhttps://jobs.lever.co/...'}
+        className="font-mono text-[12.5px]"
+      />
       <div className="mt-2 flex gap-2">
         <Button variant="primary" onClick={() => add.mutate()} loading={add.isPending} disabled={!/https?:\/\/|www\./.test(text)}>
           Queue them

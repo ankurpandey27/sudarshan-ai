@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { KeywordFilterService } from './keyword-filter.service';
 import { ProfileSnapshot, JobSnapshot } from './interfaces/snapshots.interface';
 import { SkipRule } from './enums/skip-rule.enum';
@@ -9,6 +12,8 @@ const profile: ProfileSnapshot = {
   salaryCurrency: 'INR',
   location: 'India',
   remotePreferred: true,
+  willingToRelocate: false,
+  searchLocations: [],
 };
 
 const job = (over: Partial<JobSnapshot>): JobSnapshot => ({
@@ -64,5 +69,24 @@ describe('KeywordFilterService', () => {
   it('never skips on skills when the profile has none (unknown is not "no match")', () => {
     const f = new KeywordFilterService();
     expect(f.filter({ ...profile, skills: [] }, job({ requiredSkills: ['node.js', 'typescript'] })).outcome).toBe('PASS');
+  });
+
+  describe('distance', () => {
+    const filter = new KeywordFilterService();
+    const noida = { ...profile, location: 'Noida, India' };
+    const bengaluru = job({ location: 'Bengaluru, Karnataka, India' });
+
+    it('skips a far on-site job when the user will not relocate and did not search there', () => {
+      expect(filter.filter(noida, bengaluru)).toMatchObject({ outcome: 'SKIP', rule: SkipRule.LOCATION });
+    });
+
+    it('keeps it when the user is willing to relocate', () => {
+      expect(filter.filter({ ...noida, willingToRelocate: true }, bengaluru).outcome).not.toBe('SKIP');
+    });
+
+    it('keeps it when the user searched that city or the whole country', () => {
+      expect(filter.filter({ ...noida, searchLocations: ['Bengaluru'] }, bengaluru).outcome).not.toBe('SKIP');
+      expect(filter.filter({ ...noida, searchLocations: ['India'] }, bengaluru).outcome).not.toBe('SKIP');
+    });
   });
 });

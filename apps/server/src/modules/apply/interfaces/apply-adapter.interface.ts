@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Page } from 'puppeteer-core';
 import { FormRunOutcome, RunFormOptions } from '../../form-engine/interfaces/form-run.interface';
 import { Job } from '../../jobs/interfaces/job.interface';

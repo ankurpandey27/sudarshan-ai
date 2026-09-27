@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger, NotFoundException, OnApplicationBootstrap } from '@nestjs/common';
 import { SQLInputValue } from 'node:sqlite';
 import { StorageService } from '../../common/storage/storage.service';
@@ -6,6 +9,9 @@ import { AgentEventType } from '../../common/events/enums/agent-event-type.enum'
 import { localDayStartIso } from '../../common/utils/date.util';
 import { detectRemote, extractSkills, parseSalary } from '../discovery/utils/job-normalizer.util';
 import { JobSource } from './enums/job-source.enum';
+import { JobPlatform } from './enums/job-platform.enum';
+import { PLATFORM_SQL } from './constants/job-platform.constants';
+import { JobList } from './interfaces/job-list.interface';
 import { JobStatus } from './enums/job-status.enum';
 import { Attempt, AttemptRow, AttemptStats } from './interfaces/attempt.interface';
 import { DiscoveredJob } from './interfaces/discovered-job.interface';
@@ -16,7 +22,6 @@ import { JobLinkDto } from './dto/job-link.dto';
 import { toJob } from './utils/job.mapper.util';
 import { toAttempt } from './utils/attempt.mapper.util';
 import { parseJobUrl } from './utils/job-url.util';
-import { Paginated } from '../../common/interfaces/paginated.interface';
 
 @Injectable()
 export class JobsService implements OnApplicationBootstrap {
@@ -123,7 +128,7 @@ export class JobsService implements OnApplicationBootstrap {
     return toJob(row);
   }
 
-  list(q: ListJobsQueryDto): Paginated<Job> {
+  list(q: ListJobsQueryDto): JobList {
     const where: string[] = [];
     const params: SQLInputValue[] = [];
     if (q.status?.length) {
@@ -138,6 +143,16 @@ export class JobsService implements OnApplicationBootstrap {
       where.push('(title LIKE ? OR company LIKE ?)');
       params.push(`%${q.search}%`, `%${q.search}%`);
     }
+    // Counts per platform use every filter except the platform itself.
+    const base = where.length ? `WHERE ${where.join(' AND ')}` : '';
+    const platforms: Record<string, number> = {};
+    for (const r of this.storage.all<{ p: string; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs ${base} GROUP BY p`, params)) {
+      platforms[r.p] = Number(r.n);
+    }
+    if (q.platform) {
+      where.push(`${PLATFORM_SQL} = ?`);
+      params.push(q.platform);
+    }
     const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const order =
       q.sort === 'recent' ? 'updated_at DESC' : q.sort === 'applied' ? 'applied_at DESC' : 'COALESCE(score, -1) DESC, discovered_at DESC';
@@ -145,7 +160,7 @@ export class JobsService implements OnApplicationBootstrap {
     const offset = ((q.page ?? 1) - 1) * limit;
     const total = this.storage.get<{ n: number }>(`SELECT COUNT(*) n FROM jobs ${clause}`, params)?.n ?? 0;
     const rows = this.storage.all<JobRow>(`SELECT * FROM jobs ${clause} ORDER BY ${order} LIMIT ? OFFSET ?`, [...params, limit, offset]);
-    return { items: rows.map(toJob), total: Number(total), page: q.page ?? 1, limit };
+    return { items: rows.map(toJob), total: Number(total), page: q.page ?? 1, limit, platforms };
   }
 
   unscored(limit: number): Job[] {
@@ -154,12 +169,12 @@ export class JobsService implements OnApplicationBootstrap {
       .map(toJob);
   }
 
-  nextToApply(sources: JobSource[]): Job | null {
-    if (sources.length === 0) return null;
+  nextToApply(platforms: JobPlatform[]): Job | null {
+    if (platforms.length === 0) return null;
     const row = this.storage.get<JobRow>(
-      `SELECT * FROM jobs WHERE status = ? AND source IN (${sources.map(() => '?').join(',')})
+      `SELECT * FROM jobs WHERE status = ? AND ${PLATFORM_SQL} IN (${platforms.map(() => '?').join(',')})
        ORDER BY (origin = 'link') DESC, COALESCE(score, 0) DESC, discovered_at LIMIT 1`,
-      [JobStatus.APPROVED, ...sources],
+      [JobStatus.APPROVED, ...platforms],
     );
     return row ? toJob(row) : null;
   }
@@ -236,10 +251,20 @@ export class JobsService implements OnApplicationBootstrap {
     ]).changes;
   }
 
-  appliedToday(source?: JobSource): number {
+  queuedOn(platform: JobPlatform): number {
+    return Number(
+      this.storage.get<{ n: number }>(`SELECT COUNT(*) n FROM jobs WHERE status = ? AND ${PLATFORM_SQL} = ?`, [JobStatus.APPROVED, platform])?.n ?? 0,
+    );
+  }
+
+  appliedToday(platform?: JobPlatform): number {
     const since = localDayStartIso();
-    const row = source
-      ? this.storage.get<{ n: number }>('SELECT COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ? AND source = ?', [JobStatus.APPLIED, since, source])
+    const row = platform
+      ? this.storage.get<{ n: number }>(`SELECT COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ? AND ${PLATFORM_SQL} = ?`, [
+          JobStatus.APPLIED,
+          since,
+          platform,
+        ])
       : this.storage.get<{ n: number }>('SELECT COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ?', [JobStatus.APPLIED, since]);
     return Number(row?.n ?? 0);
   }
@@ -286,6 +311,19 @@ export class JobsService implements OnApplicationBootstrap {
     )) {
       appliedTodayBySource[r.source] = Number(r.n);
     }
+    const appliedTodayByPlatform: Record<string, number> = {};
+    for (const r of this.storage.all<{ p: string; n: number }>(
+      `SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ? GROUP BY p`,
+      [JobStatus.APPLIED, since],
+    )) {
+      appliedTodayByPlatform[r.p] = Number(r.n);
+    }
+    const queuedByPlatform: Record<string, number> = {};
+    for (const r of this.storage.all<{ p: string; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE status = ? GROUP BY p`, [
+      JobStatus.APPROVED,
+    ])) {
+      queuedByPlatform[r.p] = Number(r.n);
+    }
     const recent = this.storage.all<{ duration_ms: number; fields: number; memory_hits: number }>(
       `SELECT duration_ms, fields, memory_hits FROM attempts WHERE outcome = 'applied' AND duration_ms IS NOT NULL ORDER BY id DESC LIMIT 50`,
     );
@@ -296,6 +334,8 @@ export class JobsService implements OnApplicationBootstrap {
       byStatus,
       appliedToday: Object.values(appliedTodayBySource).reduce((a, b) => a + b, 0),
       appliedTodayBySource,
+      appliedTodayByPlatform,
+      queuedByPlatform,
       appliedTotal: byStatus[JobStatus.APPLIED] ?? 0,
       medianApplySeconds: durations.length ? Math.round(durations[Math.floor(durations.length / 2)] / 1000) : null,
       memoryHitRate: fields > 0 ? Math.round((hits / fields) * 100) / 100 : null,

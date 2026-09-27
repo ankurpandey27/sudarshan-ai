@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { createHash } from 'node:crypto';
 import { JobSource } from '../enums/job-source.enum';
 import { ParsedJobUrl } from '../interfaces/parsed-job-url.interface';
@@ -20,6 +23,11 @@ export function parseJobUrl(raw: string): ParsedJobUrl | null {
   if (host.endsWith('naukri.com')) {
     const id = /-(\d{9,})(?:[/?#]|$)/.exec(url.pathname)?.[1] ?? /(\d{9,})/.exec(url.pathname)?.[1];
     if (id) return { source: JobSource.NAUKRI, externalId: id, url: `${url.origin}${url.pathname}` };
+  }
+  if (host.endsWith('indeed.com')) {
+    // /viewjob?jk=..., search links (?vjk=...) and redirect links (/rc/clk?jk=...) all carry the job key.
+    const id = url.searchParams.get('jk') ?? url.searchParams.get('vjk');
+    if (id && /^[0-9a-f]{16}$/i.test(id)) return { source: JobSource.INDEED, externalId: id, url: `https://${host}/viewjob?jk=${id}` };
   }
   // Other sites: the URL minus tracking params is the id.
   for (const p of [...url.searchParams.keys()]) {

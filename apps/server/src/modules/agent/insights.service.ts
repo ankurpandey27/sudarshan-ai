@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable } from '@nestjs/common';
 import { PendingQuestionsService } from '../answers/pending-questions.service';
 import { BrowserService } from '../browser/browser.service';
@@ -12,7 +15,7 @@ import { SettingsService } from '../settings/settings.service';
 import { AgentMode } from '../settings/enums/agent-mode.enum';
 import { AgentService } from './agent.service';
 import { Insight } from './interfaces/insight.interface';
-import { sourceLabel } from './utils/source-label.util';
+import { sourceLabel } from '../jobs/utils/source-label.util';
 
 const FIELD_NAMES: Record<string, string> = {
   firstName: 'first name',
@@ -125,6 +128,17 @@ export class InsightsService {
     }
     for (const b of status.blockedSources) {
       const login = /log in/i.test(b.reason);
+      if (/switched off/i.test(b.reason)) {
+        out.push({
+          id: `off-${b.source}`,
+          severity: 'info',
+          title: `${sourceLabel(b.source)} is switched off`,
+          detail: `You have approved ${sourceLabel(b.source)} jobs, but applying there is off, so they wait.`,
+          fix: `Turn ${sourceLabel(b.source)} on under "Apply on" to apply to them, or leave it off.`,
+          actions: [{ label: 'Apply on', to: '/#apply-on' }],
+        });
+        continue;
+      }
       out.push({
         id: `blocked-${b.source}`,
         severity: login ? 'error' : 'info',

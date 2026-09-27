@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { localDay, localDayStartIso } from './date.util';
 
 describe('date-utils (local time)', () => {

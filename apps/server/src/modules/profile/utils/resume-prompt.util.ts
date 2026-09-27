@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { RESUME_PROMPT_CHARS } from '../constants/profile.constants';
 
 export const RESUME_SYSTEM_PROMPT =

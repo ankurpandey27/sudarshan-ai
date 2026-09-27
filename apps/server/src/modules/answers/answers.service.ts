@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
 import { ANSWER_SOURCE_TRUST, FUZZY_MATCH_THRESHOLD } from './constants/answers.constants';

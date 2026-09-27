@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -296,7 +299,7 @@ function StepSearch({ onFinish, finishing }: { onFinish: () => void; finishing: 
       </div>
       <div className="mt-8 flex justify-end border-t border-line pt-5">
         <Button variant="primary" onClick={onFinish} loading={finishing} icon={<Check className="size-4" />}>
-          Open mission control
+          Open Lakshya
         </Button>
       </div>
     </>

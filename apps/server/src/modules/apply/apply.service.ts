@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger } from '@nestjs/common';
 import { Page } from 'puppeteer-core';
 import { EventsService } from '../../common/events/events.service';
@@ -18,6 +21,9 @@ import { SettingsService } from '../settings/settings.service';
 import { LinkedInApplyAdapter } from './adapters/linkedin.adapter';
 import { NaukriApplyAdapter } from './adapters/naukri.adapter';
 import { WebApplyAdapter } from './adapters/web.adapter';
+import { IndeedApplyAdapter } from './adapters/indeed.adapter';
+import { LearningService } from '../learning/learning.service';
+import { WatchTarget } from '../learning/interfaces/watch-target.interface';
 import { PrepareStatus } from './enums/prepare-status.enum';
 import { ApplyAdapter, ApplyResult, PrepareResult } from './interfaces/apply-adapter.interface';
 
@@ -29,6 +35,7 @@ export class ApplyService {
   constructor(
     linkedin: LinkedInApplyAdapter,
     naukri: NaukriApplyAdapter,
+    indeed: IndeedApplyAdapter,
     private readonly web: WebApplyAdapter,
     private readonly browser: BrowserService,
     private readonly runner: FormRunnerService,
@@ -38,8 +45,9 @@ export class ApplyService {
     private readonly profile: ProfileService,
     private readonly settings: SettingsService,
     private readonly events: EventsService,
+    private readonly learning: LearningService,
   ) {
-    this.adapters = [linkedin, naukri, web];
+    this.adapters = [linkedin, naukri, indeed, web];
   }
 
   async apply(job: Job): Promise<ApplyResult> {
@@ -47,7 +55,7 @@ export class ApplyService {
     const trace: string[] = [];
     const step = (m: string) => {
       trace.push(`${new Date().toISOString().slice(11, 19)} ${m}`);
-      this.events.emit({ type: AgentEventType.APPLY_STEP, jobId: job.id, source: job.source, message: m });
+      this.events.emit({ type: AgentEventType.APPLY_STEP, jobId: job.id, source: job.platform, message: m });
     };
     const attemptId = this.jobs.startAttempt(job.id);
     this.jobs.setStatus(job.id, JobStatus.APPLYING, null);
@@ -56,6 +64,7 @@ export class ApplyService {
 
     let page: Page | null = null;
     let keepOpen = false;
+    let learnFrom: WatchTarget | null = null;
     let outcome: FormRunOutcome | null = null;
     let final: { status: JobStatus; detail: string };
     try {
@@ -67,7 +76,10 @@ export class ApplyService {
 
       if (prep.status === PrepareStatus.EXTERNAL) {
         if (!s.sources.externalSites.enabled || !prep.externalUrl) {
-          final = { status: JobStatus.MANUAL, detail: `Applies on the company site: ${prep.externalUrl ?? job.url}` };
+          final = {
+            status: JobStatus.MANUAL,
+            detail: `Not applied - this job applies on the company's own site. Turn on "Company career sites" under Apply on, or apply by hand: ${prep.externalUrl ?? job.url}`,
+          };
           return this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
         }
         step(`Company site: ${new URL(prep.externalUrl).hostname}`);
@@ -93,7 +105,17 @@ export class ApplyService {
         final = this.mapOutcome(job, run);
         this.recipes.outcome(opts.domain, run.status === 'applied');
         if (run.status === 'applied') await active.afterSuccess?.(page);
-        keepOpen = run.status === 'ready_to_submit' || run.status === 'captcha';
+        // Left to the user: keep the tab and learn from how they finish it.
+        keepOpen = ['ready_to_submit', 'captcha', 'stuck', 'blocked'].includes(run.status);
+        if (keepOpen) {
+          learnFrom = {
+            jobId: job.id,
+            jobLabel: `${job.title} @ ${job.company}`,
+            domain: opts.domain,
+            scopeSelector: prep.scopeSelector,
+            successPattern: prep.successPattern,
+          };
+        }
       } else if (prep.status === PrepareStatus.LOGIN_REQUIRED || prep.status === PrepareStatus.CAPTCHA) {
         keepOpen = true;
       }
@@ -102,7 +124,9 @@ export class ApplyService {
       this.logger.warn(`Apply failed for job ${job.id}: ${msg}`);
       final = { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}` };
     }
-    return this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
+    const result = await this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
+    if (page && learnFrom) await this.learning.watch(page, learnFrom);
+    return result;
   }
 
   private async finish(
@@ -130,7 +154,7 @@ export class ApplyService {
     );
     this.jobs.setStatus(job.id, final.status, final.detail);
     const level = final.status === JobStatus.APPLIED ? 'success' : final.status === JobStatus.FAILED ? 'error' : 'warn';
-    this.events.emit({ type: AgentEventType.LOG, level, jobId: job.id, source: job.source, message: `${job.title} @ ${job.company}: ${final.detail}` });
+    this.events.emit({ type: AgentEventType.LOG, level, jobId: job.id, source: job.platform, message: `${job.title} @ ${job.company}: ${final.detail}` });
     if (page && !keepOpen) await page.close().catch(() => undefined);
     return { status: final.status, detail: final.detail };
   }
@@ -139,15 +163,17 @@ export class ApplyService {
     switch (prep.status) {
       case PrepareStatus.ALREADY_APPLIED:
         return { status: JobStatus.APPLIED, detail: 'You had already applied' };
+      case PrepareStatus.APPLIED:
+        return { status: JobStatus.APPLIED, detail: prep.detail ?? 'Applied in one click' };
       case PrepareStatus.CLOSED:
         return { status: JobStatus.SKIPPED, detail: prep.detail ?? 'No longer accepting applications' };
       case PrepareStatus.LOGIN_REQUIRED:
-        // Job boards stay queued (the board is paused until login); other sites need a manual re-approve.
-        return job.source === JobSource.WEB
+        // LinkedIn and Naukri stay queued (the board is paused until login); anything else would retry in a loop.
+        return job.source !== JobSource.LINKEDIN && job.source !== JobSource.NAUKRI
           ? { status: JobStatus.MANUAL, detail: prep.detail ?? 'Log in to this site in the agent browser, then approve again' }
           : { status: JobStatus.APPROVED, detail: prep.detail ?? 'Waiting for you to log in' };
       case PrepareStatus.CAPTCHA:
-        return { status: JobStatus.MANUAL, detail: 'Captcha - finish it in the agent browser window' };
+        return { status: JobStatus.MANUAL, detail: prep.detail ?? 'Captcha - finish it in the agent browser window' };
       case PrepareStatus.NO_APPLY_BUTTON:
         return { status: JobStatus.MANUAL, detail: prep.detail ?? 'No apply button found - apply by hand' };
       default:
@@ -167,6 +193,8 @@ export class ApplyService {
       case 'blocked':
       case 'captcha':
         return { status: JobStatus.MANUAL, detail: o.detail };
+      case 'stuck':
+        return { status: JobStatus.MANUAL, detail: `${o.detail} - finish it in the open tab; Sudarshan learns from what you do` };
       default:
         return { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: o.detail };
     }

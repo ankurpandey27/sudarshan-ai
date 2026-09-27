@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, ShieldCheck } from 'lucide-react';
@@ -9,6 +12,7 @@ import { SiteConnections } from '../components/site-connections';
 import { DropUpload } from '../components/drop-upload';
 import { Button, Card, CardHeader, Field, Input, PageTitle, Select, Toggle } from '../components/ui';
 import { useToast } from '../components/toast';
+import { InfoTip } from '../components/info-tip';
 
 const csv = (v: string) =>
   v
@@ -26,7 +30,12 @@ export function SettingsPage() {
   }, [data]);
 
   const save = useMutation({
-    mutationFn: (s: Settings) => api.patch<Settings>('/settings', { search: s.search, sources: s.sources, agent: s.agent }),
+    mutationFn: (s: Settings) =>
+      api.patch<Settings>('/settings', {
+        search: s.search,
+        sources: s.sources,
+        agent: s.agent,
+      }),
     onSuccess: (s) => {
       qc.setQueryData(['settings'], s);
       toast('ok', 'Settings saved');
@@ -50,7 +59,10 @@ export function SettingsPage() {
   const search = <K extends keyof Settings['search']>(k: K, v: Settings['search'][K]) => setDraft({ ...draft, search: { ...draft.search, [k]: v } });
   const agent = <K extends keyof Settings['agent']>(k: K, v: Settings['agent'][K]) => setDraft({ ...draft, agent: { ...draft.agent, [k]: v } });
   const source = (k: keyof Settings['sources'], patch: Partial<Settings['sources'][typeof k]>) =>
-    setDraft({ ...draft, sources: { ...draft.sources, [k]: { ...draft.sources[k], ...patch } } });
+    setDraft({
+      ...draft,
+      sources: { ...draft.sources, [k]: { ...draft.sources[k], ...patch } },
+    });
   const dirty = JSON.stringify([draft.search, draft.sources, draft.agent]) !== JSON.stringify([data.search, data.sources, data.agent]);
   const num = (v: string) => (v === '' ? 0 : Number(v));
 
@@ -68,6 +80,11 @@ export function SettingsPage() {
             <Button onClick={() => rescore.mutate()} loading={rescore.isPending}>
               Re-score jobs
             </Button>
+            <InfoTip title="Re-score jobs">
+              Checks every job waiting in Review, and every skipped job, again against your current profile and settings - so a job skipped before can come back
+              if it now fits. Use it after changing your skills, salary, city or score thresholds. Approved and applied jobs are not touched. With an AI model
+              set, this uses a few AI calls.
+            </InfoTip>
             <Button variant="primary" onClick={() => save.mutate(draft)} loading={save.isPending} disabled={!dirty}>
               {dirty ? 'Save changes' : 'Saved'}
             </Button>
@@ -111,7 +128,12 @@ export function SettingsPage() {
             <Field label="Skip titles containing" hint="e.g. Intern, Principal, Manager">
               <Input value={draft.search.excludeTitleWords.join(', ')} onChange={(e) => search('excludeTitleWords', csv(e.target.value))} />
             </Field>
-            <Toggle checked={draft.search.easyApplyOnly} onChange={(v) => search('easyApplyOnly', v)} label="Easy Apply only" hint="Jobs that apply inside LinkedIn - fastest and most reliable" />
+            <Toggle
+              checked={draft.search.easyApplyOnly}
+              onChange={(v) => search('easyApplyOnly', v)}
+              label="Easy Apply only"
+              hint="Jobs that apply inside LinkedIn - fastest and most reliable"
+            />
             <Toggle checked={draft.search.remoteOnly} onChange={(v) => search('remoteOnly', v)} label="Remote only" />
           </div>
         </Card>
@@ -123,7 +145,9 @@ export function SettingsPage() {
               [
                 ['linkedin', 'LinkedIn', 'Easy Apply inside LinkedIn'],
                 ['naukri', 'Naukri', 'Apply + Naukri chat questions'],
-                ['links', 'Your job links', 'Links from Excel or pasted - any site'],
+                ['indeed', 'Indeed', 'Search and "Easily apply" on Indeed - keep this low, Indeed restricts automation'],
+                ['instahyre', 'Instahyre', 'Search and one-click apply on Instahyre'],
+                ['links', 'Other career sites', 'Any other job link from Excel or pasted'],
                 ['externalSites', 'Company career sites', 'Follow "Apply on company site" into Greenhouse, Lever, Workday...'],
               ] as const
             ).map(([k, label, hint]) => (
@@ -171,11 +195,32 @@ export function SettingsPage() {
                 <Input type="number" min={1} max={24} value={draft.agent.activeHoursEnd} onChange={(e) => agent('activeHoursEnd', num(e.target.value))} />
               </Field>
             </div>
-            <Toggle checked={draft.agent.pauseBeforeSubmit} onChange={(v) => agent('pauseBeforeSubmit', v)} label="Stop before the final Submit" hint="Dry run: fills everything, you press Submit in the agent browser" />
-            <Toggle checked={draft.agent.llmScoring} onChange={(v) => agent('llmScoring', v)} label="AI job scoring" hint="Off = free rule-based scoring only" />
-            <Toggle checked={draft.agent.headless} onChange={(v) => agent('headless', v)} label="Hide the browser window" hint="Visible is recommended: you can watch and solve captchas" />
+            <Toggle
+              checked={draft.agent.pauseBeforeSubmit}
+              onChange={(v) => agent('pauseBeforeSubmit', v)}
+              label="Stop before the final Submit"
+              hint="Dry run: fills everything, you press Submit in the agent browser"
+            />
+            <Toggle
+              checked={draft.agent.llmScoring}
+              onChange={(v) => agent('llmScoring', v)}
+              label="AI job scoring"
+              hint="Off = free rule-based scoring only"
+            />
+            <Toggle
+              checked={draft.agent.headless}
+              onChange={(v) => agent('headless', v)}
+              label="Hide the browser window"
+              hint="Visible is recommended: you can watch and solve captchas"
+            />
             <Field label="Daily AI token budget" hint="Paid models stop at this; local models are unlimited">
-              <Input type="number" min={0} step={10000} value={draft.agent.tokenBudgetPerDay} onChange={(e) => agent('tokenBudgetPerDay', num(e.target.value))} />
+              <Input
+                type="number"
+                min={0}
+                step={10000}
+                value={draft.agent.tokenBudgetPerDay}
+                onChange={(e) => agent('tokenBudgetPerDay', num(e.target.value))}
+              />
             </Field>
             <Field label="Browser path (optional)" hint="Leave blank to use Chrome / Edge automatically">
               <Input value={draft.agent.browserPath} onChange={(e) => agent('browserPath', e.target.value)} />
@@ -194,12 +239,24 @@ export function SettingsPage() {
           <Card>
             <CardHeader title="Spreadsheet" hint="Answers, job links and preferences in one file" />
             <div className="space-y-3 p-4">
-              <DropUpload accept=".xlsx,.xlsm,.csv" busy={importSheet.isPending} onFile={(f) => importSheet.mutate(f)} title="Import spreadsheet" hint=".xlsx or .csv" />
+              <DropUpload
+                accept=".xlsx,.xlsm,.csv"
+                busy={importSheet.isPending}
+                onFile={(f) => importSheet.mutate(f)}
+                title="Import spreadsheet"
+                hint=".xlsx or .csv"
+              />
               <div className="flex flex-wrap gap-2">
-                <a href="/api/workbook/template/file" className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-2.5 text-[13px] hover:bg-surface-2">
+                <a
+                  href="/api/workbook/template/file"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-2.5 text-[13px] hover:bg-surface-2"
+                >
                   <Download className="size-3.5" /> Template
                 </a>
-                <a href="/api/workbook/export/file" className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-2.5 text-[13px] hover:bg-surface-2">
+                <a
+                  href="/api/workbook/export/file"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line-strong px-2.5 text-[13px] hover:bg-surface-2"
+                >
                   <Download className="size-3.5" /> Export applications
                 </a>
               </div>

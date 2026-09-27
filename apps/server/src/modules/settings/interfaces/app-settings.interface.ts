@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { LlmProviderKind } from '../../llm/enums/llm-provider-kind.enum';
 import { AgentMode } from '../enums/agent-mode.enum';
 
@@ -28,6 +31,9 @@ export interface SourceSettings {
 export interface SourcesSettings {
   linkedin: SourceSettings;
   naukri: SourceSettings;
+  instahyre: SourceSettings;
+  indeed: SourceSettings;
+  /** Every other career site (links from Excel or pasted). */
   links: SourceSettings;
   externalSites: SourceSettings;
 }

@@ -1,16 +1,20 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import axios from 'axios';
 import { LlmProviderKind } from '../enums/llm-provider-kind.enum';
 import { Completion, CompletionRequest } from '../interfaces/completion.interface';
 import { LlmTransport } from '../interfaces/llm-transport.interface';
 import { estimateTokens } from '../utils/json-extract.util';
+import { RequestParams } from '../utils/request-params.util';
 
-// Reasoning models reject temperature and spend hidden tokens first.
+// Known reasoning families; anything else is learned from the model's own errors.
 const isReasoningModel = (model: string): boolean => /^(o\d|gpt-5)/i.test(model.replace(/^openai\//, ''));
+const REASONING_HEADROOM = 4000;
 
 // OpenAI, Gemini (compat), Groq, OpenRouter, Ollama, LM Studio, vLLM... baseUrl includes /v1.
 export class OpenAiCompatibleTransport implements LlmTransport {
-  // Dropped for the session once a server rejects it.
-  private jsonModeSupported = true;
+  private readonly params: RequestParams;
 
   constructor(
     readonly kind: LlmProviderKind,
@@ -18,19 +22,18 @@ export class OpenAiCompatibleTransport implements LlmTransport {
     private readonly baseUrl: string,
     private readonly apiKey: string,
     readonly local: boolean,
-  ) {}
+  ) {
+    const openai = kind === LlmProviderKind.OPENAI;
+    this.params = new RequestParams(openai ? 'max_completion_tokens' : 'max_tokens');
+    if (openai && isReasoningModel(model)) this.params.adapt('temperature');
+    if (!openai) this.params.adapt('reasoning_effort');
+  }
 
   async complete(req: CompletionRequest): Promise<Completion> {
-    try {
-      return await this.call(req, req.json === true && this.jsonModeSupported);
-    } catch (err) {
-      const status = axios.isAxiosError(err) ? err.response?.status : undefined;
-      if (req.json && this.jsonModeSupported && (status === 400 || status === 422)) {
-        this.jsonModeSupported = false;
-        return this.call(req, false);
-      }
-      throw err;
-    }
+    const first = await this.params.send(() => this.call(req, req.maxTokens));
+    // A reasoning model can spend the whole budget thinking and return nothing.
+    if (!first.text.trim() && first.truncated) return this.params.send(() => this.call(req, req.maxTokens + REASONING_HEADROOM * 2));
+    return first;
   }
 
   async listModels(): Promise<string[]> {
@@ -39,31 +42,28 @@ export class OpenAiCompatibleTransport implements LlmTransport {
     return list.map((m) => String(m.id ?? m.name ?? '').replace(/^models\//, '')).filter(Boolean);
   }
 
-  private async call(req: CompletionRequest, jsonMode: boolean): Promise<Completion> {
-    const reasoning = this.kind === LlmProviderKind.OPENAI && isReasoningModel(this.model);
-    const messages = [
-      ...(req.system ? [{ role: 'system', content: req.system }] : []),
-      { role: 'user', content: req.prompt },
-    ];
-    const body: Record<string, unknown> = { model: this.model, messages };
-    if (this.kind === LlmProviderKind.OPENAI) {
-      body.max_completion_tokens = reasoning ? req.maxTokens + 4000 : req.maxTokens;
-      if (reasoning) body.reasoning_effort = 'low';
-      else body.temperature = 0;
-    } else {
-      body.max_tokens = req.maxTokens;
-      body.temperature = 0;
-    }
-    if (jsonMode) body.response_format = { type: 'json_object' };
+  private async call(req: CompletionRequest, maxTokens: number): Promise<Completion & { truncated: boolean }> {
+    // Models that refuse temperature are reasoning models: give them room to think.
+    const reasoning = !this.params.allows('temperature');
+    const body: Record<string, unknown> = {
+      model: this.model,
+      messages: [...(req.system ? [{ role: 'system', content: req.system }] : []), { role: 'user', content: req.prompt }],
+      [this.params.maxTokensField]: reasoning ? maxTokens + REASONING_HEADROOM : maxTokens,
+    };
+    if (this.params.allows('temperature')) body.temperature = 0;
+    if (reasoning && this.params.allows('reasoning_effort')) body.reasoning_effort = 'low';
+    if (req.json && this.params.allows('response_format')) body.response_format = { type: 'json_object' };
 
     const { data } = await axios.post(`${this.baseUrl}/chat/completions`, body, {
       headers: { 'content-type': 'application/json', ...this.headers() },
       // A cold local model can be slow on the first call.
       timeout: this.local ? 180_000 : 90_000,
     });
-    const text = String(data?.choices?.[0]?.message?.content ?? '');
+    const choice = data?.choices?.[0];
+    const text = String(choice?.message?.content ?? '');
     return {
       text,
+      truncated: choice?.finish_reason === 'length',
       promptTokens: data?.usage?.prompt_tokens ?? estimateTokens(req.prompt),
       completionTokens: data?.usage?.completion_tokens ?? estimateTokens(text),
     };

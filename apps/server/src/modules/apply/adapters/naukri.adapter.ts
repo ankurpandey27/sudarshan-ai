@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable } from '@nestjs/common';
 import { Page } from 'puppeteer-core';
 import { jitter, sleep } from '../../../common/utils/sleep.util';
@@ -9,7 +12,7 @@ import { FormRunOutcome, RunFormOptions } from '../../form-engine/interfaces/for
 import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
-import { CLOSED_TEXT, NAUKRI_DRAWER, NAUKRI_SUCCESS } from '../constants/apply.constants';
+import { CLOSED_TEXT, NAUKRI_APPLIED_URL, NAUKRI_DRAWER, NAUKRI_SUCCESS } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { naukriLastQuestionInPage, naukriSendInPage } from '../scripts/naukri-chat.script';
@@ -71,13 +74,10 @@ export class NaukriApplyAdapter implements ApplyAdapter {
     let repeats = 0;
     for (let step = 1; step <= MAX_QUESTIONS; step++) {
       out.steps = step;
-      const doc = await page.evaluate(documentTextInPage);
-      if (prep.successPattern.test(doc)) return { ...out, status: 'applied', detail: 'Application submitted' };
-      if (!(await page.$(NAUKRI_DRAWER))) {
-        await sleep(2000);
-        if (prep.successPattern.test(await page.evaluate(documentTextInPage))) {
-          return { ...out, status: 'applied', detail: 'Application submitted' };
-        }
+      if (await this.confirmed(page, prep, 0)) return { ...out, status: 'applied', detail: 'Application submitted' };
+      if (!(await page.$(NAUKRI_DRAWER).catch(() => null))) {
+        // One-click applies navigate to a confirmation page; give it time to load.
+        if (await this.confirmed(page, prep, 8000)) return { ...out, status: 'applied', detail: 'Application submitted' };
         return { ...out, status: 'stuck', detail: 'Naukri did not confirm the application' };
       }
 
@@ -120,5 +120,19 @@ export class NaukriApplyAdapter implements ApplyAdapter {
       await jitter(1500, 2500);
     }
     return { ...out, status: 'stuck', detail: 'Too many questions' };
+  }
+
+  /** Naukri's confirmation: the "Applied to" page, its URL, or the job page's Applied state. */
+  private async confirmed(page: Page, prep: PrepareResult, waitMs: number): Promise<boolean> {
+    const deadline = Date.now() + waitMs;
+    for (;;) {
+      if (NAUKRI_APPLIED_URL.test(page.url())) return true;
+      // The page may be mid-navigation; treat that as "not yet".
+      const text = await page.evaluate(documentTextInPage).catch(() => '');
+      if (prep.successPattern.test(text)) return true;
+      if (await page.$('#already-applied').catch(() => null)) return true;
+      if (Date.now() >= deadline) return false;
+      await sleep(1000);
+    }
   }
 }

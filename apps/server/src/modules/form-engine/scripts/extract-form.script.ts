@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import type { FormSnapshot } from '../interfaces/form-field.interface';
 import type { FieldKind } from '../enums/field-kind.enum';
 
@@ -25,15 +28,23 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   const visible = (el: Element | null): boolean => {
     if (!el) return false;
     const h = el as HTMLElement;
-    if (typeof h.checkVisibility === 'function' && !h.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true })) {
-      // Custom radios/checkboxes hide the native input and style the label.
-      const t = (el as HTMLInputElement).type;
-      if (!(el.tagName === 'INPUT' && (t === 'radio' || t === 'checkbox' || t === 'file'))) return false;
-      const label = (el as HTMLInputElement).labels?.[0] ?? el.parentElement;
-      return !!label && visible(label);
-    }
-    const r = h.getBoundingClientRect();
-    return r.width > 0 || r.height > 0;
+    const shown =
+      (typeof h.checkVisibility !== 'function' || h.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true })) &&
+      (() => {
+        const r = h.getBoundingClientRect();
+        return r.width > 0 || r.height > 0;
+      })();
+    if (shown) return true;
+    // Custom radios/checkboxes hide the native input (display:none, or 0x0); what the user sees is a label or a wrapper.
+    const t = (el as HTMLInputElement).type;
+    if (!(el.tagName === 'INPUT' && (t === 'radio' || t === 'checkbox' || t === 'file'))) return false;
+    const stand = [
+      ...Array.from((el as HTMLInputElement).labels ?? []),
+      el.closest('[role=radio], [role=checkbox], [role=option]'),
+      el.parentElement,
+      el.parentElement?.parentElement,
+    ];
+    return stand.some((s) => !!s && s !== el && visible(s));
   };
   const textOf = (el: Element | null): string => clean((el as HTMLElement | null)?.innerText ?? el?.textContent ?? '');
 
@@ -87,6 +98,14 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   const errorFor = (el: Element): string => {
     const described = el.getAttribute('aria-invalid') === 'true' ? byIdText(el.getAttribute('aria-describedby')) : '';
     if (described) return described;
+    // Some sites point aria-describedby at the error text without setting aria-invalid.
+    const hint = (el.getAttribute('aria-describedby') ?? '')
+      .split(/\s+/)
+      .map((id) => (id ? document.getElementById(id) : null))
+      .filter((n): n is HTMLElement => !!n && visible(n))
+      .map(textOf)
+      .find((t) => /required|invalid|please|must|enter|select/i.test(t));
+    if (hint) return hint;
     let node: Element | null = el.parentElement;
     for (let depth = 0; node && depth < 4; depth++, node = node.parentElement) {
       if (controlCount(node) > 1) break;
@@ -99,6 +118,19 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     return el.getAttribute('aria-invalid') === 'true' ? 'invalid' : '';
   };
 
+  // A question written just before its control, e.g. <p>Question*</p><fieldset>…</fieldset>.
+  const precedingText = (el: Element): string => {
+    for (let node: Element | null = el, up = 0; node && up < 2; node = node.parentElement, up++) {
+      let sib = node.previousElementSibling;
+      for (let hops = 0; sib && hops < 2; sib = sib.previousElementSibling, hops++) {
+        if (controlCount(sib) > 0) break;
+        const raw = ((sib as HTMLElement).innerText ?? '').replace(/\s+/g, ' ').trim();
+        if (raw.length >= 2 && raw.length <= 300) return raw;
+      }
+    }
+    return '';
+  };
+
   const isRequired = (el: Element, label: string): boolean =>
     (el as HTMLInputElement).required === true ||
     el.getAttribute('aria-required') === 'true' ||
@@ -107,6 +139,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
 
   const fields: FormSnapshot['fields'] = [];
   const seenGroups = new Set<string>();
+  const CAPTCHA_FIELD = /captcha|security code|enter the (characters|code|text|letters)( shown| above| in the image)?/i;
+  let textCaptchaPending = false;
 
   const controls = Array.from(
     scope.querySelectorAll('input, select, textarea, [role=combobox]:not(input), [role=radiogroup], [contenteditable=true]'),
@@ -118,6 +152,12 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     if (tagName === 'INPUT' && ['hidden', 'submit', 'button', 'image', 'reset', 'password', 'search'].includes(type)) continue;
     if ((input.disabled || input.readOnly) && type !== 'file') continue;
     if (!visible(el)) continue;
+
+    // Text captchas are for the human: never a question, never answered.
+    if (tagName === 'INPUT' && CAPTCHA_FIELD.test(`${input.name} ${el.id} ${input.placeholder} ${el.getAttribute('aria-label') ?? ''} ${labelFor(el)}`)) {
+      if (!input.value.trim()) textCaptchaPending = true;
+      continue;
+    }
 
     if (tagName === 'INPUT' && type === 'radio') {
       const container = el.closest('fieldset, [role=radiogroup]') ?? el.parentElement?.parentElement ?? scope;
@@ -131,10 +171,16 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       const options = radios.map((r) => labelFor(r) || r.value);
       const groupEl = el.closest('fieldset, [role=radiogroup]') ?? container;
       const legend = groupEl.querySelector('legend');
+      // Some sites put the question in every option's aria-label (LinkedIn, 2026).
+      const optionAria = Array.from(new Set(radios.map((r) => clean(r.closest('[role=radio]')?.getAttribute('aria-label')))));
+      const sharedAria = optionAria.length === 1 && optionAria[0] && !options.includes(optionAria[0]) ? optionAria[0] : '';
+      const before = precedingText(groupEl);
       const label =
         textOf(legend) ||
         byIdText(groupEl.getAttribute('aria-labelledby')) ||
         clean(groupEl.getAttribute('aria-label')) ||
+        sharedAria ||
+        clean(before) ||
         containerText(groupEl, radios.length, options) ||
         input.name;
       const checked = radios.filter((r) => r.checked).map((r) => labelFor(r) || r.value);
@@ -144,7 +190,11 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
         label,
         name: input.name,
         placeholder: '',
-        required: radios.some((r) => r.required) || /\*/.test(textOf(legend)) || isRequired(groupEl, label),
+        required:
+          radios.some((r) => r.required) ||
+          /\*/.test((legend as HTMLElement | null)?.innerText ?? '') ||
+          /\*\s*$/.test(before) ||
+          isRequired(groupEl, label),
         value: checked.join(' | '),
         options,
         optionIds,
@@ -317,10 +367,14 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     .filter((t) => t.length > 2 && t.length < 300)
     .slice(0, 5);
 
-  const captcha =
-    !!document.querySelector(
-      'iframe[src*="recaptcha"]:not([src*="invisible"]), iframe[src*="hcaptcha"], iframe[title*="challenge" i], #captcha-internal, iframe[src*="arkoselabs"], iframe[src*="funcaptcha"]',
-    ) || /\/checkpoint\/challenge/.test(location.href);
+  // A widget counts until its response token is filled in (the iframe stays after solving).
+  const widget = !!document.querySelector(
+    'iframe[src*="recaptcha"]:not([src*="invisible"]), iframe[src*="hcaptcha"], iframe[title*="challenge" i], #captcha-internal, iframe[src*="arkoselabs"], iframe[src*="funcaptcha"], iframe[src*="turnstile"]',
+  );
+  const token = Array.from(
+    document.querySelectorAll('textarea[name="g-recaptcha-response"], textarea[name="h-captcha-response"], input[name="cf-turnstile-response"]'),
+  ).some((t) => ((t as HTMLTextAreaElement).value ?? '').length > 10);
+  const captcha = (widget && !token) || textCaptchaPending || /\/checkpoint\/challenge/.test(location.href);
 
   return {
     url: location.href,

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 // Runs in the page via page.evaluate: every function must be self-contained.
 
 export function naukriLastQuestionInPage(drawerSelector: string): string {

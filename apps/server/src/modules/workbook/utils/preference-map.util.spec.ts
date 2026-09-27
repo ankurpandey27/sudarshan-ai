@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { AgentMode } from '../../settings/enums/agent-mode.enum';
 import { mapPreferences } from './preference-map.util';
 

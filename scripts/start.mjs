@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 // Installs and builds only when needed, then starts the server.
 import { spawnSync, spawn } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';

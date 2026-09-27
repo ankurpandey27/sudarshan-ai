@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { AnswerSource } from '../enums/answer-source.enum';
 import { Answer, AnswerRow } from '../interfaces/answer.interface';
 

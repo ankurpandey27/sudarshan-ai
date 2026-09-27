@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Body, Controller, Get, HttpCode, Post, ServiceUnavailableException } from '@nestjs/common';
 import { BrowserService } from './browser.service';
 import { OpenLoginDto } from './dto/open-login.dto';

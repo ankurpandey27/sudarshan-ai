@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { FieldKind } from '../enums/field-kind.enum';
 import { FillInstruction } from '../interfaces/fill-instruction.interface';
 import { FormField } from '../interfaces/form-field.interface';

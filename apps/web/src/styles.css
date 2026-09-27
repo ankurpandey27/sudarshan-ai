@@ -1,57 +1,10 @@
+/* Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License. */
+/* SPDX-License-Identifier: MIT */
+
 @import 'tailwindcss';
+@import './tokens.css';
 
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
-
-/* Design tokens */
-:root {
-  --bg: #f6f2ea;
-  --surface: #fffdf8;
-  --surface-2: #f0ebe1;
-  --line: #e2dacb;
-  --line-strong: #cfc4b0;
-  --ink: #1b1814;
-  --ink-2: #4d463d;
-  --ink-3: #857b6d;
-  --accent: #d98e04;
-  --accent-ink: #1b1814;
-  --accent-soft: #fbecc9;
-  --good: #2f7d4f;
-  --good-soft: #dff0e3;
-  --warn: #b25e09;
-  --warn-soft: #fbe6cf;
-  --bad: #b3261e;
-  --bad-soft: #f8dcd9;
-  --info: #2f5f9e;
-  --info-soft: #dde8f6;
-  --shadow: 0 1px 0 rgb(27 24 20 / 0.04), 0 8px 24px -12px rgb(27 24 20 / 0.18);
-  --chakra-core: #1b1814;
-  color-scheme: light;
-}
-
-[data-theme='dark'] {
-  --bg: #12110f;
-  --surface: #1a1916;
-  --surface-2: #22201c;
-  --line: #2e2b26;
-  --line-strong: #3d3932;
-  --ink: #f2ede4;
-  --ink-2: #c3bbad;
-  --ink-3: #8a8174;
-  --accent: #f2b02d;
-  --accent-ink: #15130f;
-  --accent-soft: #3a2d10;
-  --good: #6cc38d;
-  --good-soft: #17301f;
-  --warn: #f0a354;
-  --warn-soft: #36240f;
-  --bad: #f08a80;
-  --bad-soft: #3a1a17;
-  --info: #8ab4ec;
-  --info-soft: #162538;
-  --shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 10px 30px -14px rgb(0 0 0 / 0.7);
-  --chakra-core: #2a241a;
-  color-scheme: dark;
-}
 
 @theme inline {
   --color-bg: var(--bg);
@@ -86,7 +39,8 @@ body,
 }
 
 body {
-  background: var(--bg);
+  /* A faint warm glow, so the page is not a flat sheet. */
+  background: radial-gradient(1100px 520px at 88% -8%, var(--glow), transparent 65%) fixed, var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -125,9 +79,13 @@ body {
 @keyframes chakra-spin {
   to { transform: rotate(360deg); }
 }
+/* The chakra always turns: slowly at rest, faster while the agent works. */
 .chakra-spin {
-  animation: chakra-spin 9s linear infinite;
+  animation: chakra-spin 24s linear infinite;
   transform-origin: center;
+}
+.chakra-spin.fast {
+  animation-duration: 8s;
 }
 
 @keyframes slide-in {
@@ -139,5 +97,7 @@ body {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .live-dot, .log-line, .chakra-spin { animation: none; }
+  .live-dot, .log-line { animation: none; }
+  /* Still turning, but gently. */
+  .chakra-spin, .chakra-spin.fast { animation-duration: 60s; }
 }

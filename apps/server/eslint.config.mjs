@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 // @ts-check
 import eslint from '@eslint/js';
 import tseslint from 'typescript-eslint';

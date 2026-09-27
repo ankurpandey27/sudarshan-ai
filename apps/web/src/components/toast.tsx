@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { createContext, useCallback, useContext, useState, type ReactNode } from 'react';
 import { CheckCircle2, CircleAlert } from 'lucide-react';
 import { cn } from '../lib/format';

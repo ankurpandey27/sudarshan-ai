@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { IsInt, IsOptional, IsString, MaxLength, ValidateIf } from 'class-validator';
 
 export class ProfileEducationDto {

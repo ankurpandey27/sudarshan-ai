@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 export const WORKBOOK_MAX_BYTES = 5 * 1024 * 1024;
 
 export const SHEET_ANSWERS = 'Answers';

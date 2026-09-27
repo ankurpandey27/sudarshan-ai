@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Controller, Get } from '@nestjs/common';
 import { HealthStatus } from './interfaces/health-status.interface';
 
@@ -7,6 +10,6 @@ export class HealthController {
 
   @Get()
   health(): HealthStatus {
-    return { status: 'ok', version: '2.0.0', startedAt: this.startedAt };
+    return { status: 'ok', version: '2.0.0', author: 'Ankur Pandey', startedAt: this.startedAt };
   }
 }

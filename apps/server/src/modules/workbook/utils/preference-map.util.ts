@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { UpdateProfileDto } from '../../profile/dto/update-profile.dto';
 import { UpdateSettingsDto } from '../../settings/dto/update-settings.dto';
 import { AgentMode } from '../../settings/enums/agent-mode.enum';

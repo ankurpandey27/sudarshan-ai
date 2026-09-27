@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { AsyncLocalStorage } from 'async_hooks';
 import { TraceContextData } from './interfaces/trace-context.interface';
 

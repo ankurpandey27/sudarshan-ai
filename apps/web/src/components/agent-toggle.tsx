@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Pause, Play } from 'lucide-react';
 import { api } from '../lib/api';
@@ -5,6 +8,7 @@ import { cn } from '../lib/format';
 import { useAgent } from '../lib/queries';
 import type { AgentPhase, AgentStatus } from '../lib/types';
 import { useToast } from './toast';
+import { InfoTip } from './info-tip';
 
 const phaseText: Record<AgentPhase, string> = {
   stopped: 'Stopped',
@@ -34,7 +38,11 @@ export function AgentToggle({ compact }: { compact?: boolean }) {
     <div className={cn('rounded-xl border p-3', running ? 'border-accent/40 bg-accent-soft/60' : 'border-line bg-surface')}>
       <div className="flex items-center gap-2">
         <span className={cn('size-2 rounded-full', running ? 'live-dot bg-accent' : 'bg-ink-3')} />
-        <span className="text-[13px] font-semibold">{running ? 'Sudarshan is out working' : 'Sudarshan is resting'}</span>
+        <span className="flex-1 text-[13px] font-semibold">{running ? 'Sudarshan is out working' : 'Sudarshan is resting'}</span>
+        <InfoTip title={running ? 'Stop agent' : 'Start agent'} align="left" side="top">
+          While running, Sudarshan searches for new jobs on a schedule and applies to your approved jobs one at a time, with pauses in between, within your
+          daily limits and active hours. Stopping pauses it; an application already in progress finishes first. Nothing is lost - it picks up where it left off.
+        </InfoTip>
       </div>
       {!compact && (
         <p className="mt-1 truncate text-[12.5px] text-ink-2" title={data?.currentJob ? `${data.currentJob.title} @ ${data.currentJob.company}` : undefined}>

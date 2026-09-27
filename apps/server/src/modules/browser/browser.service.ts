@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
@@ -20,6 +23,7 @@ export class BrowserService implements OnApplicationShutdown {
   private readonly logger = new Logger(BrowserService.name);
   private readonly profileDir: string;
   private readonly screenshotsDir: string;
+  private readonly startPage: string;
   private browser: Browser | null = null;
   private launching: Promise<Browser> | null = null;
   private launchedHeadless = false;
@@ -31,6 +35,7 @@ export class BrowserService implements OnApplicationShutdown {
   ) {
     this.profileDir = config.getOrThrow<string>('paths.browserProfile');
     this.screenshotsDir = config.getOrThrow<string>('paths.screenshots');
+    this.startPage = `http://localhost:${config.get<number>('server.port', 4747)}/sudarshan-ai.html`;
   }
 
   isRunning(): boolean {
@@ -177,7 +182,7 @@ export class BrowserService implements OnApplicationShutdown {
     });
     const [blank] = await browser.pages();
     if (blank && blank.url() === 'about:blank') {
-      await blank.goto('data:text/html,<title>Sudarshan</title><body style="font:16px system-ui;padding:40px;color:%23444">This window is driven by <b>Sudarshan</b>. You can watch it work, log in to sites, or solve a captcha here.</body>').catch(() => undefined);
+      await blank.goto(this.startPage).catch(() => undefined);
     }
     this.events.emit({ type: AgentEventType.BROWSER_STATE, message: 'Browser started', data: { running: true, headless } });
     return browser;

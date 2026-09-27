@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { LlmProviderKind } from '../../llm/enums/llm-provider-kind.enum';
 import { AgentMode } from '../enums/agent-mode.enum';
 import { AppSettings } from '../interfaces/app-settings.interface';
@@ -20,6 +23,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // LinkedIn restricts accounts that apply too fast.
     linkedin: { enabled: true, dailyLimit: 25 },
     naukri: { enabled: true, dailyLimit: 40 },
+    instahyre: { enabled: true, dailyLimit: 30 },
+    // Indeed is the strictest about automation: keep it low.
+    indeed: { enabled: false, dailyLimit: 15 },
     links: { enabled: true, dailyLimit: 30 },
     externalSites: { enabled: false, dailyLimit: 15 },
   },

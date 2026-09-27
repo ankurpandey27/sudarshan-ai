@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 const GENERIC = new Set([
   'senior', 'sr', 'junior', 'jr', 'lead', 'principal', 'staff', 'associate', 'head', 'chief', 'intern',
   'i', 'ii', 'iii', 'iv', 'the', 'and', 'of', 'for', 'with', 'in', 'at', 'a', 'an', 'to', 'remote', 'hybrid',

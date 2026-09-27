@@ -1,4 +1,8 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { JobSource } from '../enums/job-source.enum';
+import { JobPlatform } from '../enums/job-platform.enum';
 import { JobStatus } from '../enums/job-status.enum';
 
 export interface ScoreDetail {
@@ -17,6 +21,10 @@ export interface ScoreDetail {
 export interface Job {
   id: number;
   source: JobSource;
+  /** Where it is applied to: LinkedIn, Naukri, Instahyre or another career site. */
+  platform: JobPlatform;
+  /** Host of the job page, e.g. "jobs.lever.co". */
+  site: string;
   externalId: string;
   url: string;
   applyUrl: string | null;

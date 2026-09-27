@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import type { ButtonHTMLAttributes, InputHTMLAttributes, ReactNode, SelectHTMLAttributes, TextareaHTMLAttributes } from 'react';
 import { Loader2 } from 'lucide-react';
 import { cn, statusLabel } from '../lib/format';
@@ -35,15 +38,15 @@ export function Button({
 }
 
 export function Card({ className, children }: { className?: string; children: ReactNode }) {
-  return <section className={cn('rounded-xl border border-line bg-surface shadow-card', className)}>{children}</section>;
+  return <section className={cn('rounded-2xl border border-line/70 bg-surface shadow-card', className)}>{children}</section>;
 }
 
 export function CardHeader({ title, hint, action }: { title: ReactNode; hint?: ReactNode; action?: ReactNode }) {
   return (
-    <header className="flex items-start justify-between gap-3 border-b border-line px-4 py-3">
+    <header className="flex items-start justify-between gap-3 border-b border-line/60 px-5 py-3.5">
       <div className="min-w-0">
-        <h2 className="text-[13px] font-semibold tracking-wide text-ink uppercase">{title}</h2>
-        {hint && <p className="mt-0.5 text-[13px] text-ink-3">{hint}</p>}
+        <h2 className="text-[15px] font-semibold tracking-[-0.01em] text-ink">{title}</h2>
+        {hint && <p className="mt-0.5 text-[12.5px] text-pretty text-ink-3">{hint}</p>}
       </div>
       {action}
     </header>

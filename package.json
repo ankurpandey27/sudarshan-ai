@@ -2,6 +2,10 @@
   "name": "sudarshan",
   "version": "2.0.0",
   "description": "Sudarshan - a local-first job application agent that goes out, finishes the task, and returns. LinkedIn, Naukri and any career site; your own AI key or a free local model.",
+  "author": {
+    "name": "Ankur Pandey",
+    "url": "https://github.com/ankurpandey27"
+  },
   "private": true,
   "license": "MIT",
   "engines": {
@@ -18,5 +22,10 @@
     "test": "npm test -w apps/server && npm run test:browser -w apps/server",
     "typecheck": "npm run typecheck -w apps/server && npm run typecheck -w apps/web",
     "lint": "npm run lint -w apps/server"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ankurpandey27/sudarshan-ai.git"
+  },
+  "homepage": "https://github.com/ankurpandey27/sudarshan-ai"
 }

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 /**
  * Ordered schema migrations. Index + 1 is the schema version stored in
  * PRAGMA user_version; never edit a shipped entry, append a new one.
@@ -123,5 +126,20 @@ export const MIGRATIONS: string[] = [
     ok                INTEGER NOT NULL DEFAULT 1
   );
   CREATE INDEX idx_llm_usage_at ON llm_usage (at);
+  `,
+  `
+  CREATE TABLE activity (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    at      TEXT NOT NULL,
+    level   TEXT NOT NULL,
+    message TEXT NOT NULL,
+    job_id  INTEGER,
+    source  TEXT
+  );
+  CREATE INDEX idx_activity_at ON activity (at);
+  `,
+  `
+  ALTER TABLE activity ADD COLUMN type TEXT NOT NULL DEFAULT 'log';
+  CREATE INDEX idx_activity_job ON activity (job_id);
   `,
 ];

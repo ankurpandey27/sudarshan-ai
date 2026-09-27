@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { CheckCircle2, LogIn, MonitorSmartphone } from 'lucide-react';
 import { api } from '../lib/api';

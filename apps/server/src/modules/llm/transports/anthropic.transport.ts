@@ -1,16 +1,21 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import Anthropic from '@anthropic-ai/sdk';
 import { LlmProviderKind } from '../enums/llm-provider-kind.enum';
 import { Completion, CompletionRequest } from '../interfaces/completion.interface';
 import { LlmTransport } from '../interfaces/llm-transport.interface';
 import { estimateTokens } from '../utils/json-extract.util';
+import { RequestParams } from '../utils/request-params.util';
 
 const THINKING_HEADROOM = 4000;
 
-// Low effort: these are extraction-style calls. Haiku does not accept `effort`.
+// Low effort: these are extraction-style calls. Models that refuse `effort` (e.g. Haiku) are learned from their errors.
 export class AnthropicTransport implements LlmTransport {
   readonly kind = LlmProviderKind.ANTHROPIC;
   readonly local = false;
   private readonly client: Anthropic;
+  private readonly params = new RequestParams();
 
   constructor(
     readonly model: string,
@@ -18,10 +23,15 @@ export class AnthropicTransport implements LlmTransport {
     baseUrl?: string,
   ) {
     this.client = new Anthropic({ apiKey, baseURL: baseUrl || undefined, timeout: 90_000, maxRetries: 2 });
+    if (/haiku/i.test(model)) this.params.adapt('effort');
   }
 
   async complete(req: CompletionRequest): Promise<Completion> {
-    const supportsEffort = !/haiku/i.test(this.model);
+    return this.params.send(() => this.call(req));
+  }
+
+  private async call(req: CompletionRequest): Promise<Completion> {
+    const supportsEffort = this.params.allows('effort');
     const response = await this.client.messages.create({
       model: this.model,
       max_tokens: req.maxTokens + (supportsEffort ? THINKING_HEADROOM : 0),

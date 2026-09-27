@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { compressText } from '../../../common/utils/text.util';
 import { AnswerContext } from '../interfaces/answer-context.interface';
 import { FormField } from '../interfaces/form-field.interface';

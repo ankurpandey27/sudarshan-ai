@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { canonicalSkill, detectRemote, extractSkills, parseSalary } from './job-normalizer.util';
 
 describe('parseSalary (real board formats)', () => {
@@ -38,9 +41,7 @@ describe('extractSkills (title)', () => {
 
 describe('extractSkills', () => {
   it('matches whole tokens only (no "go" in "good", "ai" in "email", "rest" in "interest")', () => {
-    const skills = extractSkills(
-      'Good communication, email etiquette and interest in learning are a must.',
-    );
+    const skills = extractSkills('Good communication, email etiquette and interest in learning are a must.');
     expect(skills).not.toContain('go');
     expect(skills).not.toContain('ai');
     expect(skills).not.toContain('rest');

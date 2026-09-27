@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Type } from 'class-transformer';
 import { IsBoolean, IsOptional, ValidateNested } from 'class-validator';
 import { AgentSettingsDto } from './agent-settings.dto';

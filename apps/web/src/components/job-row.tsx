@@ -1,8 +1,12 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useState, type ReactNode } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ChevronDown, ExternalLink, MapPin } from 'lucide-react';
 import { api } from '../lib/api';
-import { cn, sourceLabel, timeAgo } from '../lib/format';
+import { cn, timeAgo } from '../lib/format';
+import { PlatformBadge } from './platform-badge';
 import type { Attempt, Job } from '../lib/types';
 import { Badge, ScoreDial, StatusBadge } from './ui';
 
@@ -52,7 +56,7 @@ export function JobRow({
             <span className="text-ink-3">{job.postedAt ? `posted ${timeAgo(job.postedAt)}` : `found ${timeAgo(job.discoveredAt)}`}</span>
           </p>
           <div className="mt-1.5 flex flex-wrap gap-1">
-            <Badge>{sourceLabel[job.source]}</Badge>
+            <PlatformBadge platform={job.platform} site={job.site} />
             {job.isRemote && <Badge tone="info">Remote</Badge>}
             {job.easyApply && job.source !== 'web' && <Badge tone="good">Easy Apply</Badge>}
             {job.origin === 'link' && <Badge tone="accent">Your list</Badge>}

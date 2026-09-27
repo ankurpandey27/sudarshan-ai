@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 // Some models (DeepSeek, Qwen, Kimi) inline <think> blocks that can contain braces.
 export const stripReasoning = (reply: string): string =>
   reply.replace(/<think(?:ing)?>[\s\S]*?<\/think(?:ing)?>/gi, '').replace(/^[\s\S]*<\/think(?:ing)?>/i, '');

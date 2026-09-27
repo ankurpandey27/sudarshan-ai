@@ -5,7 +5,7 @@
 <h1 align="center">Sudarshan</h1>
 
 <p align="center"><b>Goes out. Finishes the task. Returns.</b><br/>
-A job application agent that runs on your own laptop - LinkedIn, Naukri and any career site.<br/>
+A job application agent that runs on your own laptop - LinkedIn, Naukri, Indeed, Instahyre and any career site.<br/>
 Bring any AI key, use a free local model, or no AI at all. Free and open source.</p>
 
 <p align="center">
@@ -23,13 +23,15 @@ In the **Dwapar Yug**, Shri Krishna's **Sudarshan Chakra** was released once - a
 
 That is exactly what this agent does:
 
-- **Goes out** - searches LinkedIn, Naukri and career sites for you.
+- **Goes out** - searches LinkedIn, Naukri, Indeed and Instahyre, and career sites, for you.
 - **Finishes the task** - fills and submits the applications, answering screening questions from what it knows about you.
 - **Returns** - comes back with results: what was applied, what needs your answer, and why.
 
 *Sudarshan* (सुदर्शन) also means **"auspicious vision"** - it sees every job, and applies only where you truly fit.
 
-The logo is the chakra itself: a gold saw-toothed rim around twelve spokes. Inside the app it **spins while the agent is out working** and rests when it stops.
+The logo is the chakra itself: a gold saw-toothed rim around twelve spokes. Inside the app it **always turns** - slowly while resting, faster while the agent is out working.
+
+The main page is called **Lakshya** (लक्ष्य, "the target") - the aim Arjuna never took his eyes off, and the target the Sudarshan Chakra never missed. Here the target is your next job.
 
 ---
 
@@ -47,8 +49,9 @@ The logo is the chakra itself: a gold saw-toothed rim around twelve spokes. Insi
 10. [Configuration](#configuration)
 11. [Updating and removing](#updating-and-removing)
 12. [For developers](#for-developers)
-13. [Status and known gaps](#status-and-known-gaps)
-14. [Contributing](#contributing)
+13. [What Sudarshan can't do on its own](#what-sudarshan-cant-do-on-its-own)
+14. [Status and known gaps](#status-and-known-gaps)
+15. [Contributing](#contributing)
 
 ---
 
@@ -56,9 +59,9 @@ The logo is the chakra itself: a gold saw-toothed rim around twelve spokes. Insi
 
 - **Reads your resume (PDF)** into a profile: name, contact, title, city, links, years of experience, skills (with years), education.
 - **Imports an Excel sheet** of your known answers, extra job links (any site) and preferences.
-- **Searches** LinkedIn and Naukri for your keywords and locations, and queues links you add from any career site.
+- **Searches** LinkedIn, Naukri, Indeed and Instahyre for your keywords and locations, and queues links you add from any career site. Each platform has its own on/off switch under **Apply on**.
 - **Scores every job** against your profile and explains the score (matched / missing skills, salary, location).
-- **Applies** - LinkedIn Easy Apply, Naukri (including its chat-style questions), and generic career sites - in its own browser window you can watch.
+- **Applies** - LinkedIn Easy Apply, Naukri (including its chat-style questions), Indeed ("Easily apply"), Instahyre (one click), and generic career sites - in its own browser window you can watch.
 - **Remembers every answer**, so forms get faster and cheaper over time.
 - **Asks you only what it cannot know**, once, and reuses your answer forever.
 - **Explains itself** - the "What needs attention" panel tells you, in plain words, anything stopping it and how to fix it.
@@ -69,7 +72,7 @@ Browser agents that "look at a screenshot, think, click, repeat" need 30-60 AI c
 
 | | Screenshot-driven agent | Sudarshan |
 |---|---|---|
-| Finding jobs | Scroll and read pages | LinkedIn's public job listings over plain HTTP (your account untouched); Naukri's own search data read from the page |
+| Finding jobs | Scroll and read pages | LinkedIn's public job listings over plain HTTP (your account untouched); Naukri's, Indeed's and Instahyre's own search data read from the page |
 | Reading a form | One screenshot per step | **One pass** reads every question, type, option, required flag and error |
 | Answering | An AI call per field | **Profile rules -> answer memory -> one batched AI call** for whatever is left |
 | Filling | One click per AI turn | **One pass** fills everything (typeaheads, uploads, radios, dropdowns) |
@@ -113,7 +116,7 @@ The wizard has four steps (all but the resume are optional):
 3. **Your answers** - download the Excel template, fill what you know, upload it. See [The Excel sheet](#the-excel-sheet).
 4. **Where to look** - job titles and locations (add `Remote` for remote roles), then **log in to LinkedIn and Naukri** inside the browser window Sudarshan opens. It keeps its own browser profile, so you log in once and it never sees your password.
 
-Then open **Mission control** and press **Start agent**.
+Then open **Lakshya** (the main page) and press **Start agent**.
 
 > **Tip for your first run:** in **Settings**, turn on **"Stop before the final Submit"**. Sudarshan fills every form and waits for you to press Submit - check a few, then turn it off.
 
@@ -249,7 +252,7 @@ Download the template from the wizard or **Settings -> Spreadsheet -> Template**
 
 | Page | What it is for |
 |---|---|
-| **Mission control** | Start/stop, **What needs attention**, today's applications vs limits, the live **flight log**, AI spend |
+| **Lakshya** | Your job hunt at a glance: start/stop, **What needs attention**, today's applications vs limits, the live **flight log**, AI spend |
 | **Review** | Scored jobs with the reason. Approve them one by one, or all strong matches at once (*Approve all N jobs scoring 70+*). In **Auto** mode strong matches are queued for you |
 | **Questions** | Questions only you can answer - answer once, every waiting job continues |
 | **Applications** | Everything applied / needing attention, with the step-by-step trace of each attempt. Export to Excel, paste more links |
@@ -263,7 +266,7 @@ Download the template from the wizard or **Settings -> Spreadsheet -> Template**
 
 ## When something goes wrong
 
-Look at **Mission control -> What needs attention** first. Every problem is listed there with **what happened, how to fix it, and a button** that takes you there. Common ones:
+Look at **Lakshya -> What needs attention** first. Every problem is listed there with **what happened, how to fix it, and a button** that takes you there. Common ones:
 
 | You see | Meaning | Fix |
 |---|---|---|
@@ -288,6 +291,8 @@ Each failed application also keeps a **screenshot** and a **step-by-step trace**
 - **No passwords stored** - you log in to job sites in the agent's own browser window.
 - **Local only** - the server listens on `127.0.0.1` and rejects requests from other websites.
 - The only traffic leaving your machine goes to the job sites you use and the AI provider you chose (none with a local model).
+
+**Indeed is off by default.** Indeed restricts automation more than any other site here and often shows a security check ("Just a moment..."). Sudarshan waits for it to clear, goes slowly (12-18 s between pages, 15 applications a day by default), and hands the check to you if it stays. Turn it on under **Apply on** and log in to Indeed in the agent browser - logged out, Indeed shows only the first page of results and no application form.
 
 **Protect your accounts.** LinkedIn does not allow automated applications and restricts accounts that apply too fast. Defaults are deliberately conservative: **25 LinkedIn / 40 Naukri applications per day**, random 40-110 s gaps, a real visible browser, and captchas always handed to you. Raise limits at your own risk; you are responsible for how you use this tool.
 
@@ -346,29 +351,38 @@ apps/
       profile       resume PDF -> profile (rules + AI), self-repair
       answers       answer memory (normalised keys + guarded fuzzy match), pending questions
       jobs          the jobs table is also the queue (crash-safe)
-      discovery     LinkedIn guest API (HTTP), Naukri (its own search data in the browser)
+      discovery     LinkedIn guest API (HTTP); Naukri, Indeed, Instahyre (their own search data in the browser)
       scoring       exclusions -> keyword filter -> weighted engine -> batched AI score
       browser       one persistent Chrome/Edge profile, per-site login state
       form-engine   in-page extractor + filler, profile rules, answer engine, recipes
-      apply         LinkedIn Easy Apply, Naukri (incl. chat questions), generic career sites
+      apply         LinkedIn Easy Apply, Naukri (incl. chat questions), Indeed Apply, Instahyre, generic career sites
       agent         the loop (discovery, one-at-a-time applying, caps, pacing) + insights
       workbook      Excel import / template / tracker export
   web/      React 19 + Vite + Tailwind v4 + TanStack Query, live updates over SSE
 scripts/    start.mjs (the one command), dev.mjs
 ```
 
+## What Sudarshan can't do on its own
+
+It fills most application forms by itself - LinkedIn Easy Apply, Naukri and company career sites such as Keka, Greenhouse and Lever - and uploads your resume. A few things are left to you, on purpose:
+
+- **Captchas** - by design, you type them. Sudarshan fills everything else, leaves the tab open, and you type the code and press Submit.
+- **Sites that make you create an account or log in**, or **verify with a code sent to your email or phone (OTP)** - these become **"Do by hand"** in Applications.
+
+When it gets stuck on a form, the tab stays open: finish it there and Sudarshan learns your answers and that site's steps for next time. The same list is behind the **(i)** on the **Apply on** card in Lakshya.
+
 ## Status and known gaps
 
-- **Verified:** resume parsing, Excel import, LinkedIn discovery and scoring against the live site, the full multi-step form engine in a real browser, profile self-repair, security and key encryption.
-- **Not yet verified against live logged-in accounts:** LinkedIn Easy Apply submission and the Naukri chat questionnaire. Their pages change often - use **Stop before the final Submit** for your first applications and report what the flight log shows.
-- Workday-style portals that require creating an account usually end up as **"Do by hand"**.
+- **Verified against live accounts:** LinkedIn Easy Apply (multi-page forms, screening questions), Naukri one-click apply, Instahyre one-click apply, and company career-site forms (Keka).
+- **Also verified:** resume parsing, Excel import, LinkedIn and Naukri discovery, scoring, the form engine in a real browser, learning from forms you finish, security and key encryption.
+- **Not yet verified live:** the Naukri chat-style questionnaire, and the Indeed Apply form itself (Indeed search is verified; applying needs a logged-in Indeed account). Job sites change their pages often - keep **Stop before the final Submit** on for your first applications on a new site, and report what the flight log shows.
 
 ## Contributing
 
 Bug reports and pull requests are welcome. Job sites change their pages often, so the most useful report is:
 
 1. What you expected and what happened.
-2. The lines from the **flight log** around the problem (Mission control).
+2. The lines from the **flight log** around the problem (Lakshya, or the Flight log page).
 3. For a failed application: the step-by-step trace from **Applications -> the job -> Attempts**.
 
 Please **remove personal details** (name, email, phone, salary) before posting logs or screenshots. For code changes, run `npm test`, `npm run typecheck` and `npm run lint` before opening a pull request.
@@ -379,4 +393,6 @@ Sudarshan automates actions in your own browser, on your own accounts. Automated
 
 ## License
 
-MIT - see [LICENSE](LICENSE).
+Created by **[Ankur Pandey](https://github.com/ankurpandey27)**.
+
+MIT - see [LICENSE](LICENSE). If you build on Sudarshan, keep the copyright notice, as the license asks.

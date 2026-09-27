@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { ConfigService } from '@nestjs/config';
 import { StorageService } from '../../common/storage/storage.service';
 import { EventsService } from '../../common/events/events.service';

@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Module } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
@@ -11,6 +14,7 @@ import { SettingsModule } from './modules/settings/settings.module';
 import { LlmModule } from './modules/llm/llm.module';
 import { ProfileModule } from './modules/profile/profile.module';
 import { JobsModule } from './modules/jobs/jobs.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { AnswersModule } from './modules/answers/answers.module';
 import { BrowserModule } from './modules/browser/browser.module';
 import { FormEngineModule } from './modules/form-engine/form-engine.module';
@@ -31,6 +35,7 @@ import { HealthModule } from './modules/health/health.module';
     LlmModule,
     ProfileModule,
     JobsModule,
+    AnalyticsModule,
     AnswersModule,
     BrowserModule,
     FormEngineModule,

@@ -1,0 +1,81 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Backend Engineer - Acme</title>
+<style>
+  dialog { width: 640px; padding: 16px; }
+  .radio input { position: absolute; width: 0; height: 0; margin: 0; opacity: 0; }
+  .radio label { display: inline-block; width: 20px; height: 20px; border: 1px solid #888; border-radius: 50%; }
+  .radio { display: flex; gap: 8px; align-items: center; cursor: pointer; }
+  .err { color: #b00; }
+</style>
+</head>
+<body>
+<!-- Mirrors LinkedIn's 2026 Easy Apply: native <dialog>, hashed classes, radios whose native input is 0x0
+     with an empty <label>, the option text in a sibling <p>, and the question in a <p> before the group
+     and in every option's aria-label. -->
+<button id="easy" class="_7e411247 _4a81d71a">Easy Apply</button>
+
+<dialog data-testid="dialog" aria-labelledby="dialog-header" class="_72508315">
+  <h2 id="dialog-header">Apply to Acme</h2>
+  <div data-testid="dialog-content">
+    <section data-step="1">
+      <label for="«rg»">Mobile phone number*</label>
+      <input id="«rg»" type="tel" required>
+      <button type="button" data-next>Next</button>
+    </section>
+
+    <section data-step="2" hidden>
+      <p>Additional Questions</p>
+      <div>
+        <p>Are you comfortable commuting to this job's location?*</p>
+        <fieldset aria-describedby="error-message-«rk»" role="radiogroup">
+          <div role="radio" tabindex="0" aria-label="Are you comfortable commuting to this job's location?" aria-checked="false" class="radio">
+            <div><input id="«rl»" type="radio" name="radio-group-«rk»"><label for="«rl»"></label></div><div><p>Yes</p></div>
+          </div>
+          <div role="radio" tabindex="0" aria-label="Are you comfortable commuting to this job's location?" aria-checked="false" class="radio">
+            <div><input id="«rm»" type="radio" name="radio-group-«rk»"><label for="«rm»"></label></div><div><p>No</p></div>
+          </div>
+        </fieldset>
+        <p class="err" id="error-message-«rk»" hidden>This field is required</p>
+      </div>
+      <div>
+        <p>How many years of work experience do you have with React?*</p>
+        <input id="«rs»" type="text" required>
+      </div>
+      <button type="button" id="submit">Submit application</button>
+    </section>
+
+    <section data-step="done" hidden><h2>Your application was sent to Acme!</h2></section>
+  </div>
+</dialog>
+
+<script>
+  const dialog = document.querySelector('dialog');
+  const $ = (id) => document.getElementById(id);
+  const show = (s) => document.querySelectorAll('[data-step]').forEach((el) => (el.hidden = el.dataset.step !== String(s)));
+  $('easy').addEventListener('click', () => { dialog.showModal(); show(1); });
+  // Like React: the visible role=radio row is what gets clicked; it checks the hidden input.
+  document.querySelectorAll('[role=radio]').forEach((row) =>
+    row.addEventListener('click', () => {
+      const input = row.querySelector('input');
+      input.checked = true;
+      document.querySelectorAll(`input[name="${CSS.escape(input.name)}"]`).forEach((i) =>
+        i.closest('[role=radio]').setAttribute('aria-checked', String(i.checked)),
+      );
+    }),
+  );
+  document.querySelector('[data-next]').addEventListener('click', () => {
+    if (/^\d{10}$/.test($('«rg»').value)) show(2);
+  });
+  $('submit').addEventListener('click', () => {
+    const picked = document.querySelector('input[name="radio-group-«rk»"]:checked');
+    $('error-message-«rk»').hidden = !!picked;
+    if (!picked || !/^\d+$/.test($('«rs»').value)) return;
+    window.__submitted = { phone: $('«rg»').value, commute: picked.closest('[role=radio]').innerText.trim(), react: $('«rs»').value };
+    show('done');
+  });
+</script>
+</body>
+</html>

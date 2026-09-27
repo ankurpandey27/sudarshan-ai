@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable } from '@nestjs/common';
 import { JobSnapshot, ProfileSnapshot } from './interfaces/snapshots.interface';
 import { canonicalSkill } from '../discovery/utils/job-normalizer.util';
@@ -22,6 +25,7 @@ export class ScoringEngine {
       job.isRemote,
       profile.location,
       profile.remotePreferred,
+      profile.willingToRelocate,
     );
     const overallScore = Math.round(
       technicalScore * this.weights.technical +
@@ -65,6 +69,7 @@ export class ScoringEngine {
     isRemote: boolean,
     profileLocation: string,
     remotePreferred: boolean,
+    willingToRelocate: boolean,
   ): number {
     if (isRemote) {
       return remotePreferred ? 90 : 80;
@@ -76,7 +81,7 @@ export class ScoringEngine {
       case 'nearby':
         return 70;
       case 'far':
-        return 30;
+        return willingToRelocate ? 60 : 30;
       default:
         return 60;
     }

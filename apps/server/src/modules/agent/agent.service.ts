@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
@@ -6,14 +9,17 @@ import { ApplyService } from '../apply/apply.service';
 import { ApplyResult } from '../apply/interfaces/apply-adapter.interface';
 import { BrowserService } from '../browser/browser.service';
 import { DiscoveryService } from '../discovery/discovery.service';
+import { sourceLabel } from '../jobs/utils/source-label.util';
+import { JobPlatform } from '../jobs/enums/job-platform.enum';
+import { SourceSettings } from '../settings/interfaces/app-settings.interface';
 import { JobsService } from '../jobs/jobs.service';
-import { JobSource } from '../jobs/enums/job-source.enum';
 import { JobStatus } from '../jobs/enums/job-status.enum';
 import { LlmService } from '../llm/llm.service';
 import { ScoringService } from '../scoring/scoring.service';
 import { SettingsService } from '../settings/settings.service';
 import { AgentPhase } from './enums/agent-phase.enum';
 import { AgentStatus } from './interfaces/agent-status.interface';
+import { SiteId } from '../browser/interfaces/site-session.interface';
 
 const TICK_MS = 10_000;
 
@@ -23,6 +29,8 @@ export class AgentService implements OnApplicationShutdown {
   private timer: ReturnType<typeof setInterval> | null = null;
   private running = false;
   private ticking = false;
+  // Last "why nothing is being applied" message, so each reason is logged once.
+  private idleNote: string | null = null;
   private phase = AgentPhase.STOPPED;
   private currentJob: AgentStatus['currentJob'] = null;
   private nextDiscoveryAt = 0;
@@ -54,7 +62,9 @@ export class AgentService implements OnApplicationShutdown {
     if (!this.running) {
       await this.browser.ensure();
       this.running = true;
-      this.nextDiscoveryAt = Date.now();
+      // A search that just ran (e.g. Search now) counts; don't repeat it on start.
+      const interval = this.settings.get().agent.intervalMinutes * 60_000;
+      this.nextDiscoveryAt = this.lastDiscoveryAt ? Math.max(Date.now(), this.lastDiscoveryAt + interval) : Date.now();
       this.nextApplyAt = Date.now();
       this.timer = setInterval(() => void this.tick(), TICK_MS);
       this.log('success', 'Agent started');
@@ -73,6 +83,11 @@ export class AgentService implements OnApplicationShutdown {
   }
 
   async discoverNow(): Promise<void> {
+    if (this.discovery.isRunning()) {
+      this.log('info', 'A search is already running');
+      return;
+    }
+    this.log('info', 'Searching now (Search now was pressed)');
     this.nextDiscoveryAt = Date.now() + this.settings.get().agent.intervalMinutes * 60_000;
     await this.runDiscovery();
   }
@@ -96,10 +111,12 @@ export class AgentService implements OnApplicationShutdown {
       phase: this.phase,
       currentJob: this.currentJob,
       nextDiscoveryAt: this.running && this.nextDiscoveryAt ? new Date(this.nextDiscoveryAt).toISOString() : null,
-      nextApplyAt: this.running && this.nextApplyAt ? new Date(this.nextApplyAt).toISOString() : null,
+      // Only meaningful when something is queued.
+      nextApplyAt: this.running && this.nextApplyAt && this.jobs.queuedCount() > 0 ? new Date(Math.max(this.nextApplyAt, Date.now())).toISOString() : null,
       lastDiscoveryAt: this.lastDiscoveryAt ? new Date(this.lastDiscoveryAt).toISOString() : null,
       blockedSources: this.blocked,
       queue: this.jobs.queuedCount(),
+      awaitingReview: this.jobs.countByStatus(JobStatus.REVIEW),
       openQuestions: this.pending.openCount(),
       llm: this.llm.describe(),
       appliedToday: this.jobs.appliedToday(),
@@ -129,20 +146,25 @@ export class AgentService implements OnApplicationShutdown {
         if (!this.applying) this.setPhase(AgentPhase.WAITING);
         return;
       }
-      const sources = await this.eligibleSources();
-      const job = this.jobs.nextToApply(sources);
+      const platforms = await this.eligiblePlatforms();
+      const job = this.jobs.nextToApply(platforms);
       if (!job) {
         if (this.discovery.isRunning()) {
           this.setPhase(AgentPhase.DISCOVERING);
-        } else if (this.phase !== AgentPhase.IDLE) {
+        } else {
           this.setPhase(AgentPhase.IDLE);
+          const queued = this.jobs.queuedCount();
           const review = this.jobs.countByStatus(JobStatus.REVIEW);
-          this.log(
-            'warn',
-            review > 0
-              ? `Nothing approved to apply to. ${review} job(s) are waiting for your approval in Review.`
-              : 'Nothing to apply to right now. See "What needs attention" on Mission control for why.',
-          );
+          const note =
+            queued > 0
+              ? `${queued} approved job(s) are waiting: ${this.blocked.map((b) => `${sourceLabel(b.source)} - ${b.reason}`).join('; ') || 'their job sites are turned off in Settings'}.`
+              : review > 0
+                ? `Nothing approved to apply to yet - ${review} job(s) are waiting for your approval in Review.`
+                : 'Nothing to apply to right now. See "What needs attention" on Lakshya for why.';
+          if (note !== this.idleNote) {
+            this.idleNote = note;
+            this.log('warn', note);
+          }
         }
         return;
       }
@@ -158,6 +180,7 @@ export class AgentService implements OnApplicationShutdown {
 
   private async runApply(job: ReturnType<JobsService['get']>): Promise<ApplyResult> {
     this.currentJob = { id: job.id, title: job.title, company: job.company };
+    this.idleNote = null;
     this.setPhase(AgentPhase.APPLYING);
     this.applying = this.apply.apply(job);
     try {
@@ -182,28 +205,36 @@ export class AgentService implements OnApplicationShutdown {
     }
   }
 
-  private async eligibleSources(): Promise<JobSource[]> {
+  /** Platforms switched on, under today's limit and logged in. */
+  private async eligiblePlatforms(): Promise<JobPlatform[]> {
     const s = this.settings.get().sources;
     const blocked: AgentStatus['blockedSources'] = [];
-    const out: JobSource[] = [];
-    const check = async (source: JobSource, enabled: boolean, limit: number, site?: 'linkedin' | 'naukri') => {
-      if (!enabled) return;
-      if (this.jobs.appliedToday(source) >= limit) {
-        blocked.push({ source, reason: `Daily limit of ${limit} reached` });
+    const out: JobPlatform[] = [];
+    const check = async (platform: JobPlatform, cfg: SourceSettings, site?: SiteId) => {
+      const queued = this.jobs.queuedOn(platform);
+      if (!cfg.enabled) {
+        // Approved jobs on a switched-off platform wait; they are not lost.
+        if (queued > 0) blocked.push({ source: platform, reason: `switched off - ${queued} approved job(s) wait until you turn it on` });
         return;
       }
-      if (site && this.jobs.list({ status: [JobStatus.APPROVED], source, limit: 1 }).total > 0 && !(await this.browser.isLoggedIn(site))) {
-        blocked.push({ source, reason: `Log in to ${site === 'linkedin' ? 'LinkedIn' : 'Naukri'} to continue` });
+      if (this.jobs.appliedToday(platform) >= cfg.dailyLimit) {
+        blocked.push({ source: platform, reason: `Daily limit of ${cfg.dailyLimit} reached` });
         return;
       }
-      out.push(source);
+      if (site && queued > 0 && !(await this.browser.isLoggedIn(site))) {
+        blocked.push({ source: platform, reason: 'not logged in - log in from Settings, Site logins' });
+        return;
+      }
+      out.push(platform);
     };
-    await check(JobSource.LINKEDIN, s.linkedin.enabled, s.linkedin.dailyLimit, 'linkedin');
-    await check(JobSource.NAUKRI, s.naukri.enabled, s.naukri.dailyLimit, 'naukri');
-    await check(JobSource.WEB, s.links.enabled, s.links.dailyLimit);
+    await check(JobPlatform.LINKEDIN, s.linkedin, 'linkedin');
+    await check(JobPlatform.NAUKRI, s.naukri, 'naukri');
+    await check(JobPlatform.INSTAHYRE, s.instahyre, 'instahyre');
+    await check(JobPlatform.INDEED, s.indeed, 'indeed');
+    await check(JobPlatform.OTHER, s.links);
     const changed = JSON.stringify(blocked) !== JSON.stringify(this.blocked);
     this.blocked = blocked;
-    if (changed) for (const b of blocked) this.log('warn', `${b.source}: ${b.reason}`);
+    if (changed) for (const b of blocked) this.log('warn', `${sourceLabel(b.source)}: ${b.reason}`);
     return out;
   }
 

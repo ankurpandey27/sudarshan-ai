@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { LlmProviderKind } from '../enums/llm-provider-kind.enum';
 import { Completion, CompletionRequest } from './completion.interface';
 

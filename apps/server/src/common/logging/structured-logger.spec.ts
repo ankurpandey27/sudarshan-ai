@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import * as os from 'os';
 import * as path from 'path';
 import { Logger } from '@nestjs/common';

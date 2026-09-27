@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Readable } from 'node:stream';
 import { extname } from 'node:path';
 import { BadRequestException, Injectable } from '@nestjs/common';

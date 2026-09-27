@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { ScoringEngine } from './scoring-engine.service';
 import { ProfileSnapshot, JobSnapshot } from './interfaces/snapshots.interface';
 
@@ -8,6 +11,8 @@ const profile: ProfileSnapshot = {
   salaryCurrency: 'INR',
   location: 'India',
   remotePreferred: true,
+  willingToRelocate: false,
+  searchLocations: [],
 };
 
 const job = (over: Partial<JobSnapshot>): JobSnapshot => ({

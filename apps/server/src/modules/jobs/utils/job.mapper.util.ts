@@ -1,4 +1,8 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { JobSource } from '../enums/job-source.enum';
+import { platformOf, siteOf } from './platform.util';
 import { JobStatus } from '../enums/job-status.enum';
 import { Job, JobRow, ScoreDetail } from '../interfaces/job.interface';
 
@@ -6,6 +10,8 @@ export function toJob(row: JobRow): Job {
   return {
     id: row.id,
     source: row.source as JobSource,
+    platform: platformOf(row.source as JobSource, row.url, row.apply_url),
+    site: siteOf(row.url),
     externalId: row.external_id,
     url: row.url,
     applyUrl: row.apply_url,

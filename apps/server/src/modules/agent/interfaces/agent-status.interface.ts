@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { AgentPhase } from '../enums/agent-phase.enum';
 
 export interface AgentStatus {
@@ -9,6 +12,7 @@ export interface AgentStatus {
   lastDiscoveryAt: string | null;
   blockedSources: { source: string; reason: string }[];
   queue: number;
+  awaitingReview: number;
   openQuestions: number;
   llm: string | null;
   appliedToday: number;

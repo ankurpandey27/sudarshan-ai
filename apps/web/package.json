@@ -1,6 +1,10 @@
 {
   "name": "@sudarshan/web",
   "version": "2.0.0",
+  "author": {
+    "name": "Ankur Pandey",
+    "url": "https://github.com/ankurpandey27"
+  },
   "private": true,
   "license": "MIT",
   "type": "module",

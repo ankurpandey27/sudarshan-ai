@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable } from '@nestjs/common';
 import { Page } from 'puppeteer-core';
 import { sleep } from '../../../common/utils/sleep.util';
@@ -68,7 +71,7 @@ export class LinkedInApplyAdapter implements ApplyAdapter {
   async afterSuccess(page: Page): Promise<void> {
     await page
       .evaluate(() => {
-        const done = Array.from(document.querySelectorAll('[role=dialog] button')).find((b) =>
+        const done = Array.from(document.querySelectorAll('dialog[open] button, [role=dialog] button')).find((b) =>
           /^(done|dismiss|not now)$/i.test((b as HTMLElement).innerText.trim() || b.getAttribute('aria-label') || ''),
         ) as HTMLElement | undefined;
         done?.click();

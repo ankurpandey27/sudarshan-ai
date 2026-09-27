@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Page } from 'puppeteer-core';
 
 // Returns the tab opened by the click (target=_blank apply buttons), or null.

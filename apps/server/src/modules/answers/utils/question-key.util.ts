@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { canonicalSkill, extractSkills } from '../../discovery/utils/job-normalizer.util';
 
 const STOP_WORDS = new Set([

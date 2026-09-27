@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable } from '@nestjs/common';
 import { JobSnapshot, ProfileSnapshot } from './interfaces/snapshots.interface';
 import { canonicalSkill } from '../discovery/utils/job-normalizer.util';
@@ -25,7 +28,11 @@ export class KeywordFilterService {
       }
     }
 
-    if (!job.isRemote && !isReachable(profile.location, job.location)) {
+    const reachable =
+      profile.willingToRelocate ||
+      isReachable(profile.location, job.location) ||
+      profile.searchLocations.some((place) => isReachable(place, job.location));
+    if (!job.isRemote && !reachable) {
       return {
         outcome: 'SKIP',
         reason: `On-site in ${job.location}, too far from ${profile.location}`,

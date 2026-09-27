@@ -1,18 +1,9 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useState, type ReactNode } from 'react';
 import { NavLink, Outlet } from 'react-router';
-import {
-  BookOpenCheck,
-  Briefcase,
-  Inbox,
-  LayoutDashboard,
-  Menu,
-  MessageCircleQuestion,
-  Moon,
-  Settings2,
-  Sun,
-  UserRound,
-  X,
-} from 'lucide-react';
+import { BookOpenCheck, Briefcase, Inbox, Menu, MessageCircleQuestion, ScrollText, Moon, Settings2, Sun, Target, UserRound, X } from 'lucide-react';
 import { cn } from '../lib/format';
 import { useEvents } from '../lib/events';
 import { useAgent, useStats } from '../lib/queries';
@@ -35,7 +26,12 @@ function Item({ to, icon, label, count, tone }: { to: string; icon: ReactNode; l
       <span className="text-ink-3">{icon}</span>
       <span className="flex-1">{label}</span>
       {!!count && (
-        <span className={cn('tabular rounded-md px-1.5 text-[11.5px] font-semibold', tone === 'warn' ? 'bg-warn text-white dark:text-black' : 'bg-surface-2 text-ink-2')}>
+        <span
+          className={cn(
+            'tabular rounded-md px-1.5 text-[11.5px] font-semibold',
+            tone === 'warn' ? 'bg-warn text-white dark:text-black' : 'bg-surface-2 text-ink-2',
+          )}
+        >
           {count}
         </span>
       )}
@@ -52,11 +48,12 @@ export function Layout() {
 
   const nav = (
     <nav className="flex flex-col gap-0.5" onClick={() => setOpen(false)}>
-      <Item to="/" icon={<LayoutDashboard className="size-4" />} label="Mission control" />
+      <Item to="/" icon={<Target className="size-4" />} label="Lakshya" />
       <Item to="/review" icon={<Inbox className="size-4" />} label="Review" count={stats?.byStatus.review} />
       <Item to="/questions" icon={<MessageCircleQuestion className="size-4" />} label="Questions" count={agent?.openQuestions} tone="warn" />
       <Item to="/applications" icon={<Briefcase className="size-4" />} label="Applications" count={stats?.appliedTotal} />
       <Item to="/answers" icon={<BookOpenCheck className="size-4" />} label="Answer memory" />
+      <Item to="/activity" icon={<ScrollText className="size-4" />} label="Flight log" />
       <Item to="/profile" icon={<UserRound className="size-4" />} label="Profile" />
       <Item to="/settings" icon={<Settings2 className="size-4" />} label="Settings" />
     </nav>

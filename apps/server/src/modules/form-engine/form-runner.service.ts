@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger } from '@nestjs/common';
 import { ElementHandle, Page } from 'puppeteer-core';
 import { jitter, sleep } from '../../common/utils/sleep.util';
@@ -46,6 +49,7 @@ export class FormRunnerService {
     let lastFingerprint = '';
     let repeats = 0;
     let force = new Set<string>();
+    const uploadedOn = new Set<string>();
 
     for (let step = 1; step <= maxSteps; step++) {
       out.steps = step;
@@ -54,15 +58,24 @@ export class FormRunnerService {
       if (opts.successPattern.test(snap.text) || opts.successPattern.test(await this.docText(page))) {
         return { ...out, status: 'applied', detail: 'Application submitted' };
       }
-      if (snap.captcha) {
-        opts.onStep('Captcha shown - solve it in the agent browser window, I will wait 3 minutes');
-        if (!(await this.waitForCaptcha(page, opts.scopeSelector))) {
-          return { ...out, status: 'captcha', detail: 'Captcha was not solved in time' };
-        }
-        continue;
-      }
       if (opts.scopeSelector && !snap.scopeFound) {
         return { ...out, status: 'closed', detail: 'The application dialog closed unexpectedly' };
+      }
+
+      // Upload files first: many sites read the resume and fill fields themselves,
+      // which would overwrite answers typed before the upload finished.
+      const emptyFiles = snap.fields.filter((f) => f.kind === FieldKind.FILE && !f.value);
+      if (emptyFiles.length && !uploadedOn.has(snap.url)) {
+        uploadedOn.add(snap.url);
+        const up = await this.answers.resolve(emptyFiles, opts.ctx, { allowLlm: false });
+        const files = up.instructions.filter((i) => i.kind === FieldKind.FILE);
+        if (files.length) {
+          await this.fill(page, files);
+          opts.onStep(`Step ${step}: uploaded your resume, waiting for the site to read it`);
+          await page.waitForNetworkIdle({ idleTime: 800, timeout: 15_000 }).catch(() => undefined);
+          await sleep(1500);
+          continue;
+        }
       }
 
       const resolved = await this.answers.resolve(snap.fields, opts.ctx, { allowLlm: opts.allowLlm, force });
@@ -86,6 +99,17 @@ export class FormRunnerService {
         );
         await this.fill(page, resolved.instructions);
         await jitter(250, 600);
+      }
+
+      // Everything else is filled; the captcha is left to the person.
+      if (snap.captcha) {
+        if (opts.pauseBeforeSubmit) {
+          return { ...out, status: 'ready_to_submit', detail: 'Filled - type the captcha and press Submit' };
+        }
+        opts.onStep('Captcha shown - solve it in the agent browser window, I will wait 3 minutes');
+        if (!(await this.waitForCaptcha(page, opts.scopeSelector))) {
+          return { ...out, status: 'captcha', detail: 'Filled - only the captcha is left; solve it and press Submit in the open tab' };
+        }
       }
 
       const action = await this.chooseAction(page, snap, opts);

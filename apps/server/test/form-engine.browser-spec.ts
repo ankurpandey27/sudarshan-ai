@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { join } from 'node:path';
 import puppeteer, { Browser, Page } from 'puppeteer-core';
 import { StorageService } from '../src/common/storage/storage.service';
@@ -10,8 +13,12 @@ import { AnswerContext } from '../src/modules/form-engine/interfaces/answer-cont
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
 import { LlmService } from '../src/modules/llm/llm.service';
 import { EMPTY_PROFILE } from '../src/modules/profile/constants/profile.constants';
+import { LINKEDIN_SCOPE } from '../src/modules/apply/constants/apply.constants';
+import { WebApplyAdapter } from '../src/modules/apply/adapters/web.adapter';
+import { PrepareStatus } from '../src/modules/apply/enums/prepare-status.enum';
 
 const FIXTURE = `file://${join(__dirname, 'fixtures', 'easy-apply.html').replace(/\\/g, '/')}`;
+const FIXTURE_2026 = `file://${join(__dirname, 'fixtures', 'easy-apply-2026.html').replace(/\\/g, '/')}`;
 const RESUME = join(__dirname, 'fixtures', 'resume.pdf');
 const SUCCESS = /application was sent/i;
 const SCOPE = '.jobs-easy-apply-modal, [role=dialog]';
@@ -115,5 +122,57 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
       follow: true, // marketing checkbox left alone
     });
     expect(out.memoryHits).toBe(1);
+  });
+
+  it('recognises a one-click apply (Instahyre) instead of reporting "no apply button"', async () => {
+    const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
+    const url = `file://${join(__dirname, 'fixtures', 'one-click-apply.html').replace(/\\/g, '/')}`;
+    const fresh = await web.prepareUrl(page, url);
+    expect(fresh.status).toBe(PrepareStatus.APPLIED);
+    expect(await page.evaluate(() => (window as unknown as { __applied?: number }).__applied)).toBe(1);
+
+    const again = await web.prepareUrl(page, `${url}#applied`);
+    expect(again.status).toBe(PrepareStatus.ALREADY_APPLIED);
+  });
+
+  it('fills a career-site form around a text captcha and leaves the captcha to the person', async () => {
+    await page.setContent(`<form>
+      <label for="fn">First Name *</label><input id="fn" required>
+      <label for="em">Email *</label><input id="em" type="email" required>
+      <img alt="captcha" src="data:image/gif;base64,R0lGODlhAQABAAAAACw="><input id="cap" placeholder="Captcha" required>
+      <button type="submit">Apply Now</button>
+    </form>`);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: true,
+      onStep: () => undefined,
+    });
+    expect(out.status).toBe('ready_to_submit');
+    expect(out.detail).toMatch(/captcha/i);
+    expect(out.unresolved).toEqual([]);
+    expect(await page.$eval('#fn', (e) => (e as HTMLInputElement).value)).toBe('Priya');
+    expect(await page.$eval('#cap', (e) => (e as HTMLInputElement).value)).toBe('');
+  });
+
+  it("handles LinkedIn's 2026 dialog: native <dialog>, hidden 0x0 radios, question outside the group", async () => {
+    await page.goto(FIXTURE_2026);
+    await page.click('#easy');
+    answers.remember("Are you comfortable commuting to this job's location?", 'Yes', AnswerSource.USER);
+    const out = await runner.run(page, {
+      scopeSelector: LINKEDIN_SCOPE,
+      successPattern: SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    expect(out.status).toBe('applied');
+    const submitted = await page.evaluate(() => (window as unknown as { __submitted: Record<string, unknown> }).__submitted);
+    expect(submitted).toEqual({ phone: '9876543210', commute: 'Yes', react: '3' });
   });
 });

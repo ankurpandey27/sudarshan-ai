@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { NextFunction, Request, Response } from 'express';
 import { randomUUID } from 'crypto';
 import { TraceContext } from '../logging/trace-context';

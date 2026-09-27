@@ -1,0 +1,25 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Backend Developer - Node.js at Acme - Instahyre</title></head>
+<body>
+<!-- Mirrors Instahyre's logged-in job page: one click on "Apply now" sends the application and
+     the button turns into "Application sent!". The description deliberately contains wording
+     that looks like a confirmation, which must not count on its own. -->
+<h1>Backend Developer - Node.js</h1>
+<p>at Acme</p>
+<button id="apply">Apply now</button>
+<h2>Job Description</h2>
+<p>Once we have received your application, our team replies within a week.</p>
+<script>
+  if (location.hash === '#applied') {
+    document.getElementById('apply').outerHTML = '<button disabled>✓ Application sent!</button>';
+  }
+  document.getElementById('apply')?.addEventListener('click', (e) => {
+    setTimeout(() => {
+      e.target.outerHTML = '<button disabled>✓ Application sent!</button>';
+      window.__applied = (window.__applied || 0) + 1;
+    }, 300);
+  });
+</script>
+</body>
+</html>

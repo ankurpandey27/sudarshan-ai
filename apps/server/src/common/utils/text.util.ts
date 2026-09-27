@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 /** Collapse whitespace and keep the first N chars on a word boundary. */
 export function compressText(text: string, maxChars: number): string {
   const flat = (text ?? '').replace(/\s+/g, ' ').trim();

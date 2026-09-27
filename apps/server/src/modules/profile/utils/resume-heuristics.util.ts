@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { extractSkills } from '../../discovery/utils/job-normalizer.util';
 import { resolveCities } from '../../scoring/utils/geo.util';
 import { CandidateProfile } from '../interfaces/candidate-profile.interface';

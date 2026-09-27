@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { parse } from 'node-html-parser';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { DiscoveredJob } from '../../jobs/interfaces/discovered-job.interface';
@@ -31,4 +34,10 @@ export function parseSearchCards(html: string, easyApply: boolean): DiscoveredJo
 }
 
 export const decodeEntities = (s: string): string =>
-  s.replace(/&amp;/g, '&').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/\s+\n/g, '\n');
+  s
+    .replace(/&amp;/g, '&')
+    .replace(/&#39;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+\n/g, '\n');

@@ -1,0 +1,30 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
+import { APPLIED_BUTTON, LINKEDIN_SUCCESS, NAUKRI_APPLIED_URL, NAUKRI_SUCCESS } from './apply.constants';
+
+describe('application confirmations', () => {
+  it("recognises Naukri's one-click confirmation page", () => {
+    expect(NAUKRI_SUCCESS.test('Applied to "Node Js Backend Developer" Send Me Jobs Like This')).toBe(true);
+    expect(NAUKRI_SUCCESS.test('You have successfully applied to this job')).toBe(true);
+    expect(NAUKRI_APPLIED_URL.test('https://www.naukri.com/myapply/saveApply?strJobsarr=[123]')).toBe(true);
+  });
+
+  it('does not mistake job-page text for a confirmation', () => {
+    expect(NAUKRI_SUCCESS.test('Applicants: 100+ Openings: 2 Apply Save')).toBe(false);
+    expect(NAUKRI_SUCCESS.test('Be an early applicant - 12 people applied to similar roles')).toBe(false);
+    expect(NAUKRI_APPLIED_URL.test('https://www.naukri.com/job-listings-node-js-developer-123')).toBe(false);
+  });
+
+  it("recognises a button that has become a confirmation (Instahyre's one-click apply)", () => {
+    expect(APPLIED_BUTTON.test('Application sent!')).toBe(true);
+    expect(APPLIED_BUTTON.test('✓ Application sent!')).toBe(true);
+    expect(APPLIED_BUTTON.test('Applied')).toBe(true);
+    expect(APPLIED_BUTTON.test('Apply now')).toBe(false);
+    expect(APPLIED_BUTTON.test('Applied AI Engineer')).toBe(false);
+  });
+
+  it("recognises LinkedIn's confirmation", () => {
+    expect(LINKEDIN_SUCCESS.test('Your application was sent to Acme!')).toBe(true);
+  });
+});

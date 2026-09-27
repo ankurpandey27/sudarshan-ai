@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { canonicalSkill } from '../../discovery/utils/job-normalizer.util';
 import { CandidateProfile, ProfileSkill } from '../interfaces/candidate-profile.interface';
 

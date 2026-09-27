@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import '@fontsource/inter-tight/latin-400.css';
 import '@fontsource/inter-tight/latin-500.css';
 import '@fontsource/inter-tight/latin-600.css';
@@ -24,6 +27,8 @@ import { Applications } from './pages/applications';
 import { AnswersPage } from './pages/answers';
 import { ProfilePage } from './pages/profile';
 import { SettingsPage } from './pages/settings';
+import { ActivityPage } from './pages/activity';
+import { signConsole } from './lib/signature';
 
 // Apply the saved theme before first paint.
 try {
@@ -80,6 +85,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="answers" element={<AnswersPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />
+                <Route path="activity" element={<ActivityPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Route>
             </Routes>
@@ -89,3 +95,5 @@ createRoot(document.getElementById('root')!).render(
     </QueryClientProvider>
   </StrictMode>,
 );
+
+signConsole();

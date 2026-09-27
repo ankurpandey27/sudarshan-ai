@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { compressText } from '../../../common/utils/text.util';
 import { Job } from '../../jobs/interfaces/job.interface';
 import { LLM_DESCRIPTION_CHARS } from '../constants/scoring.constants';

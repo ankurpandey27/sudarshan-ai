@@ -1,9 +1,16 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { DiscoveredJob } from '../../jobs/interfaces/discovered-job.interface';
 import { NaukriJob } from '../interfaces/naukri-api.interface';
 import { detectRemote } from './job-normalizer.util';
 
-export const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+export const slug = (s: string): string =>
+  s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
 
 export function naukriJobToDiscovered(j: NaukriJob): DiscoveredJob | null {
   if (!j.jobId || !j.jdURL) return null;
@@ -37,4 +44,9 @@ export function naukriJobToDiscovered(j: NaukriJob): DiscoveredJob | null {
   };
 }
 
-const stripHtml = (s: string): string => s.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+const stripHtml = (s: string): string =>
+  s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();

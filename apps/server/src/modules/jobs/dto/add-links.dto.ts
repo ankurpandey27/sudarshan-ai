@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Type } from 'class-transformer';
 import { ArrayMaxSize, ArrayMinSize, IsArray, ValidateNested } from 'class-validator';
 import { JobLinkDto } from './job-link.dto';

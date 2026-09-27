@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 // Mirrors the server's response types.
 
 export type JobStatus =
@@ -25,9 +28,14 @@ export interface ScoreDetail {
   summary: string;
 }
 
+export type JobPlatform = 'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'other';
+
 export interface Job {
   id: number;
   source: JobSource;
+  platform: JobPlatform;
+  /** Host of the job page, e.g. "jobs.lever.co". */
+  site: string;
   url: string;
   applyUrl: string | null;
   title: string;
@@ -71,10 +79,17 @@ export interface Paginated<T> {
   limit: number;
 }
 
+export interface JobList extends Paginated<Job> {
+  /** Matching jobs per platform, ignoring the platform filter. */
+  platforms: Partial<Record<JobPlatform, number>>;
+}
+
 export interface JobStats {
   byStatus: Record<string, number>;
   appliedToday: number;
   appliedTodayBySource: Record<string, number>;
+  appliedTodayByPlatform: Partial<Record<JobPlatform, number>>;
+  queuedByPlatform: Partial<Record<JobPlatform, number>>;
   appliedTotal: number;
   medianApplySeconds: number | null;
   memoryHitRate: number | null;
@@ -91,6 +106,7 @@ export interface AgentStatus {
   lastDiscoveryAt: string | null;
   blockedSources: { source: string; reason: string }[];
   queue: number;
+  awaitingReview: number;
   openQuestions: number;
   llm: string | null;
   appliedToday: number;
@@ -152,7 +168,7 @@ export interface Settings {
     excludeCompanies: string[];
     excludeTitleWords: string[];
   };
-  sources: Record<'linkedin' | 'naukri' | 'links' | 'externalSites', { enabled: boolean; dailyLimit: number }>;
+  sources: Record<'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'links' | 'externalSites', { enabled: boolean; dailyLimit: number }>;
   agent: {
     mode: 'review' | 'auto';
     minApplyScore: number;
@@ -170,13 +186,23 @@ export interface Settings {
   };
 }
 
-export interface LlmUsage {
+export interface LlmUsagePeriod {
   calls: number;
   failedCalls: number;
   promptTokens: number;
   completionTokens: number;
+  tokens: number;
+}
+
+export interface LlmUsage {
+  day: string;
   budget: number;
+  today: LlmUsagePeriod;
+  month: LlmUsagePeriod;
+  allTime: LlmUsagePeriod & { since: string | null };
   byPurpose: { purpose: string; calls: number; tokens: number }[];
+  byPurposeAllTime: { purpose: string; calls: number; tokens: number }[];
+  byModel: { model: string; calls: number; tokens: number }[];
 }
 
 export interface Profile {
@@ -244,7 +270,7 @@ export interface BrowserStatus {
   running: boolean;
   executable: string | null;
   headless: boolean;
-  sessions: { id: 'linkedin' | 'naukri' | 'instahyre'; label: string; loggedIn: boolean }[];
+  sessions: { id: 'linkedin' | 'naukri' | 'instahyre' | 'indeed'; label: string; loggedIn: boolean }[];
 }
 
 export interface WorkbookImportResult {
@@ -261,4 +287,30 @@ export interface Insight {
   detail: string;
   fix: string;
   actions: { label: string; to?: string; api?: string }[];
+}
+
+export interface ActivityDay {
+  day: string;
+  lines: number;
+  problems: number;
+}
+
+export interface ActivityPage {
+  items: AgentEvent[];
+  hasMore: boolean;
+  days: ActivityDay[];
+  keepDays: number;
+}
+
+export interface AnalyticsReport {
+  days: number;
+  platform: JobPlatform | null;
+  daily: { day: string; found: number; applied: Partial<Record<JobPlatform, number>> }[];
+  current: { found: number; applied: number };
+  previous: { found: number; applied: number };
+  pipeline: { found: number; scored: number; matched: number; approved: number; applied: number };
+  byPlatform: { platform: JobPlatform; found: number; applied: number }[];
+  scores: { bucket: number; jobs: number; applied: number }[];
+  skipReasons: { rule: string; label: string; fix: string; jobs: number }[];
+  missingSkills: { skill: string; jobs: number }[];
 }

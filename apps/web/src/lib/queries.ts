@@ -1,15 +1,18 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
 import type {
   AgentStatus,
+  AnalyticsReport,
   Answer,
   BrowserStatus,
-  Job,
+  JobList,
   Insight,
   JobStats,
   LlmPreset,
   LlmUsage,
-  Paginated,
   PendingQuestion,
   ProfileState,
   Settings,
@@ -29,7 +32,7 @@ export const usePresets = () =>
   useQuery({ queryKey: ['presets'], queryFn: () => api.get<LlmPreset[]>('/llm/providers'), staleTime: Infinity });
 export const useUsage = () => useQuery({ queryKey: ['usage'], queryFn: () => api.get<LlmUsage>('/llm/usage'), refetchInterval: 30000 });
 
-export const useJobs = (params: { status?: string; source?: string; search?: string; sort?: string; page?: number; limit?: number }) => {
+export const useJobs = (params: { status?: string; source?: string; platform?: string; search?: string; sort?: string; page?: number; limit?: number }) => {
   const qs = new URLSearchParams(
     Object.entries(params)
       .filter(([, v]) => v !== undefined && v !== '')
@@ -37,10 +40,18 @@ export const useJobs = (params: { status?: string; source?: string; search?: str
   );
   return useQuery({
     queryKey: ['jobs', params],
-    queryFn: () => api.get<Paginated<Job>>(`/jobs?${qs}`),
+    queryFn: () => api.get<JobList>(`/jobs?${qs}`),
     placeholderData: (prev) => prev,
   });
 };
 
 export const useInsights = () =>
   useQuery({ queryKey: ['insights'], queryFn: () => api.get<Insight[]>('/agent/insights'), refetchInterval: 10000 });
+
+export const useAnalytics = (days: number, platform: string) =>
+  useQuery({
+    queryKey: ['analytics', days, platform],
+    queryFn: () => api.get<AnalyticsReport>(`/analytics?days=${days}${platform ? `&platform=${platform}` : ''}`),
+    placeholderData: (prev) => prev,
+    refetchInterval: 30000,
+  });

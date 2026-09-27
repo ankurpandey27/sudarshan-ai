@@ -1,6 +1,10 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Transform } from 'class-transformer';
 import { IsArray, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { JobSource } from '../enums/job-source.enum';
+import { JobPlatform } from '../enums/job-platform.enum';
 import { JobStatus } from '../enums/job-status.enum';
 
 export class ListJobsQueryDto {
@@ -14,6 +18,10 @@ export class ListJobsQueryDto {
   @IsOptional()
   @IsEnum(JobSource)
   source?: JobSource;
+
+  @IsOptional()
+  @IsEnum(JobPlatform)
+  platform?: JobPlatform;
 
   @IsOptional()
   @IsString()

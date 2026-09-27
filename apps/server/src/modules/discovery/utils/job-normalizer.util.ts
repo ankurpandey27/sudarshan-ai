@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { SKILL_ALIASES, SKILL_DICTIONARY } from '../constants/skills.constants';
 import { escapeRegex } from '../../../common/utils/regex.util';
 
@@ -29,11 +32,10 @@ export const canonicalSkill = (skill: string): string => {
 };
 
 // Whole-token matches only: "go" must not match "good", "ai" not "email".
-const SKILL_MATCHERS = [...SKILL_DICTIONARY, 'nodejs', 'reactjs', 'nest.js']
-  .map((skill) => ({
-    skill,
-    re: new RegExp(`(?<![a-z0-9])${escapeRegex(skill)}(?![a-z0-9])`, 'i'),
-  }));
+const SKILL_MATCHERS = [...SKILL_DICTIONARY, 'nodejs', 'reactjs', 'nest.js'].map((skill) => ({
+  skill,
+  re: new RegExp(`(?<![a-z0-9])${escapeRegex(skill)}(?![a-z0-9])`, 'i'),
+}));
 
 export function extractSkills(description: string): string[] {
   const found = new Set<string>();
@@ -69,7 +71,5 @@ export function detectRemote(location: string, description = ''): boolean {
   const loc = location.toLowerCase();
   if (/\bhybrid\b/.test(loc)) return false;
   if (/\bremote\b|work from home|\bwfh\b|anywhere/.test(loc)) return true;
-  return /\b(fully|100%|completely) remote\b|\bremote[- ]first\b|\bremote(?:ly)? \(anywhere|\bpermanent(?:ly)? work from home\b/i.test(
-    description,
-  );
+  return /\b(fully|100%|completely) remote\b|\bremote[- ]first\b|\bremote(?:ly)? \(anywhere|\bpermanent(?:ly)? work from home\b/i.test(description);
 }

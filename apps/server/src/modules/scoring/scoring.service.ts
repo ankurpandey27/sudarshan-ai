@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { Injectable, Logger } from '@nestjs/common';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
@@ -26,6 +29,7 @@ import { SCORE_SYSTEM_PROMPT, buildBatchScorePrompt } from './utils/score-prompt
 export class ScoringService {
   private readonly logger = new Logger(ScoringService.name);
   private last: LastScoringRun | null = null;
+  private inFlight: Promise<ScoringRunResult> | null = null;
 
   constructor(
     private readonly jobs: JobsService,
@@ -37,12 +41,20 @@ export class ScoringService {
     private readonly events: EventsService,
   ) {}
 
-  async scoreNew(limit = 200): Promise<ScoringRunResult> {
+  /** Concurrent callers share one run, so no job is scored (or paid for) twice. */
+  scoreNew(limit = 200): Promise<ScoringRunResult> {
+    this.inFlight ??= this.run(limit).finally(() => {
+      this.inFlight = null;
+    });
+    return this.inFlight;
+  }
+
+  private async run(limit: number): Promise<ScoringRunResult> {
     const out: ScoringRunResult = { scored: 0, review: 0, queued: 0, skipped: 0, llmCalls: 0, skippedBy: {} };
     const pending = this.jobs.unscored(limit);
     if (pending.length === 0) return out;
     const profile = this.profile.get();
-    const snap = toProfileSnapshot(profile);
+    const snap = toProfileSnapshot(profile, this.settings.get().search.locations);
     const s = this.settings.get();
     const survivors: { job: Job; detail: ScoreDetail }[] = [];
 
@@ -109,7 +121,7 @@ export class ScoringService {
         reason = detail.summary || `Strong match (${score})`;
       } else if (score >= s.agent.minReviewScore) {
         status = JobStatus.REVIEW;
-        reason = external ? 'Applies on the company site - enable external sites or apply by hand' : detail.summary || `Partial match (${score})`;
+        reason = external ? 'Applies on the company site - turn on "Company career sites" under Apply on, or apply by hand' : detail.summary || `Partial match (${score})`;
       } else {
         status = JobStatus.SKIPPED;
         reason = detail.summary || `Match score ${score} is below your review threshold (${s.agent.minReviewScore})`;
@@ -130,7 +142,7 @@ export class ScoringService {
       message:
         `Scored ${pending.length} jobs: ${out.queued} queued, ${out.review} to review, ${out.skipped} skipped` +
         (top ? ` - most skipped for: ${SKIP_RULE_TEXT[top[0] as SkipRule]} (${top[1]})` : '') +
-        (nothingUsable ? '. Nothing to apply to - see "What needs attention" on Mission control.' : ''),
+        (nothingUsable ? '. Nothing to apply to - see "What needs attention" on Lakshya.' : ''),
       data: { ...out },
     });
     this.last = { ...out, total: pending.length, at: new Date().toISOString() };
@@ -165,7 +177,8 @@ export class ScoringService {
       });
       return new Map((res.scores ?? []).filter((x) => Number.isFinite(Number(x.score))).map((x) => [Number(x.id), x]));
     } catch (err) {
-      this.logger.warn(`AI scoring failed, using the engine score: ${(err as Error).message}`);
+      // LlmService already reported the failure to the user.
+      this.logger.debug(`AI scoring failed, using the engine score: ${(err as Error).message}`);
       return new Map();
     }
   }

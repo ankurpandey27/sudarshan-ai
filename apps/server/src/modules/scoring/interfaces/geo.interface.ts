@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 // Offline gazetteer: places resolve to coordinates and country; unknown places never block a job.
 
 export interface Place {

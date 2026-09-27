@@ -1,3 +1,6 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import type { Request } from 'express';
 import { CLIENT_HEADER, LOCAL_HOSTS } from '../constants/security.constants';

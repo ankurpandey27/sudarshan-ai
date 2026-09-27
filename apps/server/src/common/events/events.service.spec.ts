@@ -1,0 +1,55 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
+import { StorageService } from '../storage/storage.service';
+import { localDay } from '../utils/date.util';
+import { AgentEventType } from './enums/agent-event-type.enum';
+import { EventsService } from './events.service';
+
+describe('EventsService flight log', () => {
+  it('keeps log lines, application steps and questions across restarts - not internal signals', () => {
+    const storage = new StorageService(':memory:');
+    const before = new EventsService(storage);
+    before.emit({ type: AgentEventType.LOG, level: 'success', message: 'Applied to Backend Engineer @ Acme', jobId: 7, source: 'linkedin' });
+    before.emit({ type: AgentEventType.APPLY_STEP, message: 'Step 2: "Next"', jobId: 7 });
+    before.emit({ type: AgentEventType.QUESTION_PENDING, level: 'warn', message: 'Needs your answer: "Notice period?"', jobId: 7 });
+    before.emit({ type: AgentEventType.JOB_UPDATED, message: 'job 7 changed' });
+
+    const after = new EventsService(storage);
+    expect(after.recent().map((e) => e.type)).toEqual([AgentEventType.LOG, AgentEventType.APPLY_STEP, AgentEventType.QUESTION_PENDING]);
+    const next = after.emit({ type: AgentEventType.LOG, message: 'Agent started' });
+    expect(next.id).toBeGreaterThan(after.recent()[0].id);
+  });
+
+  it('forgets lines older than 7 days', () => {
+    const storage = new StorageService(':memory:');
+    const old = new Date(Date.now() - 8 * 86_400_000).toISOString();
+    const recent = new Date(Date.now() - 6 * 86_400_000).toISOString();
+    storage.run("INSERT INTO activity (at, type, level, message) VALUES (?, 'log', 'info', 'eight days ago')", [old]);
+    storage.run("INSERT INTO activity (at, type, level, message) VALUES (?, 'log', 'info', 'six days ago')", [recent]);
+    const events = new EventsService(storage);
+    expect(events.activity({}).items.map((e) => e.message)).toEqual(['six days ago']);
+  });
+
+  it('filters the saved log by kind, text and day, newest first, in pages', () => {
+    const events = new EventsService(new StorageService(':memory:'));
+    events.emit({ type: AgentEventType.LOG, message: 'Searching now' });
+    events.emit({ type: AgentEventType.LOG, level: 'success', message: 'Backend @ Acme: Applied in 5 step(s)', jobId: 1 });
+    events.emit({ type: AgentEventType.LOG, level: 'warn', message: 'Frontend @ Zeta: Captcha - finish it', jobId: 2 });
+    events.emit({ type: AgentEventType.LOG, level: 'error', message: 'Naukri search failed' });
+
+    expect(events.activity({}).items.map((e) => e.message)[0]).toBe('Naukri search failed');
+    expect(events.activity({ kind: 'problems' }).items.map((e) => e.message)).toEqual(['Naukri search failed', 'Frontend @ Zeta: Captcha - finish it']);
+    expect(events.activity({ kind: 'apply' }).items).toHaveLength(2);
+    expect(events.activity({ search: 'acme' }).items.map((e) => e.message)).toEqual(['Backend @ Acme: Applied in 5 step(s)']);
+    expect(events.activity({ day: '2020-01-01' }).items).toEqual([]);
+
+    const page1 = events.activity({ limit: 3 });
+    expect(page1.hasMore).toBe(true);
+    const page2 = events.activity({ limit: 3, beforeId: page1.items.at(-1)!.id });
+    expect(page2.items.map((e) => e.message)).toEqual(['Searching now']);
+    expect(page2.hasMore).toBe(false);
+
+    expect(events.activity({}).days).toEqual([{ day: localDay(), lines: 4, problems: 2 }]);
+  });
+});
