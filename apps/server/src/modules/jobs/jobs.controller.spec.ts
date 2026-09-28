@@ -17,7 +17,8 @@ describe('moving jobs between Review, the queue and Skipped', () => {
           source: JobSource.LINKEDIN,
           externalId: id,
           url: `https://www.linkedin.com/jobs/view/${id}/`,
-          title: 'Backend',
+          // A distinct role per job: the same title at the same company is one job.
+          title: `Backend ${id}`,
           company: 'Acme',
           location: '',
           isRemote: false,

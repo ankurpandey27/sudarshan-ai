@@ -7,7 +7,7 @@ import { sleep } from '../../../common/utils/sleep.util';
 import { FormRunnerService } from '../../form-engine/form-runner.service';
 import { RecipesService } from '../../form-engine/recipes.service';
 import { FormAction, FormSnapshot } from '../../form-engine/interfaces/form-field.interface';
-import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
+import { documentTextInPage, visiblePasswordInPage } from '../../form-engine/scripts/page-helpers.script';
 import { buildNavigatePrompt, NAVIGATE_SYSTEM_PROMPT } from '../../form-engine/utils/navigate-prompt.util';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
@@ -21,6 +21,8 @@ import {
   GENERIC_SUCCESS,
   LOGIN_WALL,
   ONE_CLICK_SUCCESS,
+  PAGE_SWAPPED,
+  RENDER_WAIT_MS,
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
@@ -58,9 +60,10 @@ export class WebApplyAdapter implements ApplyAdapter {
     const domain = new URL(current.url()).hostname.replace(/^www\./, '');
 
     let confirmedBefore = false;
+    // Buttons already pressed on the way: Workday's "Apply" opens a pop-up but stays on the page behind it.
+    const pressed = new Set<string>();
     for (let hop = 0; hop < 3; hop++) {
-      const snap = await this.runner.snapshot(current, null);
-      const text = await current.evaluate(documentTextInPage);
+      const { snap, text, accountWall } = await this.readWhenReady(current);
       if (CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED);
       if (hop === 0) {
         // The site's own button says it is done, e.g. Instahyre's "Application sent!".
@@ -72,6 +75,14 @@ export class WebApplyAdapter implements ApplyAdapter {
         // One-click apply: the confirmation appeared after our click.
         return result(PrepareStatus.APPLIED, { detail: 'Applied in one click', page: current });
       }
+      // A password box means the site wants an account first (Workday's "Create Account / Sign In").
+      // Sudarshan never creates accounts or types passwords: this one is yours, with the page left open.
+      if (accountWall) {
+        return result(PrepareStatus.LOGIN_REQUIRED, {
+          detail: `${domain} needs an account before the application - sign in or create one in the agent browser, then approve the job again`,
+          page: current,
+        });
+      }
       // A form with a captcha at the bottom is still a form: fill it, then hand the captcha over.
       if (this.hasApplicationForm(snap)) {
         const dialog = await current.$(DIALOG);
@@ -81,7 +92,8 @@ export class WebApplyAdapter implements ApplyAdapter {
 
       // An "Apply now" comes first: the captcha often sits inside the application pop-up it opens
       // (Hashcash, 2026-09-28), and is handed over only after the form is filled.
-      const action = await this.findApplyAction(snap, domain, text);
+      const action = await this.findApplyAction(snap, domain, text, pressed);
+      if (action) pressed.add(action.text.trim().toLowerCase());
       if (!action) return result(snap.captcha ? PrepareStatus.CAPTCHA : PrepareStatus.NO_APPLY_BUTTON, { page: current });
       const tab = await clickCatchingNewTab(current, () => this.runner.click(current, action.id));
       if (tab) current = tab;
@@ -89,6 +101,32 @@ export class WebApplyAdapter implements ApplyAdapter {
       await sleep(500);
     }
     return result(PrepareStatus.NO_APPLY_BUTTON, { detail: 'Could not reach the application form', page: current });
+  }
+
+  /**
+   * Reads the page once it shows something to act on. Career sites built in the browser (Workday)
+   * draw their Apply button seconds after the network goes quiet, and may swap the page out while it
+   * is read ("detached Frame") - so wait for a form, a login or an apply button, and read again.
+   */
+  private async readWhenReady(page: Page): Promise<{ snap: FormSnapshot; text: string; accountWall: boolean }> {
+    const deadline = Date.now() + RENDER_WAIT_MS;
+    for (;;) {
+      try {
+        const snap = await this.runner.snapshot(page, null);
+        const text = await page.evaluate(documentTextInPage);
+        const accountWall = await page.evaluate(visiblePasswordInPage);
+        const actionable =
+          accountWall ||
+          this.hasApplicationForm(snap) ||
+          this.looksLikeLogin(snap, text) ||
+          CLOSED_TEXT.test(text) ||
+          snap.actions.some((a) => !a.disabled && (a.kind === 'apply' || APPLIED_BUTTON.test(a.text.trim())));
+        if (actionable || Date.now() >= deadline) return { snap, text, accountWall };
+      } catch (err) {
+        if (!PAGE_SWAPPED.test((err as Error).message) || Date.now() >= deadline) throw err;
+      }
+      await sleep(1000);
+    }
   }
 
   private hasApplicationForm(snap: FormSnapshot): boolean {
@@ -102,8 +140,8 @@ export class WebApplyAdapter implements ApplyAdapter {
     return LOGIN_WALL.test(text) || (onlyAuth && /sign in|log in|login/i.test(text));
   }
 
-  private async findApplyAction(snap: FormSnapshot, domain: string, text: string): Promise<FormAction | null> {
-    const usable = snap.actions.filter((a) => !a.disabled);
+  private async findApplyAction(snap: FormSnapshot, domain: string, text: string, pressed = new Set<string>()): Promise<FormAction | null> {
+    const usable = snap.actions.filter((a) => !a.disabled && !pressed.has(a.text.trim().toLowerCase()));
     const recipe = this.recipes.get(domain);
     const learned = usable.find((a) => recipe.applyTexts.includes(a.text.toLowerCase()));
     if (learned) return learned;

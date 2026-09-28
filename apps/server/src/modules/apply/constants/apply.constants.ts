@@ -59,3 +59,12 @@ export const FOUND_ON: Record<JobPlatform, string> = {
   [JobPlatform.INSTAHYRE]: 'Instahyre',
   [JobPlatform.OTHER]: 'Company website',
 };
+
+/** Tries per job before it goes to "Do by hand", so the queue never loops on one job. Approving it again yourself resets this. */
+export const MAX_APPLY_ATTEMPTS = 3;
+
+/** How long a career page may take to draw its Apply button or form after the network goes quiet (Workday). */
+export const RENDER_WAIT_MS = 10_000;
+
+/** Errors from reading a page the site replaced mid-read; reading again a moment later works. */
+export const PAGE_SWAPPED = /detached Frame|Execution context was destroyed|Cannot find context|Target closed|frame was detached/i;

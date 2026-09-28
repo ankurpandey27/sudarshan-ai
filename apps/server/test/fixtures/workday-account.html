@@ -1,0 +1,35 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>FullStack Javascript, NodeJS Developer - Careers</title></head>
+<body>
+<!-- Mirrors a Workday career site (Motorola Solutions, 2026-09-28): the Apply button is drawn a few
+     seconds after load; it opens a pop-up ("Autofill with Resume" / "Apply Manually") while the
+     page behind keeps its Apply button; "Apply Manually" leads to Create Account / Sign In. -->
+<header><a href="#signin">Sign In</a> <a href="#jobs">Search for Jobs</a></header>
+<main id="app"><p>Loading...</p></main>
+<script>
+  const app = document.getElementById('app');
+  const jobPage = () => {
+    app.innerHTML = '<h1>FullStack Javascript, NodeJS Developer</h1><button id="apply" data-automation-id="adventureButton">Apply</button><p>Bangalore offsite, India</p>';
+    document.getElementById('apply').addEventListener('click', () => {
+      const d = document.createElement('div');
+      d.setAttribute('role', 'dialog');
+      d.innerHTML = '<h2>Start Your Application</h2><button id="autofill">Autofill with Resume</button><button id="manual">Apply Manually</button><button>Close</button>';
+      document.body.appendChild(d);
+      document.getElementById('manual').addEventListener('click', () => {
+        d.remove();
+        app.innerHTML =
+          '<h2>Create Account</h2><p>Password Requirements: a minimum of 8 characters</p>' +
+          '<label for="em">Email Address *</label><input id="em" type="email">' +
+          '<label for="pw">Password *</label><input id="pw" type="password">' +
+          '<label for="pw2">Verify New Password *</label><input id="pw2" type="password">' +
+          '<label><input type="checkbox"> Yes, I have read and consent to the privacy policy</label>' +
+          '<button>Create Account</button><a href="#signin">Sign In</a>';
+      });
+    });
+  };
+  // Drawn after the network is quiet, as a browser-built site does.
+  setTimeout(jobPage, 2500);
+</script>
+</body>
+</html>

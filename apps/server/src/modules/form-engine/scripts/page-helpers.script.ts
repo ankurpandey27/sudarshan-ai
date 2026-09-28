@@ -30,3 +30,11 @@ export function pickTypeaheadOptionInPage(value: string): string | null {
 export function documentTextInPage(): string {
   return (document.body?.innerText ?? '').replace(/\s+/g, ' ').slice(0, 6000);
 }
+
+/** A password box is showing: the site wants you to sign in or create an account. */
+export function visiblePasswordInPage(): boolean {
+  return Array.from(document.querySelectorAll('input[type=password]')).some((el) => {
+    const r = (el as HTMLElement).getBoundingClientRect();
+    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+  });
+}

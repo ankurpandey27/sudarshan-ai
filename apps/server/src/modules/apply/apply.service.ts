@@ -3,6 +3,7 @@
 
 import { Injectable, Logger } from '@nestjs/common';
 import { FOUND_ON } from './constants/apply.constants';
+import { capAttempts } from './utils/attempt-cap.util';
 import { Page } from 'puppeteer-core';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
@@ -81,6 +82,8 @@ export class ApplyService {
       const adapter = this.adapters.find((a) => a.matches(job)) ?? this.web;
       let prep = await adapter.prepare(page, job);
       let active: ApplyAdapter = adapter;
+      // Followed "Apply on company site": a login page from here on is the company's, not the job board's.
+      let onCompanySite = false;
       if (prep.page) page = prep.page;
 
       if (prep.status === PrepareStatus.EXTERNAL) {
@@ -96,9 +99,10 @@ export class ApplyService {
         prep = await this.web.prepareUrl(page, prep.externalUrl);
         if (prep.page) page = prep.page;
         active = this.web;
+        onCompanySite = true;
       }
 
-      final = { ...this.mapPrepare(prep, job), ended: `prep:${prep.status}` };
+      final = { ...this.mapPrepare(prep, job, onCompanySite), ended: `prep:${prep.status}` };
       if (prep.status === PrepareStatus.READY) {
         const ctx = this.context(job);
         const opts = {
@@ -128,7 +132,9 @@ export class ApplyService {
           };
         }
       } else if (prep.status === PrepareStatus.LOGIN_REQUIRED) {
-        const site = SITE_OF_PLATFORM[job.platform];
+        // Only a login page on the job board itself means its session ended (LinkedIn, 2026-09-28: a
+        // LinkedIn job's Infosys careers login had marked LinkedIn logged out, again and again).
+        const site = onCompanySite ? undefined : SITE_OF_PLATFORM[job.platform];
         // A job board's session ended: pause that board until you log in again, and close the tab.
         if (site) await this.browser.markLoggedOut(site);
         // A company site: the job waits in "Do by hand" with its login page open for you.
@@ -141,6 +147,8 @@ export class ApplyService {
       this.logger.warn(`Apply failed for job ${job.id}: ${msg}`);
       final = { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}`, ended: 'error' };
     }
+    // Never the same form again and again: after the last allowed try it goes to "Do by hand".
+    final = capAttempts(final, job.attempts);
     const result = await this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
     if (page && learnFrom) await this.learning.watch(page, learnFrom);
     return result;
@@ -177,7 +185,7 @@ export class ApplyService {
     return { status: final.status, detail: final.detail };
   }
 
-  private mapPrepare(prep: PrepareResult, job: Job): { status: JobStatus; detail: string } {
+  private mapPrepare(prep: PrepareResult, job: Job, onCompanySite = false): { status: JobStatus; detail: string } {
     switch (prep.status) {
       case PrepareStatus.ALREADY_APPLIED:
         return { status: JobStatus.APPLIED, detail: 'You had already applied' };
@@ -187,7 +195,7 @@ export class ApplyService {
         return { status: JobStatus.SKIPPED, detail: prep.detail ?? 'No longer accepting applications' };
       case PrepareStatus.LOGIN_REQUIRED:
         // Job boards stay queued (the board is paused until you log in again); other sites need you.
-        return !SITE_OF_PLATFORM[job.platform]
+        return onCompanySite || !SITE_OF_PLATFORM[job.platform]
           ? { status: JobStatus.MANUAL, detail: prep.detail ?? 'Log in to this site in the agent browser, then approve again' }
           : { status: JobStatus.APPROVED, detail: prep.detail ?? 'Waiting for you to log in' };
       case PrepareStatus.CAPTCHA:

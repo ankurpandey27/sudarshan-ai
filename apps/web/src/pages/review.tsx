@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Inbox, Rocket, Search, SkipForward, Undo2, X } from 'lucide-react';
 import { api } from '../lib/api';
-import { cn } from '../lib/format';
-import { useJobs, useSettings, useStats, useTaste } from '../lib/queries';
+import { cn, platformLabel } from '../lib/format';
+import { useAgent, useJobs, useSettings, useStats, useTaste } from '../lib/queries';
 import { useDebounced } from '../lib/use-debounced';
 import { useSaved } from '../lib/use-saved';
 import type { JobPlatform } from '../lib/types';
@@ -52,6 +52,9 @@ export function Review() {
   }, [tab, platform, sort, search, pageSize]);
 
   const { data: taste } = useTaste();
+  const { data: agent } = useAgent();
+  // Platforms the agent is holding back right now (daily limit, paused, logged out): their queued jobs wait, the rest go on.
+  const held = new Map((agent?.running ? agent.blockedSources : []).map((b) => [b.source, b.reason]));
   const { data: stats } = useStats();
   const { data: settings } = useSettings();
   const threshold = settings?.agent.minApplyScore ?? 70;
@@ -168,6 +171,20 @@ export function Review() {
         )}
       </div>
 
+      {tab === 'queued' && held.size > 0 && (
+        <div className="mb-3 rounded-xl border border-warn/30 bg-warn-soft px-4 py-3 text-[13px] text-ink-2" role="status">
+          <p className="font-semibold text-ink">Some queued jobs are waiting - the rest are being applied to</p>
+          <ul className="mt-1 space-y-0.5">
+            {[...held].map(([source, reason]) => (
+              <li key={source}>
+                <b>{platformLabel(source)}:</b> {reason}
+                {/limit/i.test(reason) ? ' - its jobs stay queued and go out tomorrow' : ''}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <Card className={cn('overflow-hidden transition-opacity', isFetching && !isLoading && 'opacity-70')}>
         {jobs.length > 0 && (
           // Bulk actions live in the list header, right where you ticked.
@@ -245,6 +262,11 @@ export function Review() {
               actions={
                 tab === 'queued' ? (
                   <>
+                    {held.has(j.platform) && (
+                      <span className="rounded-md bg-warn-soft px-2 py-1 text-[11.5px] font-medium text-warn" title={held.get(j.platform)}>
+                        {/limit/i.test(held.get(j.platform) ?? '') ? 'Waiting - daily limit' : 'Waiting'}
+                      </span>
+                    )}
                     <Button size="sm" variant="ghost" icon={<Undo2 className="size-3.5" />} onClick={() => act.mutate({ ids: [j.id], action: 'unqueue' })}>
                       Move to review
                     </Button>

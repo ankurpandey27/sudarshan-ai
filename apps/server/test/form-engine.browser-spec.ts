@@ -267,6 +267,18 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     expect(again.status).toBe(PrepareStatus.ALREADY_APPLIED);
   });
 
+  it('waits for a Workday page, goes through Apply Manually, and hands over its account page (Motorola, 2026-09-28)', async () => {
+    const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
+    const prep = await web.prepareUrl(page, `file://${join(__dirname, 'fixtures', 'workday-account.html').replace(/\\/g, '/')}`);
+    // Previously: "no apply button" (looked too early), then "Could not reach the application form".
+    expect(prep.status).toBe(PrepareStatus.LOGIN_REQUIRED);
+    expect(prep.detail).toMatch(/needs an account/);
+    // Nothing typed into the account form: no email, and never a password.
+    expect(
+      await page.evaluate(() => [...document.querySelectorAll('input[type=email], input[type=password]')].map((i) => (i as HTMLInputElement).value).join('')),
+    ).toBe('');
+  });
+
   it('opens the application pop-up before handing over its captcha (Hashcash, 2026-09-28)', async () => {
     const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
     const prep = await web.prepareUrl(page, `file://${join(__dirname, 'fixtures', 'apply-modal-captcha.html').replace(/\\/g, '/')}`);

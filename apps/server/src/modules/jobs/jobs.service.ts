@@ -11,6 +11,8 @@ import { detectRemote, extractSkills, parseSalary } from '../discovery/utils/job
 import { JobSource } from './enums/job-source.enum';
 import { JobPlatform } from './enums/job-platform.enum';
 import { PLATFORM_SQL } from './constants/job-platform.constants';
+import { MERGE_KEEP_ORDER, MERGEABLE, SAME_ROLE_WINDOW_DAYS } from './constants/jobs.constants';
+import { roleKey } from './utils/role-key.util';
 import { JobList } from './interfaces/job-list.interface';
 import { JobStatus } from './enums/job-status.enum';
 import { Attempt, AttemptRow, AttemptStats } from './interfaces/attempt.interface';
@@ -43,6 +45,49 @@ export class JobsService implements OnApplicationBootstrap {
       JobStatus.APPLYING,
     ]);
     if (changes > 0) this.logger.warn(`Re-queued ${changes} application(s) interrupted by the last shutdown`);
+    const merged = this.mergeSameRoles();
+    if (merged > 0) this.logger.log(`Merged ${merged} duplicate listing(s) of the same job`);
+  }
+
+  /**
+   * One card per role: copies of a job found in the last 30 days (same company and title) are
+   * dismissed in favour of the one furthest along - applied first, then queued, then the best score.
+   * Only copies still waiting (new, review, queued, skipped) are touched; you can approve them again.
+   */
+  mergeSameRoles(): number {
+    const since = new Date(Date.now() - SAME_ROLE_WINDOW_DAYS * 86_400_000).toISOString();
+    const rows = this.storage.all<{ id: number; company: string; title: string; location: string; status: JobStatus; score: number | null }>(
+      "SELECT id, company, title, location, status, score FROM jobs WHERE discovered_at >= ? AND trim(company) <> '' ORDER BY id",
+      [since],
+    );
+    const groups = new Map<string, typeof rows>();
+    for (const r of rows) {
+      const key = `${r.company.trim().toLowerCase()}|${roleKey(r.title)}`;
+      groups.set(key, [...(groups.get(key) ?? []), r]);
+    }
+    const rank = (s: JobStatus) => MERGE_KEEP_ORDER.indexOf(s);
+    const now = new Date().toISOString();
+    let merged = 0;
+    this.storage.transaction(() => {
+      for (const group of groups.values()) {
+        if (group.length < 2) continue;
+        const keep = [...group].sort((a, b) => rank(a.status) - rank(b.status) || (b.score ?? 0) - (a.score ?? 0) || a.id - b.id)[0];
+        let location = keep.location;
+        for (const r of group) {
+          if (r.id === keep.id || !MERGEABLE.includes(r.status)) continue;
+          this.storage.run('UPDATE jobs SET status = ?, reason = ?, updated_at = ? WHERE id = ?', [
+            JobStatus.DISMISSED,
+            `Same job as #${keep.id} (another listing)`,
+            now,
+            r.id,
+          ]);
+          if (r.location && !location.toLowerCase().includes(r.location.toLowerCase())) location = `${location} / ${r.location}`.slice(0, 200);
+          merged++;
+        }
+        if (location !== keep.location) this.storage.run('UPDATE jobs SET location = ? WHERE id = ?', [location, keep.id]);
+      }
+    });
+    return merged;
   }
 
   /** Returns the ids of newly inserted rows only. */
@@ -81,6 +126,15 @@ export class JobsService implements OnApplicationBootstrap {
           );
           continue;
         }
+        // The same role listed again - per city on LinkedIn, or on another job site - is one job.
+        const same = this.sameRole(j.company, j.title, now);
+        if (same) {
+          const where = (j.location ?? '').trim();
+          if (where && !same.location.toLowerCase().includes(where.toLowerCase())) {
+            this.storage.run('UPDATE jobs SET location = ?, updated_at = ? WHERE id = ?', [`${same.location} / ${where}`.slice(0, 200), now, same.id]);
+          }
+          continue;
+        }
         const res = this.storage.run(
           `INSERT INTO jobs (source, external_id, url, apply_url, title, company, location, is_remote, easy_apply,
              salary_raw, salary_min, salary_max, description, skills, posted_at, status, origin, discovered_at, updated_at)
@@ -111,6 +165,18 @@ export class JobsService implements OnApplicationBootstrap {
       }
     });
     return inserted;
+  }
+
+  /** A job found recently with the same company and title (ignoring case, spaces and punctuation). */
+  private sameRole(company: string, title: string, now: string): { id: number; location: string } | null {
+    const key = roleKey(title);
+    if (!company.trim() || !key) return null;
+    const since = new Date(Date.parse(now) - SAME_ROLE_WINDOW_DAYS * 86_400_000).toISOString();
+    const rows = this.storage.all<{ id: number; title: string; location: string }>(
+      'SELECT id, title, location FROM jobs WHERE lower(trim(company)) = lower(trim(?)) AND discovered_at >= ? ORDER BY id',
+      [company, since],
+    );
+    return rows.find((r) => roleKey(r.title) === key) ?? null;
   }
 
   knownExternalIds(source: JobSource, externalIds: string[]): Set<string> {
@@ -294,7 +360,7 @@ export class JobsService implements OnApplicationBootstrap {
     const now = new Date().toISOString();
     const fromClause = from?.length ? ` AND status IN (${from.map(() => '?').join(',')})` : '';
     const { changes } = this.storage.run(
-      `UPDATE jobs SET status = ?, reason = COALESCE(?, reason), updated_at = ?${byUser ? ', user_decided = 1' : ''} WHERE id IN (${ids.map(() => '?').join(',')})${fromClause}`,
+      `UPDATE jobs SET status = ?, reason = COALESCE(?, reason), updated_at = ?${byUser ? ', user_decided = 1' : ''}${byUser && status === JobStatus.APPROVED ? ', attempts = 0' : ''} WHERE id IN (${ids.map(() => '?').join(',')})${fromClause}`,
       [status, reason ?? null, now, ...ids, ...(from ?? [])],
     );
     this.events.emit({ type: AgentEventType.JOB_UPDATED, message: `${changes} job(s) -> ${status}`, data: { ids, status } });
