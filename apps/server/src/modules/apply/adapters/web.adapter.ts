@@ -77,11 +77,12 @@ export class WebApplyAdapter implements ApplyAdapter {
         const dialog = await current.$(DIALOG);
         return result(PrepareStatus.READY, { scopeSelector: dialog ? DIALOG : null, page: current });
       }
-      if (snap.captcha) return result(PrepareStatus.CAPTCHA, { page: current });
       if (this.looksLikeLogin(snap, text)) return result(PrepareStatus.LOGIN_REQUIRED, { detail: `Log in to ${domain} in the agent browser`, page: current });
 
+      // An "Apply now" comes first: the captcha often sits inside the application pop-up it opens
+      // (Hashcash, 2026-09-28), and is handed over only after the form is filled.
       const action = await this.findApplyAction(snap, domain, text);
-      if (!action) return result(PrepareStatus.NO_APPLY_BUTTON, { page: current });
+      if (!action) return result(snap.captcha ? PrepareStatus.CAPTCHA : PrepareStatus.NO_APPLY_BUTTON, { page: current });
       const tab = await clickCatchingNewTab(current, () => this.runner.click(current, action.id));
       if (tab) current = tab;
       await this.runner.settle(current);

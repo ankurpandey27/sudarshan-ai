@@ -9,6 +9,8 @@ export interface AnswerJobContext {
   company: string;
   location: string;
   description: string;
+  /** Where the job was found, for "How did you hear about this job?" - e.g. "Naukri". */
+  foundOn?: string;
 }
 
 export interface AnswerContext {

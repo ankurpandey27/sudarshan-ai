@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+import { JobPlatform } from '../../jobs/enums/job-platform.enum';
+
 // LinkedIn (2026) renders Easy Apply in a native <dialog data-testid="dialog">; the rest are older layouts.
 export const LINKEDIN_SCOPE = 'dialog[open], .jobs-easy-apply-modal, [data-test-modal-id="easy-apply-modal"], div[role="dialog"]';
 
@@ -48,3 +50,12 @@ export const ALREADY_APPLIED_TEXT =
 export const INDEED_SUCCESS = /your application has been submitted|application (has been )?submitted to|we('ve| have) received your application/i;
 /** A Naukri chat question that asks for a file (resume, CV); only then is the resume sent. */
 export const NAUKRI_FILE_QUESTION = /\b(resume|cv|curriculum vitae|upload|attach)/i;
+
+/** "How did you hear about this job?": where the job was found. */
+export const FOUND_ON: Record<JobPlatform, string> = {
+  [JobPlatform.LINKEDIN]: 'LinkedIn',
+  [JobPlatform.NAUKRI]: 'Naukri',
+  [JobPlatform.INDEED]: 'Indeed',
+  [JobPlatform.INSTAHYRE]: 'Instahyre',
+  [JobPlatform.OTHER]: 'Company website',
+};

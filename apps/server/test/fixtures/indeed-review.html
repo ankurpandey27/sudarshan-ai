@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Review your application - Indeed</title></head>
+<body>
+<!-- Mirrors Indeed's review step (screenshot of 2026-09-28): header chrome ("1 new update"),
+     "Save and close" (leaves the application), a preview link, and an enabled Submit with no
+     captcha. Only Submit sends the application. -->
+<header>
+  <a href="#updates" id="updates">1 new update</a>
+  <button id="saveclose" type="button">Save and close</button>
+</header>
+<main id="app">
+  <h2>Please review your application</h2>
+  <p>No cover letter or additional documents added. This is optional to add.</p>
+  <p>By submitting your application, you agree to our Terms.</p>
+  <a href="#preview" id="preview">Preview what the employer sees</a>
+  <button id="submit" type="button">Submit your application</button>
+</main>
+<script>
+  window.__left = 0;
+  window.__submitted = 0;
+  const leave = (e) => {
+    e.preventDefault();
+    window.__left++;
+    document.getElementById('app').innerHTML = '<h2>Your saved applications</h2><p>1 draft</p>';
+  };
+  document.getElementById('updates').addEventListener('click', leave);
+  document.getElementById('saveclose').addEventListener('click', leave);
+  document.getElementById('preview').addEventListener('click', leave);
+  document.getElementById('submit').addEventListener('click', () => {
+    window.__submitted++;
+    document.getElementById('app').innerHTML = '<h1>Your application has been submitted!</h1>';
+  });
+</script>
+</body>
+</html>

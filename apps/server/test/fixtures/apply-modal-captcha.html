@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Backend Software Developer - Careers</title>
+<style>#modal { display: none; } #modal.open { display: block; }</style>
+</head>
+<body>
+<!-- Mirrors a company careers page (Hashcash, screenshot of 2026-09-28): an "Apply Now" button
+     (a link without an address, as on the live site) opens a pop-up form whose reCAPTCHA is already in the page while the pop-up is hidden. -->
+<h1>Backend Software Developer</h1>
+<p>Positions: 1</p>
+<a id="open" class="btn teal accent-4 btn-md waves-effect waves-light" data-toggle="modal" data-target="#modal">Apply Now</a>
+<a class="btn" href="#jobs">Back to all jobs</a>
+<div id="modal" role="dialog" aria-label="Job application form">
+  <h2>Job application form</h2>
+  <label for="fn">First Name</label><input id="fn" required>
+  <label for="ln">Last Name</label><input id="ln" required>
+  <label for="em">Email</label><input id="em" type="email" required>
+  <label for="ph">Phone No.</label><input id="ph" required>
+  <label for="cv">Resume/CV</label><input id="cv" type="file">
+  <iframe title="reCAPTCHA" src="about:blank#recaptcha/api2/anchor"></iframe>
+  <button type="submit">Submit</button>
+</div>
+<script>
+  document.getElementById('open').addEventListener('click', () => document.getElementById('modal').classList.add('open'));
+</script>
+</body>
+</html>

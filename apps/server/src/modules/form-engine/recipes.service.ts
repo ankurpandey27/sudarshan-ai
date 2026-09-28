@@ -3,24 +3,27 @@
 
 import { Injectable } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
+import { APPLY_WORDING, NEVER_ADVANCE } from './constants/form-runner.constants';
 import { SiteRecipe } from './interfaces/site-recipe.interface';
 
 const MAX_TEXTS = 12;
+
+const usable = (kind: 'apply' | 'advance', text: string): boolean => !NEVER_ADVANCE.test(text) && (kind === 'advance' || APPLY_WORDING.test(text));
 
 @Injectable()
 export class RecipesService {
   constructor(private readonly storage: StorageService) {}
 
   get(domain: string): SiteRecipe {
-    const row = this.storage.get<{ data: string; successes: number; failures: number }>(
-      'SELECT data, successes, failures FROM recipes WHERE domain = ?',
-      [domain],
-    );
+    const row = this.storage.get<{ data: string; successes: number; failures: number }>('SELECT data, successes, failures FROM recipes WHERE domain = ?', [
+      domain,
+    ]);
     const data = row ? (JSON.parse(row.data) as Partial<SiteRecipe>) : {};
     return {
       domain,
-      applyTexts: data.applyTexts ?? [],
-      advanceTexts: data.advanceTexts ?? [],
+      // Anything saved before these rules existed is filtered here too.
+      applyTexts: (data.applyTexts ?? []).filter((t) => usable('apply', t)),
+      advanceTexts: (data.advanceTexts ?? []).filter((t) => usable('advance', t)),
       successes: row?.successes ?? 0,
       failures: row?.failures ?? 0,
     };
@@ -30,7 +33,7 @@ export class RecipesService {
     const r = this.get(domain);
     const list = kind === 'apply' ? r.applyTexts : r.advanceTexts;
     const t = text.trim().toLowerCase();
-    if (!t || list.includes(t)) return;
+    if (!t || list.includes(t) || !usable(kind, t)) return;
     list.unshift(t);
     list.splice(MAX_TEXTS);
     this.save(r);
@@ -44,9 +47,7 @@ export class RecipesService {
   }
 
   list(): SiteRecipe[] {
-    return this.storage
-      .all<{ domain: string }>('SELECT domain FROM recipes ORDER BY successes DESC')
-      .map((r) => this.get(r.domain));
+    return this.storage.all<{ domain: string }>('SELECT domain FROM recipes ORDER BY successes DESC').map((r) => this.get(r.domain));
   }
 
   private save(r: SiteRecipe): void {

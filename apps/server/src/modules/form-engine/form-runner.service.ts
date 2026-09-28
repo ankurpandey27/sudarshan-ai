@@ -16,7 +16,7 @@ import { extractFormInPage } from './scripts/extract-form.script';
 import { fillFieldsInPage } from './scripts/fill-fields.script';
 import { documentTextInPage, pickTypeaheadOptionInPage } from './scripts/page-helpers.script';
 import { NAVIGATE_SYSTEM_PROMPT, buildNavigatePrompt } from './utils/navigate-prompt.util';
-import { CAPTCHA_WAIT_MS, MAX_OTHER_MOVES, RESUME_ON_PAGE, UNSAFE_ACTION } from './constants/form-runner.constants';
+import { CAPTCHA_WAIT_MS, MAX_OTHER_MOVES, RESUME_ON_PAGE, NEVER_ADVANCE } from './constants/form-runner.constants';
 import { needsAnswer } from './utils/field-value.util';
 import { PlaybookService } from './playbook.service';
 import { stepSignature } from './utils/step-signature.util';
@@ -236,9 +236,8 @@ export class FormRunnerService {
 
   // Learned recipe first, then submit > review > next > apply, then one AI pick (remembered per domain).
   private async chooseAction(page: Page, snap: FormSnapshot, opts: RunFormOptions, signature: string, tried: Set<string>): Promise<FormAction | null> {
-    const retrying = tried.size > 0;
     const usable = snap.actions.filter(
-      (a) => !a.disabled && a.kind !== 'dismiss' && !tried.has(a.text.trim().toLowerCase()) && !(retrying && UNSAFE_ACTION.test(a.text)),
+      (a) => !a.disabled && a.kind !== 'dismiss' && !tried.has(a.text.trim().toLowerCase()) && !NEVER_ADVANCE.test(a.text.trim()),
     );
     // What moved this kind of step forward before, on this site.
     for (const text of this.playbook.preferred(opts.domain, signature)) {

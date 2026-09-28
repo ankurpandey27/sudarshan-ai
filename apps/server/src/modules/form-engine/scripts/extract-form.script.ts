@@ -49,7 +49,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   const textOf = (el: Element | null): string => clean((el as HTMLElement | null)?.innerText ?? el?.textContent ?? '');
 
   // Topmost visible match wins when dialogs are stacked.
-  let scope: Element = document.body;
+  // No body yet while a page is navigating away.
+  let scope: Element = document.body ?? document.documentElement;
   let scopeFound = scopeSelector === null;
   if (scopeSelector) {
     const matches = Array.from(document.querySelectorAll(scopeSelector)).filter(visible);
@@ -336,7 +337,13 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   }
 
   const actions: FormSnapshot['actions'] = [];
-  const clickables = Array.from(scope.querySelectorAll('button, [role=button], input[type=submit], input[type=button], a[href]')).filter(visible);
+  // Links without an address that a script turns into buttons count too: <a data-toggle="modal">Apply Now</a>
+  // opens the application pop-up on many career sites (Bootstrap), <a onclick> or <a class="btn"> does the same.
+  const clickables = Array.from(
+    scope.querySelectorAll(
+      'button, [role=button], input[type=submit], input[type=button], a[href], a[data-toggle], a[data-bs-toggle], a[onclick], a[class~=btn], a[class*="btn-"], a[class*="button"]',
+    ),
+  ).filter(visible);
   for (const el of clickables) {
     const text = clean((el as HTMLElement).innerText || el.getAttribute('aria-label') || (el as HTMLInputElement).value || el.getAttribute('title')).slice(
       0,

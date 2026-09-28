@@ -4,6 +4,7 @@
 import { StorageService } from '../../common/storage/storage.service';
 import { FormAction } from './interfaces/form-field.interface';
 import { PlaybookService } from './playbook.service';
+import { RecipesService } from './recipes.service';
 import { stepSignature } from './utils/step-signature.util';
 
 const act = (text: string, kind: FormAction['kind'] = 'next'): FormAction => ({ id: text, text, kind, disabled: false }) as FormAction;
@@ -35,5 +36,34 @@ describe('step playbooks', () => {
     playbook.record('site.com', 'step', 'Continue', false);
     expect(playbook.preferred('site.com', 'step')).toEqual(['save & next']);
     expect(playbook.preferred('other.com', 'step')).toEqual([]);
+  });
+
+  it('never learns or prefers a button that leaves the application (Indeed, 2026-09-28)', () => {
+    const storage = new StorageService(':memory:');
+    const playbook = new PlaybookService(storage);
+    const recipes = new RecipesService(storage);
+    const domain = 'smartapply.indeed.com';
+    // What finishing forms by hand had taught it: notifications, Save and close, the captcha.
+    for (const junk of ['1 new update', 'save and close', 'preview what the employer sees', 'verify', 'save']) {
+      playbook.record(domain, 'review', junk, true);
+      recipes.learn(domain, 'advance', junk);
+    }
+    playbook.record(domain, 'review', 'submit your application', true);
+    recipes.learn(domain, 'advance', 'submit your application');
+    recipes.learn(domain, 'apply', 'search jobs here');
+    recipes.learn(domain, 'apply', 'apply now');
+    expect(playbook.preferred(domain, 'review')).toEqual(['submit your application']);
+    expect(recipes.get(domain).advanceTexts).toEqual(['submit your application']);
+    expect(recipes.get(domain).applyTexts).toEqual(['apply now']);
+
+    // Entries saved before this rule are ignored when read back.
+    storage.run('UPDATE recipes SET data = ? WHERE domain = ?', [
+      JSON.stringify({ applyTexts: ['junior frontend developer'], advanceTexts: ['1 new update', 'continue'] }),
+      domain,
+    ]);
+    storage.run("INSERT INTO playbook_steps (domain, signature, action, ok, fail, updated_at) VALUES (?, 'review', 'save and close', 5, 0, '')", [domain]);
+    expect(recipes.get(domain).advanceTexts).toEqual(['continue']);
+    expect(recipes.get(domain).applyTexts).toEqual([]);
+    expect(playbook.preferred(domain, 'review')).toEqual(['submit your application']);
   });
 });

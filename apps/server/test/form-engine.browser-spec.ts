@@ -14,7 +14,8 @@ import { AnswerContext } from '../src/modules/form-engine/interfaces/answer-cont
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
 import { LlmService } from '../src/modules/llm/llm.service';
 import { EMPTY_PROFILE } from '../src/modules/profile/constants/profile.constants';
-import { GENERIC_SUCCESS, LINKEDIN_SCOPE, NAUKRI_DRAWER, NAUKRI_SUCCESS } from '../src/modules/apply/constants/apply.constants';
+import { GENERIC_SUCCESS, INDEED_SUCCESS, LINKEDIN_SCOPE, NAUKRI_DRAWER, NAUKRI_SUCCESS } from '../src/modules/apply/constants/apply.constants';
+import { stepSignature } from '../src/modules/form-engine/utils/step-signature.util';
 import { NaukriApplyAdapter } from '../src/modules/apply/adapters/naukri.adapter';
 import { WebApplyAdapter } from '../src/modules/apply/adapters/web.adapter';
 import { PrepareStatus } from '../src/modules/apply/enums/prepare-status.enum';
@@ -184,6 +185,34 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     expect(steps).toContain('Naukri: "Are you currently serving Notice Period? If yes, when is your LWD?" -> "Yes, 16-Oct-2026" (your saved answer)');
   });
 
+  it('presses Submit on an Indeed review page without a captcha, ignoring bad learned buttons (Indeed, 2026-09-28)', async () => {
+    const url = `file://${join(__dirname, 'fixtures', 'indeed-review.html').replace(/\\/g, '/')}`;
+    await page.goto(url);
+    // What had been learned on this site before the fix, straight into storage.
+    const signature = stepSignature(await runner.snapshot(page, null));
+    for (const junk of ['1 new update', 'save and close', 'preview what the employer sees']) {
+      storage.run("INSERT INTO playbook_steps (domain, signature, action, ok, fail, updated_at) VALUES ('fixture.local', ?, ?, 5, 0, '')", [signature, junk]);
+    }
+    storage.run("INSERT INTO recipes (domain, data, successes, failures, updated_at) VALUES ('fixture.local', ?, 0, 0, '')", [
+      JSON.stringify({ applyTexts: [], advanceTexts: ['1 new update', 'save and close', 'preview what the employer sees'] }),
+    ]);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: INDEED_SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    const seen = await page.evaluate(() => ({
+      left: (window as unknown as { __left: number }).__left,
+      submitted: (window as unknown as { __submitted: number }).__submitted,
+    }));
+    expect(seen).toEqual({ left: 0, submitted: 1 });
+    expect(out.status).toBe('applied');
+  });
+
   it('uploads the resume when the page only mentions ".pdf" in a hint', async () => {
     await page.goto(`file://${join(__dirname, 'fixtures', 'resume-hint.html').replace(/\\/g, '/')}`);
     const out = await runner.run(page, {
@@ -236,6 +265,14 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
 
     const again = await web.prepareUrl(page, `${url}#applied`);
     expect(again.status).toBe(PrepareStatus.ALREADY_APPLIED);
+  });
+
+  it('opens the application pop-up before handing over its captcha (Hashcash, 2026-09-28)', async () => {
+    const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
+    const prep = await web.prepareUrl(page, `file://${join(__dirname, 'fixtures', 'apply-modal-captcha.html').replace(/\\/g, '/')}`);
+    // Previously: "Captcha" straight away, with the form never opened or filled.
+    expect(prep.status).toBe(PrepareStatus.READY);
+    expect(await page.evaluate(() => document.getElementById('modal')!.classList.contains('open'))).toBe(true);
   });
 
   it('fills a career-site form around a text captcha and leaves the captcha to the person', async () => {

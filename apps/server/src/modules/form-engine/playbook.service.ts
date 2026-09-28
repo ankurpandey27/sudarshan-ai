@@ -3,6 +3,7 @@
 
 import { Injectable } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
+import { NEVER_ADVANCE } from './constants/form-runner.constants';
 import { PlaybookMove } from './interfaces/playbook-move.interface';
 
 /**
@@ -16,7 +17,7 @@ export class PlaybookService {
   /** Buttons that have worked on this step more often than not, best first. */
   preferred(domain: string, signature: string): string[] {
     return this.moves(domain, signature)
-      .filter((m) => m.ok > m.fail)
+      .filter((m) => m.ok > m.fail && !NEVER_ADVANCE.test(m.action))
       .map((m) => m.action);
   }
 
@@ -29,7 +30,7 @@ export class PlaybookService {
 
   record(domain: string, signature: string, action: string, moved: boolean): void {
     const text = action.trim().toLowerCase();
-    if (!domain || !text) return;
+    if (!domain || !text || (moved && NEVER_ADVANCE.test(text))) return;
     this.storage.run(
       `INSERT INTO playbook_steps (domain, signature, action, ok, fail, updated_at) VALUES (?, ?, ?, ?, ?, ?)
        ON CONFLICT(domain, signature, action) DO UPDATE SET ok = ok + excluded.ok, fail = fail + excluded.fail, updated_at = excluded.updated_at`,

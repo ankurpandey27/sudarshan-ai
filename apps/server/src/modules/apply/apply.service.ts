@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Injectable, Logger } from '@nestjs/common';
+import { FOUND_ON } from './constants/apply.constants';
 import { Page } from 'puppeteer-core';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
@@ -220,7 +221,7 @@ export class ApplyService {
   private context(job: Job): AnswerContext {
     return {
       profile: this.profile.get(),
-      job: { id: job.id, title: job.title, company: job.company, location: job.location, description: job.description },
+      job: { id: job.id, title: job.title, company: job.company, location: job.location, description: job.description, foundOn: FOUND_ON[job.platform] },
       resumePath: this.profile.resumePath(),
       skillYears: (skill) => this.profile.skillYears(skill),
     };

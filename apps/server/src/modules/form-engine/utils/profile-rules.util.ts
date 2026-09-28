@@ -74,7 +74,8 @@ const RULES: ProfileRule[] = [
     not: /company|employer|school|university|college|reference|referr|refer\b|father|mother|spouse|manager|recruiter|anyone|someone|know|friend|relative|employee|working (at|in|with)|contact person/,
     answer: (c) => fact(`${c.profile.firstName} ${c.profile.lastName}`.trim()),
   },
-  { test: /e-?mail/, not: /manager|reference|referr/, answer: (c) => fact(c.profile.email) },
+  // One address per email box: a profile listing several ("a@x.com, b@y.com") sends the first.
+  { test: /e-?mail/, not: /manager|reference|referr/, answer: (c) => fact(c.profile.email.split(/[\s,;]+/).find((e) => e.includes('@')) ?? c.profile.email) },
   {
     test: /country\s*code|phone.*\bcode\b|dial(ing)?\s*code|\bcountry\b.*\bphone\b/,
     answer: (c) => fact(c.profile.phoneCountryCode),
@@ -178,7 +179,7 @@ const RULES: ProfileRule[] = [
   { test: /\b(cgpa|gpa|percentage|grade)\b/, answer: (c) => fact(c.profile.education[0]?.grade) },
   {
     test: /how did you (hear|find|learn)|source of (application|hire)|where did you (hear|find)/,
-    answer: () => guess('LinkedIn'),
+    answer: (c) => guess(c.job.foundOn || 'LinkedIn'),
   },
   { test: /language/, not: /programming|coding/, kinds: [FieldKind.TEXT, FieldKind.TEXTAREA], answer: (c) => fact(c.profile.languages.join(', ')) },
 ];

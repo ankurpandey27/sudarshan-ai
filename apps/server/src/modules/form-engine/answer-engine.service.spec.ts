@@ -83,4 +83,12 @@ describe('AnswerEngineService', () => {
     expect(out.unresolved).toHaveLength(0);
     expect(out.blockers.join()).toMatch(/does not say which country/);
   });
+
+  it('puts one address in an email box even when the profile lists two', async () => {
+    const { engine } = make();
+    const ctx = at('Noida, India');
+    ctx.profile = { ...ctx.profile, email: 'first@example.com, second@example.com' };
+    const out = await engine.resolve([{ ...field('Email', []), kind: FieldKind.TEXT }], ctx, { allowLlm: false });
+    expect(out.instructions.map((i) => i.value)).toEqual(['first@example.com']);
+  });
 });
