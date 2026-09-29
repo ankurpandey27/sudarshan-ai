@@ -16,4 +16,9 @@ export interface Insight {
   detail: string;
   fix: string;
   actions: InsightAction[];
+  /**
+   * Changes when the situation changes (a new count, a new careful-mode episode): a card you
+   * dismissed comes back only then.
+   */
+  version: string;
 }

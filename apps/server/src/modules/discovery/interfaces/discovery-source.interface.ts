@@ -21,6 +21,13 @@ export interface DiscoverySource {
   readonly platform: JobPlatform;
   search(query: SearchQuery): Promise<DiscoveredJob[]>;
   enrich?(job: DiscoveredJob): Promise<DiscoveredJob>;
+  /**
+   * All your keywords as one query, for sites whose search understands "any of these words" - one
+   * search per location instead of one per keyword and location. Omitted: one search per keyword.
+   */
+  combine?(keywords: string[]): string;
+  /** How many job pages to read at once when fetching full descriptions (default 1). */
+  readonly enrichAtOnce?: number;
 }
 
 export interface DiscoveryRunResult {

@@ -24,4 +24,9 @@ describe('capAttempts', () => {
     expect(capAttempts({ status: JobStatus.APPLIED, detail: 'ok' }, 5).status).toBe(JobStatus.APPLIED);
     expect(capAttempts({ status: JobStatus.APPROVED, detail: 'Waiting for you to log in', ended: 'prep:login_required' }, 5).status).toBe(JobStatus.APPROVED);
   });
+
+  it('never counts a site refusing applications for now as a failed try', () => {
+    expect(capAttempts({ status: JobStatus.APPROVED, detail: 'refused', ended: 'prep:refused' }, 5).status).toBe(JobStatus.APPROVED);
+    expect(capAttempts({ status: JobStatus.APPROVED, detail: 'refused', ended: 'run:refused' }, 5).status).toBe(JobStatus.APPROVED);
+  });
 });

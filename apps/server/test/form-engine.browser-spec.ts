@@ -112,7 +112,7 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
       fn: 'Priya',
       ph: '9876543210',
       cc: 'India (+91)',
-      yr: '3', // 3.7 years -> whole years, never rounded up
+      yr: '4', // 3.7 years -> the nearest whole year (4.9 -> 5, 4.4 -> 4)
       reloc: 'Yes',
       np: '1 month',
       ectc: '18',
@@ -143,6 +143,8 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     const first = await runOnce();
     expect(first.out.status).toBe('applied');
     expect(first.steps.some((m) => /"Continue" did nothing - trying another way/.test(m))).toBe(true);
+    // The application was confirmed, so its moves are learned (as the apply service does).
+    new PlaybookService(storage).confirm(first.out.moves ?? []);
 
     // Learned: this kind of step moves on with "Save & Next".
     const second = await runOnce();
@@ -211,6 +213,23 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     }));
     expect(seen).toEqual({ left: 0, submitted: 1 });
     expect(out.status).toBe('applied');
+  });
+
+  it('hands its moves back instead of learning them as it goes', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'indeed-review.html').replace(/\\/g, '/')}`);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: INDEED_SUCCESS,
+      ctx,
+      domain: 'moves.fixture',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    expect(out.status).toBe('applied');
+    expect(out.moves?.map((m) => m.text)).toEqual(['Submit your application']);
+    // Nothing saved yet: whoever sees the ending (the apply service, or you finishing) decides.
+    expect(storage.all("SELECT * FROM playbook_steps WHERE domain = 'moves.fixture'")).toEqual([]);
   });
 
   it('uploads the resume when the page only mentions ".pdf" in a hint', async () => {
@@ -325,6 +344,6 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     });
     expect(out.status).toBe('applied');
     const submitted = await page.evaluate(() => (window as unknown as { __submitted: Record<string, unknown> }).__submitted);
-    expect(submitted).toEqual({ phone: '9876543210', commute: 'Yes', react: '3' });
+    expect(submitted).toEqual({ phone: '9876543210', commute: 'Yes', react: '4' }); // 3.7 years, rounded
   });
 });

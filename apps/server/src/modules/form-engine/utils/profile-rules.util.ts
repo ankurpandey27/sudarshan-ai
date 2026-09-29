@@ -31,8 +31,12 @@ function jobInHomeCountry(c: AnswerContext): boolean {
   return [c.profile.country, c.profile.state, c.profile.city].some((place) => !!place && where.includes(place.toLowerCase()));
 }
 
-// Forms want integers; round down rather than overclaim.
-const wholeYears = (y: number): number => Math.max(0, Math.floor(y));
+// Forms want whole years: 4.9 is 5, 4.4 is 4.
+const wholeYears = (y: number): number => Math.max(0, Math.round(y));
+
+// "at least 5 years", "minimum of 3 yrs", "5+ years": the years a question requires.
+const REQUIRED_YEARS =
+  /(?:at\s*least|atleast|minimum(?:\s*of)?|min\.?|more than|over)\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)|(\d+(?:\.\d+)?)\s*\+\s*(?:years?|yrs?)/;
 
 // Profile CTC is annual in full units; convert to what the question asks for.
 function money(amount: number | null, field: FormField): RuleAnswer | null {
@@ -85,7 +89,8 @@ const RULES: ProfileRule[] = [
     not: /country\s*code|type|extension/,
     answer: (c) => fact(c.profile.phone),
   },
-  { test: /linked\s*in/, answer: (c) => fact(c.profile.linkedinUrl) },
+  // "LinkedIn", and the misspellings people type: "LinkdeIn", "Linkdin".
+  { test: /\blink(?:ed|de|d)\s*in\b/, answer: (c) => fact(c.profile.linkedinUrl) },
   { test: /git\s*hub/, answer: (c) => fact(c.profile.githubUrl) },
   { test: /portfolio|personal\s*(web)?site|^website$|blog/, answer: (c) => fact(c.profile.portfolioUrl || c.profile.githubUrl || c.profile.linkedinUrl) },
   { test: /\b(pin\s*code|pincode|zip|postal\s*code)\b/, answer: (c) => fact(c.profile.postalCode) },
@@ -198,8 +203,16 @@ function skillYearsRule(ctx: AnswerContext, field: FormField): RuleAnswer | null
   const asksYesNo =
     [FieldKind.RADIO, FieldKind.SELECT, FieldKind.CHECKBOX].includes(field.kind) &&
     /^(do|have|are|did) you\b|\b(experience|familiar|worked|knowledge|proficien)/.test(q);
-  if (!asksYears && !asksYesNo) return null;
   const skills = extractSkills(field.label);
+  // "Do you have at least 5 years of Node.js?": yes if your years reach it (4.9 counts as 5).
+  const required = REQUIRED_YEARS.exec(q);
+  // Only for a yes/no question: "How many years (minimum 3)?" still wants the number.
+  if (required && !/how many|how long|number of|no\.? of/.test(q) && /^(do|have|are|did|is)\b|\?\s*$/.test(q)) {
+    const need = Number(required[1] ?? required[2]);
+    const years = skills.length ? Math.max(...skills.map((s) => ctx.skillYears(s) ?? 0)) : ctx.profile.totalYearsExperience;
+    return fact(yes(wholeYears(years) >= need));
+  }
+  if (!asksYears && !asksYesNo) return null;
 
   if (asksYears) {
     if (skills.length === 0) {

@@ -43,7 +43,8 @@ describe('TasteService', () => {
     const s = taste.refresh();
     expect(s.status).toBe('ready');
     expect(s.decisions).toBe(32);
-    expect(s.likes).toContain('title: backend');
+    // What you kept in common (remote work here); what you turned down (manager titles).
+    expect(s.likes).toContain('remote');
     expect(s.dislikes).toContain('title: manager');
     expect(s.accuracy).toBeGreaterThanOrEqual(0.8);
 

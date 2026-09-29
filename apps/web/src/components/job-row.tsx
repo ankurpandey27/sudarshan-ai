@@ -154,14 +154,29 @@ function JobDetail({ job }: { job: Job }) {
   );
 }
 
-/** "87% your taste" - how likely you are to approve it, from your own past decisions. */
+/** "87% your interest" - how likely you are to want it: your match, plus what you applied to and skipped. */
 function TasteChip({ taste, reasons }: { taste: number; reasons: string[] }) {
   const pct = Math.round(taste * 100);
   const tone = pct >= 65 ? 'good' : pct <= 30 ? 'warn' : 'neutral';
-  const why = reasons.map((r) => r.replace(/^\+ /, 'likes ').replace(/^- /, 'dislikes ').replace(/: /, ' '));
+  // "+ skill: node.js" -> shares "Node.js"; "- skill: java" -> rare in your applications; "- title: manager" -> you turn it down.
+  const shares: string[] = [];
+  const rare: string[] = [];
+  const turnedDown: string[] = [];
+  for (const r of reasons) {
+    const [kind, value = ''] = r.slice(2).split(': ');
+    const name = kind === 'platform' ? `${value.charAt(0).toUpperCase()}${value.slice(1)} jobs` : value.charAt(0).toUpperCase() + value.slice(1);
+    if (r.startsWith('+ ')) shares.push(name);
+    else if (kind === 'skill') rare.push(name);
+    else turnedDown.push(name);
+  }
+  const why = [
+    shares.length && `Shares ${shares.join(', ')} with the jobs you apply to.`,
+    rare.length && `Rare in your applications: ${rare.join(', ')}.`,
+    turnedDown.length && `You usually turn down: ${turnedDown.join(', ')}.`,
+  ].filter(Boolean);
   return (
-    <span title={`Learned from the jobs you approved and skipped${why.length ? `: ${why.join(', ')}` : ''}`}>
-      <Badge tone={tone}>{pct}% your taste</Badge>
+    <span title={why.length ? why.join(' ') : 'How much this job looks like the ones you apply to.'}>
+      <Badge tone={tone}>{pct}% your interest</Badge>
     </span>
   );
 }

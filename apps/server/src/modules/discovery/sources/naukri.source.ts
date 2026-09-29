@@ -24,6 +24,14 @@ export class NaukriSource implements DiscoverySource {
   readonly platform = JobPlatform.NAUKRI;
   private readonly logger = new Logger(NaukriSource.name);
 
+  /** Naukri's keyword box takes a comma-separated list and matches any of them. */
+  combine(keywords: string[]): string {
+    return keywords
+      .map((k) => k.trim())
+      .filter(Boolean)
+      .join(', ');
+  }
+
   constructor(private readonly browser: BrowserService) {}
 
   search(q: SearchQuery): Promise<DiscoveredJob[]> {

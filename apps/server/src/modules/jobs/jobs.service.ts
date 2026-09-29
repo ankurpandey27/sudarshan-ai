@@ -333,7 +333,42 @@ export class JobsService implements OnApplicationBootstrap {
     return this.get(id);
   }
 
-  /** When `from` is given, only jobs currently in one of those statuses move. */
+  /** The last try did not count (the site refused it for now): one try back. */
+  forgetAttempt(id: number): void {
+    this.storage.run('UPDATE jobs SET attempts = MAX(0, attempts - 1) WHERE id = ?', [id]);
+  }
+
+  /** Jobs from one site, by the site's own job id (Indeed's "jk"), with when Sudarshan last tried each. */
+  byExternalIds(
+    source: JobSource,
+    ids: string[],
+  ): { id: number; title: string; company: string; status: JobStatus; lastAttempt: string | null; discoveredAt: string }[] {
+    if (ids.length === 0) return [];
+    return this.storage.all(
+      `SELECT id, title, company, status, discovered_at AS discoveredAt,
+         (SELECT MAX(started_at) FROM attempts a WHERE a.job_id = jobs.id) AS lastAttempt
+       FROM jobs WHERE source = ? AND lower(external_id) IN (${ids.map(() => '?').join(',')})`,
+      [source, ...ids.map((i) => i.toLowerCase())],
+    );
+  }
+
+  /**
+   * Applied, as the site itself confirms, at `at` - when it most likely happened, not now - so an old
+   * application does not use up today's daily limit. Returns false if it was already applied.
+   */
+  markAppliedAt(id: number, reason: string, at: string): boolean {
+    const { changes } = this.storage.run('UPDATE jobs SET status = ?, reason = ?, applied_at = ?, updated_at = ? WHERE id = ? AND status <> ?', [
+      JobStatus.APPLIED,
+      reason,
+      at,
+      new Date().toISOString(),
+      id,
+      JobStatus.APPLIED,
+    ]);
+    if (changes) this.emitUpdate(id);
+    return changes > 0;
+  }
+
   /** Approves every job in Review scoring at least `minScore` (optionally on one platform) - all pages, not just the one shown. */
   approveStrong(minScore: number, platform?: JobPlatform): number {
     const ids = this.storage
@@ -354,7 +389,7 @@ export class JobsService implements OnApplicationBootstrap {
     return job;
   }
 
-  /** `byUser` marks it as your decision, which rescoring never overrides. */
+  /** When `from` is given, only jobs currently in one of those statuses move. `byUser` marks it as your decision, which rescoring never overrides. */
   setStatusMany(ids: number[], status: JobStatus, reason?: string, from?: JobStatus[], byUser = false): number {
     if (ids.length === 0) return 0;
     const now = new Date().toISOString();

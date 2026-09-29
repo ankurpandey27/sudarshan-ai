@@ -22,7 +22,9 @@ export class PlatformHealthService {
   state(platform: JobPlatform): PlatformHealth {
     const stamp = this.stamp();
     const hit = this.cache.get(platform);
-    if (hit && hit.stamp === stamp) return hit.value;
+    // A pause ends by the clock, not by a change in the data: recompute once it is over.
+    const pauseOver = hit?.value.status === 'cooling' && (hit.value.until ?? '') <= new Date().toISOString();
+    if (hit && hit.stamp === stamp && !pauseOver) return hit.value;
     const value = this.compute(platform);
     this.cache.set(platform, { stamp, value });
     return value;
@@ -31,7 +33,8 @@ export class PlatformHealthService {
   /** Changes whenever anything the health depends on changes; one cheap, indexed query. */
   private stamp(): string {
     const r = this.storage.get<{ a: number | null; j: string | null; r: string | null }>(
-      `SELECT (SELECT MAX(id) FROM attempts) a, (SELECT MAX(applied_at) FROM jobs) j, (SELECT MAX(reset_at) FROM platform_health) r`,
+      `SELECT (SELECT MAX(id) FROM attempts) a, (SELECT MAX(applied_at) FROM jobs) j,
+         (SELECT MAX(reset_at) || '|' || COALESCE(MAX(cool_until), '') FROM platform_health) r`,
     );
     return `${r?.a ?? ''}|${r?.j ?? ''}|${r?.r ?? ''}`;
   }
@@ -40,7 +43,15 @@ export class PlatformHealthService {
     // "Other" is every company career site and pasted link together: three unrelated sites getting
     // stuck is normal there, not one site changing. Each site's own steps are learned by the playbook.
     if (platform === JobPlatform.OTHER) return { platform, status: 'ok', recent: [] };
-    const resetAt = this.storage.get<{ reset_at: string }>('SELECT reset_at FROM platform_health WHERE platform = ?', [platform])?.reset_at ?? '';
+    const row = this.storage.get<{ reset_at: string; cool_until: string | null; cool_reason: string | null }>(
+      'SELECT reset_at, cool_until, cool_reason FROM platform_health WHERE platform = ?',
+      [platform],
+    );
+    // The site is refusing applications for now: paused until then, whatever else is going on.
+    if (row?.cool_until && row.cool_until > new Date().toISOString()) {
+      return { platform, status: 'cooling', recent: row.cool_reason ? [row.cool_reason] : [], until: row.cool_until };
+    }
+    const resetAt = row?.reset_at ?? '';
     const lastSuccess =
       this.storage.get<{ at: string | null }>(`SELECT MAX(applied_at) at FROM jobs WHERE status = 'applied' AND ${PLATFORM_SQL} = ?`, [platform])?.at ?? '';
     // Only attempts after the latest success or "Try again" count.
@@ -53,11 +64,25 @@ export class PlatformHealthService {
     );
     const broken = recent.length === BROKEN_STREAK && recent.every((r) => BROKEN_ENDINGS.includes(r.result ?? ''));
     const status = broken ? 'broken' : resetAt && resetAt > lastSuccess ? 'careful' : 'ok';
-    return { platform, status, recent: broken ? recent.map((r) => r.detail ?? '').filter(Boolean) : [] };
+    return { platform, status, recent: broken ? recent.map((r) => r.detail ?? '').filter(Boolean) : [], ...(status === 'careful' ? { since: resetAt } : {}) };
   }
 
   all(): PlatformHealth[] {
     return Object.values(JobPlatform).map((p) => this.state(p));
+  }
+
+  /**
+   * The site refused an application for now (e.g. Naukri: "please try again later" after many in a
+   * row): no applications there until the pause is over, then it simply carries on.
+   */
+  coolDown(platform: JobPlatform, forMs: number, reason: string): PlatformHealth {
+    const until = new Date(Date.now() + forMs).toISOString();
+    this.storage.run(
+      `INSERT INTO platform_health (platform, reset_at, cool_until, cool_reason) VALUES (?, '', ?, ?)
+       ON CONFLICT(platform) DO UPDATE SET cool_until = excluded.cool_until, cool_reason = excluded.cool_reason`,
+      [platform, until, reason.slice(0, 300)],
+    );
+    return this.state(platform);
   }
 
   /** "Try again": resume a paused platform in careful mode. */

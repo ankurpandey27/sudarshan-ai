@@ -4,6 +4,7 @@
 import { Injectable } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
 import { APPLY_WORDING, NEVER_ADVANCE } from './constants/form-runner.constants';
+import { LearnedMove } from './interfaces/learned-move.interface';
 import { SiteRecipe } from './interfaces/site-recipe.interface';
 
 const MAX_TEXTS = 12;
@@ -27,6 +28,14 @@ export class RecipesService {
       successes: row?.successes ?? 0,
       failures: row?.failures ?? 0,
     };
+  }
+
+  /**
+   * The application was confirmed: buttons the AI picked or you clicked become part of the site's
+   * recipe. The built-in rules' own picks need no recipe - the rules find them again anyway.
+   */
+  confirm(moves: LearnedMove[]): void {
+    for (const m of moves) if (m.by !== 'rules') this.learn(m.domain, m.kind, m.text);
   }
 
   learn(domain: string, kind: 'apply' | 'advance', text: string): void {

@@ -18,6 +18,8 @@ interface AttemptEnd {
  */
 export function capAttempts<T extends AttemptEnd>(end: T, previousAttempts: number): T {
   const retrying = end.status === JobStatus.APPROVED || end.status === JobStatus.NEEDS_INPUT;
-  if (!retrying || previousAttempts + 1 < MAX_APPLY_ATTEMPTS || end.ended === `prep:${PrepareStatus.LOGIN_REQUIRED}`) return end;
+  // Not a failed try: a job board that logged out, or a site refusing applications for now.
+  const notTheJob = [`prep:${PrepareStatus.LOGIN_REQUIRED}`, `prep:${PrepareStatus.REFUSED}`, 'run:refused'].includes(end.ended ?? '');
+  if (!retrying || previousAttempts + 1 < MAX_APPLY_ATTEMPTS || notTheJob) return end;
   return { ...end, status: JobStatus.MANUAL, detail: `Tried ${MAX_APPLY_ATTEMPTS} times without finishing - ${end.detail || 'apply by hand'}` };
 }

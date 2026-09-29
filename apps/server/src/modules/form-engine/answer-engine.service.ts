@@ -14,7 +14,10 @@ import { LlmFieldAnswer, ResolveOptions, ResolveResult, UnresolvedField } from '
 import { ANSWER_SYSTEM_PROMPT, buildAnswerPrompt } from './utils/answer-prompt.util';
 import { needsAnswer, toInstruction } from './utils/field-value.util';
 import { answerFromProfile, namesACountry, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
-import { GENERIC_QUESTION } from '../answers/constants/answers.constants';
+import { AGE_QUESTION, GENERIC_QUESTION, YEARS_QUESTION } from '../answers/constants/answers.constants';
+import { AnswerMatch } from '../answers/interfaces/answer.interface';
+import { ageOn, parseBirthDate } from '../answers/utils/birth-date.util';
+import { canonicalSkill, extractSkills } from '../discovery/utils/job-normalizer.util';
 
 const RESUME_FIELD = /resume|cv\b|curriculum|bio ?data/i;
 const COVER_LETTER = /cover\s*letter|motivation letter/i;
@@ -70,7 +73,8 @@ export class AnswerEngineService {
       // A saved "Yes, authorized" from a job at home must not be reused for a job abroad.
       // One that names the country is remembered for that country - exact wording only, never a fuzzy match.
       const authAbroad = WORK_AUTH_QUESTION.test(field.label.toLowerCase()) && !workAuthorizationKnown(ctx);
-      const found = this.answers.lookup(field.label || field.placeholder);
+      const question = field.label || field.placeholder;
+      const found = this.fitting(question, field, this.answers.lookup(question)) ?? this.personalDetail(question, field);
       const remembered = !authAbroad ? found : namesACountry(field.label) && found?.similarity === 1 ? found : null;
       if (authAbroad && !namesACountry(field.label)) unknownCountry.add(field.id);
       if (remembered && !forced) {
@@ -121,6 +125,40 @@ export class AnswerEngineService {
       }
     }
     return result;
+  }
+
+  /**
+   * A saved answer only where it really answers this question: a years question needs a number
+   * ("Yes" saved for "years of NestJS" is not one), and a similar-looking question about a different
+   * skill ("years of Data Science" for "years of SQL") is a different question.
+   */
+  private fitting(question: string, field: FormField, found: AnswerMatch | null): AnswerMatch | null {
+    if (!found) return null;
+    const choice = [FieldKind.RADIO, FieldKind.CHECKBOX].includes(field.kind);
+    if (YEARS_QUESTION.test(question)) {
+      if (!choice && !/\d/.test(found.answer)) return null;
+      // Years of *what* matters, and near-identical wording hides it ("Data science" vs "Data engineering"):
+      // only the same question reuses a number of years. Skills get theirs from your profile anyway.
+      if (found.similarity < 1) return null;
+    }
+    if (found.similarity < 1) {
+      const skills = (text: string) => new Set(extractSkills(text).map(canonicalSkill));
+      const asked = skills(question);
+      const saved = skills(found.question);
+      if ((asked.size || saved.size) && (asked.size !== saved.size || [...asked].some((s) => !saved.has(s)))) return null;
+    }
+    return found;
+  }
+
+  /** Your PAN, Aadhaar, date of birth... however the form words it - and your age, from your date of birth. */
+  private personalDetail(question: string, field: FormField): AnswerMatch | null {
+    if (AGE_QUESTION.test(question)) {
+      const dob = this.answers.lookupDetail('date of birth');
+      const born = dob ? parseBirthDate(dob.answer) : null;
+      const age = born ? ageOn(born) : null;
+      return dob && age !== null && age > 14 && age < 80 ? { ...dob, answer: String(age) } : null;
+    }
+    return this.fitting(question, field, this.answers.lookupDetail(question));
   }
 
   private resolveFile(field: FormField, ctx: AnswerContext, result: ResolveResult): void {

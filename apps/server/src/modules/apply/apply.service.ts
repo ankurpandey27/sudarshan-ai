@@ -4,6 +4,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { FOUND_ON } from './constants/apply.constants';
 import { capAttempts } from './utils/attempt-cap.util';
+import { experienceFrom } from './utils/experience.util';
+import { AnswersService } from '../answers/answers.service';
 import { Page } from 'puppeteer-core';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
@@ -12,6 +14,8 @@ import { BrowserService } from '../browser/browser.service';
 import { AnswerEngineService } from '../form-engine/answer-engine.service';
 import { FormRunnerService } from '../form-engine/form-runner.service';
 import { RecipesService } from '../form-engine/recipes.service';
+import { PlaybookService } from '../form-engine/playbook.service';
+import { LearnedMove } from '../form-engine/interfaces/learned-move.interface';
 import { AnswerContext } from '../form-engine/interfaces/answer-context.interface';
 import { FormRunOutcome } from '../form-engine/interfaces/form-run.interface';
 import { JobsService } from '../jobs/jobs.service';
@@ -29,6 +33,7 @@ import { WatchTarget } from '../learning/interfaces/watch-target.interface';
 import { PrepareStatus } from './enums/prepare-status.enum';
 import { ApplyAdapter, ApplyResult, PrepareResult } from './interfaces/apply-adapter.interface';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
+import { REFUSED_COOLDOWN_MS } from '../platform-health/constants/platform-health.constants';
 
 @Injectable()
 export class ApplyService {
@@ -43,8 +48,10 @@ export class ApplyService {
     private readonly browser: BrowserService,
     private readonly runner: FormRunnerService,
     private readonly recipes: RecipesService,
+    private readonly playbook: PlaybookService,
     private readonly jobs: JobsService,
     private readonly pending: PendingQuestionsService,
+    private readonly answers: AnswersService,
     private readonly profile: ProfileService,
     private readonly settings: SettingsService,
     private readonly events: EventsService,
@@ -77,10 +84,13 @@ export class ApplyService {
     let outcome: FormRunOutcome | null = null;
     // `ended` says how the attempt ended (e.g. "run:stuck"); platform health reads it.
     let final: { status: JobStatus; detail: string; ended?: string };
+    // Buttons pressed on the way; learned only once the site confirms the application.
+    const moves: LearnedMove[] = [];
     try {
       page = await this.browser.newPage();
       const adapter = this.adapters.find((a) => a.matches(job)) ?? this.web;
       let prep = await adapter.prepare(page, job);
+      moves.push(...(prep.moves ?? []));
       let active: ApplyAdapter = adapter;
       // Followed "Apply on company site": a login page from here on is the company's, not the job board's.
       let onCompanySite = false;
@@ -97,6 +107,7 @@ export class ApplyService {
         }
         step(`Company site: ${new URL(prep.externalUrl).hostname}`);
         prep = await this.web.prepareUrl(page, prep.externalUrl);
+        moves.push(...(prep.moves ?? []));
         if (prep.page) page = prep.page;
         active = this.web;
         onCompanySite = true;
@@ -117,6 +128,7 @@ export class ApplyService {
         };
         const run: FormRunOutcome = active.runForm ? await active.runForm(page, prep, opts) : await this.runner.run(page, opts);
         outcome = run;
+        moves.push(...(run.moves ?? []));
         final = { ...this.mapOutcome(job, run), ended: `run:${run.status}` };
         this.recipes.outcome(opts.domain, run.status === 'applied');
         if (run.status === 'applied') await active.afterSuccess?.(page);
@@ -129,6 +141,8 @@ export class ApplyService {
             domain: opts.domain,
             scopeSelector: prep.scopeSelector,
             successPattern: prep.successPattern,
+            // Sudarshan's own steps so far: learned too if you then finish the application.
+            agentMoves: [...moves],
           };
         }
       } else if (prep.status === PrepareStatus.LOGIN_REQUIRED) {
@@ -142,16 +156,49 @@ export class ApplyService {
       } else if (prep.status === PrepareStatus.CAPTCHA) {
         keepOpen = true;
       }
+      // Handed over before the form (a captcha or a company login): still watched, so finishing it
+      // yourself marks it applied.
+      if (keepOpen && !learnFrom && page) {
+        learnFrom = {
+          jobId: job.id,
+          jobLabel: `${job.title} @ ${job.company}`,
+          domain: new URL(page.url()).hostname.replace(/^www\./, ''),
+          scopeSelector: prep.scopeSelector,
+          successPattern: prep.successPattern,
+          agentMoves: [...moves],
+        };
+      }
     } catch (err) {
       const msg = (err as Error).message;
       this.logger.warn(`Apply failed for job ${job.id}: ${msg}`);
       final = { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}`, ended: 'error' };
+    }
+    this.learnFromEnding(final, moves, outcome);
+    // The site refused it for now (too many too fast): nothing wrong with this job - it keeps its tries
+    // and its place in the queue, and the site is left alone for a few hours.
+    if (final.ended === `prep:${PrepareStatus.REFUSED}` || final.ended === 'run:refused') {
+      this.jobs.forgetAttempt(job.id);
+      this.health.coolDown(job.platform, REFUSED_COOLDOWN_MS, final.detail);
     }
     // Never the same form again and again: after the last allowed try it goes to "Do by hand".
     final = capAttempts(final, job.attempts);
     const result = await this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
     if (page && learnFrom) await this.learning.watch(page, learnFrom);
     return result;
+  }
+
+  /**
+   * Learns from how the application ended, not from each click: a confirmed application keeps every
+   * button that got it there; one that got stuck blames only the button that led into the dead end
+   * (e.g. "Save and close", which leaves the form). Hand-overs (captcha, questions, login) teach nothing yet.
+   */
+  private learnFromEnding(final: { ended?: string }, moves: LearnedMove[], run: FormRunOutcome | null): void {
+    if (final.ended === 'run:applied' || final.ended === `prep:${PrepareStatus.APPLIED}`) {
+      this.playbook.confirm(moves);
+      this.recipes.confirm(moves);
+    } else if (final.ended === 'run:stuck') {
+      this.playbook.blame(run?.stuckAt ?? run?.moves?.at(-1));
+    }
   }
 
   private async finish(
@@ -200,6 +247,8 @@ export class ApplyService {
           : { status: JobStatus.APPROVED, detail: prep.detail ?? 'Waiting for you to log in' };
       case PrepareStatus.CAPTCHA:
         return { status: JobStatus.MANUAL, detail: prep.detail ?? 'Captcha - finish it in the agent browser window' };
+      case PrepareStatus.REFUSED:
+        return { status: JobStatus.APPROVED, detail: prep.detail ?? 'The site is refusing applications for now - it stays in the queue' };
       case PrepareStatus.NO_APPLY_BUTTON:
         return { status: JobStatus.MANUAL, detail: prep.detail ?? 'No apply button found - apply by hand' };
       default:
@@ -219,6 +268,8 @@ export class ApplyService {
       case 'blocked':
       case 'captcha':
         return { status: JobStatus.MANUAL, detail: o.detail };
+      case 'refused':
+        return { status: JobStatus.APPROVED, detail: o.detail };
       case 'stuck':
         return { status: JobStatus.MANUAL, detail: `${o.detail} - finish it in the open tab; Sudarshan learns from what you do` };
       default:
@@ -227,11 +278,18 @@ export class ApplyService {
   }
 
   private context(job: Job): AnswerContext {
+    const profile = this.profile.get();
+    // Everything known about your years - profile and your own answers - the highest wins.
+    const experience = experienceFrom({
+      profileTotal: profile.totalYearsExperience,
+      profileSkill: (skill) => this.profile.skillYears(skill),
+      yearsYouGave: (about) => this.answers.yearsYouGave(about),
+    });
     return {
-      profile: this.profile.get(),
+      profile: { ...profile, totalYearsExperience: experience.total },
       job: { id: job.id, title: job.title, company: job.company, location: job.location, description: job.description, foundOn: FOUND_ON[job.platform] },
       resumePath: this.profile.resumePath(),
-      skillYears: (skill) => this.profile.skillYears(skill),
+      skillYears: experience.skillYears,
     };
   }
 }

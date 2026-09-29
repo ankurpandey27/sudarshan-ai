@@ -44,3 +44,8 @@ export const INDEED_PAGE_DELAY_MS: [number, number] = [12_000, 18_000];
 export const INDEED_FROMAGE_DAYS = [1, 3, 7, 14];
 /** How long to let Indeed's security check ("Just a moment...") clear by itself. */
 export const INDEED_CHALLENGE_WAIT_MS = 45_000;
+
+/** New jobs one combined search may bring (the separate searches' total, capped). */
+export const MAX_COMBINED_PER_SEARCH = 150;
+/** Full descriptions fetched per search keyword; later ones are read when a job is opened. */
+export const MAX_ENRICH_PER_SEARCH = 40;

@@ -5,22 +5,10 @@ import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } fro
 import { StorageService } from '../../common/storage/storage.service';
 import { JobSource } from '../jobs/enums/job-source.enum';
 import { platformOf } from '../jobs/utils/platform.util';
-import {
-  GENERAL_FEATURES,
-  L2,
-  LEARNING_RATE,
-  MIN_DECISIONS,
-  MIN_EACH,
-  MIN_WORD_COUNT,
-  REFRESH_DEBOUNCE_MS,
-  REFRESH_EVERY_MS,
-  TRAIN_STEPS,
-  UNWANTED_STATUSES,
-  WANTED_STATUSES,
-} from './constants/taste.constants';
-import { TasteFeaturesInput, TasteModel, TastePrediction, TasteState } from './interfaces/taste.interface';
-import { contributions, predictLogistic, Sample, trainLogistic } from './utils/logistic.util';
-import { tasteFeatures, tasteWords } from './utils/taste-features.util';
+import { MIN_KEPT, REFRESH_DEBOUNCE_MS, REFRESH_EVERY_MS, UNWANTED_STATUSES, WANTED_STATUSES } from './constants/taste.constants';
+import { InterestProfile, TasteFeaturesInput, TastePrediction, TasteState } from './interfaces/taste.interface';
+import { habitsOf } from './utils/habits.util';
+import { buildProfile, interestOf } from './utils/interest.util';
 
 interface JobRowForTaste {
   id: number;
@@ -40,22 +28,22 @@ interface JobRowForTaste {
 const inList = (xs: string[]) => xs.map((x) => `'${x}'`).join(', ');
 
 /**
- * Learns your taste from your own decisions - jobs you approved or marked applied versus jobs you
- * skipped or dismissed - with a small logistic regression that runs on this computer. It ranks
- * jobs for you and explains why; it never replaces your rules.
+ * Your interest, learned from your own decisions on this computer: what the jobs you applied to or
+ * approved have in common (skills first, then titles and platforms), and what you really turn down.
+ * Each job gets how much it looks like the ones you apply to. It ranks and explains; it never
+ * replaces your rules.
  */
 @Injectable()
 export class TasteService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(TasteService.name);
-  private model: TasteModel | null = null;
-  private vocabulary = new Set<string>();
+  private profile: InterestProfile | null = null;
   private trainedOn = '';
   private current: TasteState = {
     status: 'learning',
     decisions: 0,
     wanted: 0,
     unwanted: 0,
-    needed: MIN_DECISIONS,
+    needed: MIN_KEPT,
     accuracy: null,
     likes: [],
     dislikes: [],
@@ -106,16 +94,9 @@ export class TasteService implements OnApplicationBootstrap, OnApplicationShutdo
     return this.current;
   }
 
-  /** How likely you are to approve a job, with reasons; null until there are enough decisions. */
+  /** Your interest in a job, with reasons; null until you have kept enough jobs. */
   predict(job: TasteFeaturesInput): TastePrediction | null {
-    if (!this.model) return null;
-    const x = tasteFeatures(job, this.vocabulary);
-    const p = predictLogistic(this.model, x);
-    // Say what sets this job apart (title words, platform, remote) before scores every job has.
-    const all = contributions(this.model, x);
-    const distinctive = all.filter((c) => !GENERAL_FEATURES.has(c.feature));
-    const reasons = [...distinctive, ...all.filter((c) => GENERAL_FEATURES.has(c.feature))].slice(0, 3).map((c) => `${c.value > 0 ? '+' : '-'} ${c.feature}`);
-    return { p, reasons };
+    return this.profile ? interestOf(this.profile, job) : null;
   }
 
   private decided(): { id: number; y: 0 | 1; job: TasteFeaturesInput }[] {
@@ -142,59 +123,39 @@ export class TasteService implements OnApplicationBootstrap, OnApplicationShutdo
   private train(rows: { y: 0 | 1; job: TasteFeaturesInput }[]): void {
     const wanted = rows.filter((r) => r.y === 1).length;
     const unwanted = rows.length - wanted;
-    const needed = Math.max(0, MIN_DECISIONS - rows.length, MIN_EACH - wanted, MIN_EACH - unwanted);
+    // What you keep is what you like: skips are optional (you may rarely skip anything).
+    const needed = Math.max(0, MIN_KEPT - wanted);
     const base = { decisions: rows.length, wanted, unwanted, needed };
     if (needed > 0) {
-      this.model = null;
+      this.profile = null;
       this.current = { ...base, status: 'learning', accuracy: null, likes: [], dislikes: [], trainedAt: null };
       return;
     }
-    // Title words seen in only one job are noise.
-    const counts = new Map<string, number>();
-    for (const r of rows) for (const w of tasteWords(r.job.title)) counts.set(w, (counts.get(w) ?? 0) + 1);
-    this.vocabulary = new Set([...counts].filter(([, n]) => n >= MIN_WORD_COUNT).map(([w]) => w));
-    const samples: Sample[] = rows.map((r) => ({ x: tasteFeatures(r.job, this.vocabulary), y: r.y }));
-    const opts = { steps: TRAIN_STEPS, rate: LEARNING_RATE, l2: L2 };
-    this.model = trainLogistic(samples, opts);
-
-    const ranked = Object.entries(this.model.weights)
-      .filter(([k]) => k.startsWith('title: ') || k.startsWith('platform: ') || k === 'remote')
-      .sort((a, b) => b[1] - a[1]);
+    this.profile = buildProfile(rows);
     this.current = {
       ...base,
       status: 'ready',
-      accuracy: this.accuracy(samples, opts),
-      likes: ranked
-        .filter(([, w]) => w > 0.15)
-        .slice(0, 5)
-        .map(([k]) => k),
-      dislikes: ranked
-        .filter(([, w]) => w < -0.15)
-        .reverse()
-        .slice(0, 5)
-        .map(([k]) => k),
+      accuracy: this.accuracy(rows),
+      // Counted from what you did.
+      ...habitsOf(rows),
       trainedAt: new Date().toISOString(),
     };
-    this.logger.log(`Taste model trained on ${rows.length} of your decisions`);
+    this.logger.log(`Learned your interest from ${wanted} job(s) you kept and ${unwanted} you turned down`);
   }
 
-  /** Honest check: train on 4/5 of the decisions, test on the rest, five times over. */
-  private accuracy(samples: Sample[], opts: { steps: number; rate: number; l2: number }): number | null {
-    if (samples.length < 30) return null;
+  /** Honest check: build the profile from 4/5 of your decisions, test on the rest, five times over. */
+  private accuracy(rows: { y: 0 | 1; job: TasteFeaturesInput }[]): number | null {
+    if (rows.length < 30) return null;
     let right = 0;
     for (let fold = 0; fold < 5; fold++) {
-      const test = samples.filter((_, i) => i % 5 === fold);
-      const model = trainLogistic(
-        samples.filter((_, i) => i % 5 !== fold),
-        opts,
-      );
-      right += test.filter((s) => predictLogistic(model, s.x) >= 0.5 === (s.y === 1)).length;
+      const profile = buildProfile(rows.filter((_, i) => i % 5 !== fold));
+      right += rows.filter((r, i) => i % 5 === fold && interestOf(profile, r.job).p >= 0.5 === (r.y === 1)).length;
     }
-    return Math.round((right / samples.length) * 100) / 100;
+    return Math.round((right / rows.length) * 100) / 100;
   }
 
   private scoreOpenJobs(all: boolean): void {
-    if (!this.model) {
+    if (!this.profile) {
       this.storage.run('UPDATE jobs SET taste = NULL, taste_reasons = NULL WHERE taste IS NOT NULL');
       return;
     }

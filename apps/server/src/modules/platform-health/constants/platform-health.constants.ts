@@ -9,3 +9,6 @@ export const BROKEN_STREAK = 3;
  * closed jobs are normal, and so are crashes and timeouts ("error") - none of them count.
  */
 export const BROKEN_ENDINGS = ['run:stuck', 'run:closed', 'prep:no_apply_button'];
+
+/** How long a site that refused applications ("please try again later") is left alone. */
+export const REFUSED_COOLDOWN_MS = 3 * 60 * 60_000;

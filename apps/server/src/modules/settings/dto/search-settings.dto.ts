@@ -49,4 +49,10 @@ export class SearchSettingsDto {
   @ArrayMaxSize(100)
   @IsString({ each: true })
   excludeTitleWords?: string[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(30)
+  @IsString({ each: true })
+  coreSkills?: string[];
 }

@@ -4,6 +4,7 @@
 import { Injectable } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
 import { NEVER_ADVANCE } from './constants/form-runner.constants';
+import { LearnedMove } from './interfaces/learned-move.interface';
 import { PlaybookMove } from './interfaces/playbook-move.interface';
 
 /**
@@ -26,6 +27,23 @@ export class PlaybookService {
       domain,
       signature,
     ]);
+  }
+
+  /** The application was confirmed: every step's button (once per step) was a good move. */
+  confirm(moves: LearnedMove[]): void {
+    const seen = new Set<string>();
+    for (const m of moves) {
+      if (m.signature === null) continue;
+      const key = `${m.domain}|${m.signature}|${m.text.trim().toLowerCase()}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      this.record(m.domain, m.signature, m.text, true);
+    }
+  }
+
+  /** The application got stuck right after this button: one strike against it on that step. */
+  blame(move: LearnedMove | null | undefined): void {
+    if (move?.signature) this.record(move.domain, move.signature, move.text, false);
   }
 
   record(domain: string, signature: string, action: string, moved: boolean): void {

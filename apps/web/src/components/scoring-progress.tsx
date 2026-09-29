@@ -21,28 +21,36 @@ export function ScoringProgress() {
   const { data } = useAgent();
   const qc = useQueryClient();
   const p = data?.scoring ?? null;
-  const wasRunning = useRef(false);
-  const [finished, setFinished] = useState<number | null>(null);
+  // A run that finished between two status checks still shows its result (rule-based scoring takes seconds).
+  const last = data?.lastScoring ?? null;
+  const shown = useRef<string | null>(null);
+  const [finished, setFinished] = useState<NonNullable<typeof last> | null>(null);
 
   useEffect(() => {
     if (p) {
-      wasRunning.current = true;
       setFinished(null);
       return;
     }
-    if (!wasRunning.current) return;
-    wasRunning.current = false;
-    setFinished(Date.now());
+    if (!last || shown.current === last.at) return;
+    shown.current = last.at;
+    setFinished(last);
     // Fresh numbers everywhere once scoring ends.
     void qc.invalidateQueries();
-    const t = setTimeout(() => setFinished(null), 6000);
+    const t = setTimeout(() => setFinished(null), 8000);
     return () => clearTimeout(t);
-  }, [p, qc]);
+  }, [p, last, qc]);
 
   if (!p && finished) {
+    const parts = [
+      finished.review && `${finished.review} to Review`,
+      finished.queued && `${finished.queued} queued`,
+      finished.skipped && `${finished.skipped} skipped`,
+    ].filter(Boolean);
     return (
       <div className="mb-5 flex items-center gap-2 rounded-2xl border border-good/25 bg-good-soft/50 px-5 py-3 text-[13.5px]" role="status">
-        <CheckCircle2 className="size-4 text-good" /> Scoring finished - Review and the charts are up to date.
+        <CheckCircle2 className="size-4 text-good" />
+        Scored {finished.scored} job{finished.scored === 1 ? '' : 's'}
+        {parts.length ? ` - ${parts.join(', ')}` : ''}. Review and the charts are up to date.
       </div>
     );
   }

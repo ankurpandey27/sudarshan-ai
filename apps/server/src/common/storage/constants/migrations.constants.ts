@@ -167,4 +167,18 @@ export const MIGRATIONS: string[] = [
   `
   CREATE INDEX idx_attempts_started ON attempts (started_at);
   `,
+  // "Needs attention" cards you dismissed: hidden until the same card comes back with a new version
+  // (a new count, a new careful-mode episode).
+  `
+  CREATE TABLE insight_dismissals (
+    id TEXT PRIMARY KEY,
+    version TEXT NOT NULL,
+    dismissed_at TEXT NOT NULL
+  );
+  `,
+  // A site refusing applications for now (Naukri, 2026-09-29): paused until cool_until, then tried again.
+  `
+  ALTER TABLE platform_health ADD COLUMN cool_until TEXT;
+  ALTER TABLE platform_health ADD COLUMN cool_reason TEXT;
+  `,
 ];

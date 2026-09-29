@@ -5,6 +5,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
 import { jitter } from '../../common/utils/sleep.util';
+import { inBatches } from '../../common/utils/batches.util';
+import { MAX_COMBINED_PER_SEARCH, MAX_ENRICH_PER_SEARCH } from './constants/platform.constants';
 import { JobsService } from '../jobs/jobs.service';
 import { ProfileService } from '../profile/profile.service';
 import { SettingsService } from '../settings/settings.service';
@@ -83,12 +85,17 @@ export class DiscoveryService {
     const prefs = this.settings.get().search;
     try {
       if (src.platform !== JobPlatform.LINKEDIN) await this.browser.ensure();
-      for (const keyword of keywords) {
+      // Sites that understand "any of these words" get one search per location, not one per keyword -
+      // with room for as many new jobs as the separate searches would have found.
+      const combined = src.combine && keywords.length > 1;
+      const queries = combined ? [src.combine!(keywords)] : keywords;
+      const perSearch = combined ? Math.min(prefs.maxPerSearch * keywords.length, MAX_COMBINED_PER_SEARCH) : prefs.maxPerSearch;
+      for (const keyword of queries) {
         for (const location of locations) {
           const found = await src.search({
             keyword,
             location,
-            prefs,
+            prefs: { ...prefs, maxPerSearch: perSearch },
             isKnown: (id) => this.jobs.knownExternalIds(src.source, [id]).size > 0,
             onProgress: (m) => this.log('info', m, src.platform),
           });
@@ -101,10 +108,12 @@ export class DiscoveryService {
           // Fetch full descriptions only for jobs not seen before.
           const fresh = found.filter((f) => !f.description && !known.has(f.externalId));
           if (src.enrich && fresh.length) {
-            for (const job of fresh.slice(0, 40)) {
-              this.jobs.saveDiscovered([await src.enrich(job)]);
+            const enrich = src.enrich.bind(src);
+            // A few at a time where the site allows it (LinkedIn's public pages); one by one otherwise.
+            await inBatches(fresh.slice(0, MAX_ENRICH_PER_SEARCH * (combined ? keywords.length : 1)), src.enrichAtOnce ?? 1, async (job) => {
+              this.jobs.saveDiscovered([await enrich(job)]);
               await jitter(500, 1200);
-            }
+            });
           }
         }
       }

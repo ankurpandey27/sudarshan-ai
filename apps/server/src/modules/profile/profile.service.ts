@@ -22,6 +22,7 @@ import { UpdateProfileDto } from './dto/update-profile.dto';
 import { pdfToText } from './utils/pdf-text.util';
 import { parseResumeHeuristically } from './utils/resume-heuristics.util';
 import { RESUME_SYSTEM_PROMPT, buildResumePrompt } from './utils/resume-prompt.util';
+import { SKILL_FAMILIES } from './constants/skill-families.constants';
 
 @Injectable()
 export class ProfileService implements OnApplicationBootstrap {
@@ -154,12 +155,17 @@ export class ProfileService implements OnApplicationBootstrap {
     return this.state();
   }
 
+  /**
+   * Your years with a skill, from your profile: the skill itself or a related one it covers ("SQL"
+   * counts MySQL and PostgreSQL) - the highest. A skill listed without years counts as your whole career.
+   */
   skillYears(skill: string): number | null {
     const p = this.get();
     const target = canonicalSkill(skill);
-    const hit = p.skills.find((s) => canonicalSkill(s.name) === target);
-    if (!hit) return null;
-    return hit.years ?? p.totalYearsExperience;
+    const family = new Set([target, ...(SKILL_FAMILIES[target] ?? []).map(canonicalSkill)]);
+    const hits = p.skills.filter((s) => family.has(canonicalSkill(s.name)));
+    if (hits.length === 0) return null;
+    return Math.max(...hits.map((h) => h.years ?? p.totalYearsExperience));
   }
 
   private save(profile: CandidateProfile): void {

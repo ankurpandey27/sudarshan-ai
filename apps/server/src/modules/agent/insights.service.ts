@@ -17,6 +17,9 @@ import { AgentService } from './agent.service';
 import { Insight } from './interfaces/insight.interface';
 import { sourceLabel } from '../jobs/utils/source-label.util';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
+import { StorageService } from '../../common/storage/storage.service';
+import { visibleInsights } from './utils/insight-dismissal.util';
+import { clockTime } from '../../common/utils/date.util';
 
 const FIELD_NAMES: Record<string, string> = {
   firstName: 'first name',
@@ -43,10 +46,12 @@ export class InsightsService {
     private readonly pending: PendingQuestionsService,
     private readonly discovery: DiscoveryService,
     private readonly health: PlatformHealthService,
+    private readonly storage: StorageService,
   ) {}
 
   async list(): Promise<Insight[]> {
-    const out: Insight[] = [];
+    // Each card's version is its title and detail unless it says otherwise (see Insight.version).
+    const out: (Omit<Insight, 'version'> & { version?: string })[] = [];
     const s = this.settings.get();
     const status = this.agent.status();
     const state = this.profile.state();
@@ -144,9 +149,21 @@ export class InsightsService {
             { label: 'See what happened', to: '/applications' },
           ],
         });
+      } else if (h.status === 'cooling') {
+        out.push({
+          id: `cooling-${h.platform}`,
+          version: `cooling until ${h.until ?? ''}`,
+          severity: 'warn',
+          title: `${name} is refusing applications for now - paused until ${clockTime(h.until)}`,
+          detail: `${name} answered "please try again later" instead of taking the application - usually after many applications in a short time. Those jobs stay in the queue; Sudarshan tries ${name} again at ${clockTime(h.until)} and carries on with the other sites meanwhile.`,
+          fix: `Nothing to do now. To make it less likely: a lower daily limit for ${name} (Settings, Platforms & limits) and a longer gap between applications (Settings, Agent).`,
+          actions: [{ label: 'Limits', to: '/settings?tab=platforms' }],
+        });
       } else if (h.status === 'careful') {
         out.push({
           id: `careful-${h.platform}`,
+          // A new careful-mode episode is a new card, even though it reads the same.
+          version: `careful since ${h.since ?? ''}`,
           severity: 'info',
           title: `${name}: careful mode`,
           detail: `After recent trouble, Sudarshan fills ${name} applications and stops before Submit, so you check each one.`,
@@ -157,7 +174,8 @@ export class InsightsService {
     }
 
     for (const b of status.blockedSources) {
-      if (/may have changed/i.test(b.reason)) continue;
+      // Paused platforms have their own card above.
+      if (/may have changed|refusing applications/i.test(b.reason)) continue;
       const login = /log in/i.test(b.reason);
       if (/switched off/i.test(b.reason)) {
         out.push({
@@ -215,7 +233,8 @@ export class InsightsService {
         actions: [{ label: 'Review jobs', to: '/review' }],
       });
     }
-    if (fresh > 0) {
+    // Mid-search, new jobs are expected: they are scored when the search ends, so nothing to fix yet.
+    if (fresh > 0 && !this.discovery.isRunning() && !this.agent.status().scoring) {
       out.push({
         id: 'unscored',
         severity: 'info',
@@ -257,7 +276,15 @@ export class InsightsService {
         actions: [],
       });
     }
-    const rank = { error: 0, warn: 1, info: 2 };
-    return out.sort((a, b) => rank[a.severity] - rank[b.severity]);
+    const dismissed = new Map(this.storage.all<{ id: string; version: string }>('SELECT id, version FROM insight_dismissals').map((d) => [d.id, d.version]));
+    return visibleInsights(out, dismissed);
+  }
+
+  /** Hides this card until it comes back with a different version (a new count, a new episode). */
+  dismiss(id: string, version: string): void {
+    this.storage.run(
+      'INSERT INTO insight_dismissals (id, version, dismissed_at) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET version = excluded.version, dismissed_at = excluded.dismissed_at',
+      [id, version, new Date().toISOString()],
+    );
   }
 }

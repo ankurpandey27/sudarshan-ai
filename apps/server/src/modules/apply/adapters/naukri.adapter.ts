@@ -12,13 +12,14 @@ import { FormRunOutcome, RunFormOptions } from '../../form-engine/interfaces/for
 import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
-import { CLOSED_TEXT, NAUKRI_APPLIED_URL, NAUKRI_DRAWER, NAUKRI_FILE_QUESTION, NAUKRI_SUCCESS } from '../constants/apply.constants';
+import { CLOSED_TEXT, NAUKRI_APPLIED_URL, NAUKRI_DRAWER, NAUKRI_FILE_QUESTION, NAUKRI_REFUSED, NAUKRI_SUCCESS } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { naukriDoneTypingInPage, naukriLastQuestionInPage, naukriSendInPage, naukriSendReadyInPage } from '../scripts/naukri-chat.script';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 
 const MAX_QUESTIONS = 20;
+const REFUSED_DETAIL = 'Naukri is refusing applications for now ("please try again later") - it stays in the queue';
 
 @Injectable()
 export class NaukriApplyAdapter implements ApplyAdapter {
@@ -65,6 +66,7 @@ export class NaukriApplyAdapter implements ApplyAdapter {
     await this.runner.click(page, apply.id);
     await this.runner.settle(page);
     await sleep(1200);
+    if (await this.refused(page)) return result(PrepareStatus.REFUSED, { detail: REFUSED_DETAIL });
     return result(PrepareStatus.READY);
   }
 
@@ -82,6 +84,7 @@ export class NaukriApplyAdapter implements ApplyAdapter {
       if (!chatOpen) {
         // One-click applies navigate to a confirmation page; give it time to load.
         if (await this.confirmed(page, prep, 8000)) return { ...out, status: 'applied', detail: 'Application submitted' };
+        if (await this.refused(page)) return { ...out, status: 'refused', detail: REFUSED_DETAIL };
         return { ...out, status: 'stuck', detail: 'Naukri did not confirm the application' };
       }
 
@@ -139,6 +142,11 @@ export class NaukriApplyAdapter implements ApplyAdapter {
       await jitter(1500, 2500);
     }
     return { ...out, status: 'stuck', detail: 'Too many questions' };
+  }
+
+  /** Naukri showed "There was an error while processing your request, please try again later". */
+  private async refused(page: Page): Promise<boolean> {
+    return NAUKRI_REFUSED.test(await page.evaluate(documentTextInPage).catch(() => ''));
   }
 
   /** Naukri's confirmation: the "Applied to" page, its URL, or the job page's Applied state. */

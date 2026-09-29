@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Injectable, Logger } from '@nestjs/common';
-import { Page } from 'puppeteer-core';
+import { Frame, Page } from 'puppeteer-core';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
 import { AnswersService } from '../answers/answers.service';
@@ -15,7 +15,7 @@ import { extractFormInPage } from '../form-engine/scripts/extract-form.script';
 import { documentTextInPage } from '../form-engine/scripts/page-helpers.script';
 import { JobsService } from '../jobs/jobs.service';
 import { JobStatus } from '../jobs/enums/job-status.enum';
-import { CLICK_SETTLE_MS, SECRET_QUESTION } from './constants/learning.constants';
+import { CONFIRM_CHECKS_MS, SECRET_QUESTION } from './constants/learning.constants';
 import { LearnEvent } from './interfaces/learn-event.interface';
 import { LearningSession } from './interfaces/learning-session.interface';
 import { WatchTarget } from './interfaces/watch-target.interface';
@@ -47,7 +47,7 @@ export class LearningService {
   async watch(page: Page, target: WatchTarget): Promise<void> {
     if (this.watched.has(page) || page.isClosed()) return;
     this.watched.add(page);
-    const session: LearningSession = { known: new Map(), pending: null, answers: 0, steps: 0, done: false };
+    const session: LearningSession = { known: new Map(), pending: null, moves: [], answers: 0, steps: 0, done: false };
     try {
       // What is already filled (by the site or the agent) is not the user's answer.
       const start = await this.snapshot(page, target);
@@ -65,7 +65,15 @@ export class LearningService {
         (${learnRecorderInPage.toString()})();`;
       await page.evaluateOnNewDocument(setup);
       await page.evaluate(setup);
-      page.once('close', () => this.stop(target, session));
+      // A new page in this tab may be the confirmation, with nothing left to click.
+      const onNavigated = (frame: Frame) => {
+        if (frame === page.mainFrame()) this.lookForConfirmation(page, target, session);
+      };
+      page.on('framenavigated', onNavigated);
+      page.once('close', () => {
+        page.off('framenavigated', onNavigated);
+        this.stop(target, session);
+      });
     } catch (err) {
       this.logger.debug(`Could not watch ${target.domain}: ${(err as Error).message}`);
     }
@@ -101,30 +109,46 @@ export class LearningService {
       };
     }
     // A final submit shows a confirmation instead of new questions.
-    setTimeout(() => {
-      if (session.done || page.isClosed()) return;
-      void page
-        .evaluate(documentTextInPage)
-        .then((doc) => {
-          if (!session.done && target.successPattern.test(doc)) this.complete(target, session);
-        })
-        .catch(() => undefined);
-    }, CLICK_SETTLE_MS);
+    this.lookForConfirmation(page, target, session);
+  }
+
+  /**
+   * Checks the page for the site's confirmation a few times over the next seconds. Sites take a
+   * moment to send an application, and often show the confirmation on a new page (Indeed) - a single
+   * check straight after the click saw the old page, and missed it.
+   */
+  private lookForConfirmation(page: Page, target: WatchTarget, session: LearningSession): void {
+    for (const ms of CONFIRM_CHECKS_MS) {
+      setTimeout(() => {
+        if (session.done || page.isClosed()) return;
+        void page
+          .evaluate(documentTextInPage)
+          .then((doc) => {
+            if (!session.done && target.successPattern.test(doc)) this.complete(target, session);
+          })
+          // Mid-navigation: a later check, or the new page's own check, will see it.
+          .catch(() => undefined);
+      }, ms);
+    }
   }
 
   private learnStep(target: WatchTarget, session: LearningSession, now: FormSnapshot | null): void {
     const p = session.pending;
     if (!p || (now && formFingerprint(now) === p.fingerprint)) return;
-    this.recipes.learn(target.domain, p.kind, p.text);
-    // Your click moved the form on: next time, this button is tried first on this kind of step.
-    this.playbook.record(target.domain, p.signature, p.text, true);
-    session.steps++;
+    // Your click moved the form on - kept only if the application is then confirmed, so a button that
+    // merely left the form (Save and close, a notifications link) is never learned.
+    session.moves.push({ domain: target.domain, kind: p.kind, signature: p.signature, text: p.text, by: 'you' });
     session.pending = null;
   }
 
   private complete(target: WatchTarget, session: LearningSession): void {
     this.learnStep(target, session, null);
     session.done = true;
+    // Confirmed: your steps, and Sudarshan's before it handed over, are good moves on this site.
+    const moves = [...(target.agentMoves ?? []), ...session.moves];
+    this.playbook.confirm(moves);
+    this.recipes.confirm(moves);
+    session.steps = session.moves.length;
     this.jobs.setStatus(target.jobId, JobStatus.APPLIED, `Finished by you - learned ${learnedSummary(session)}`);
     this.recipes.outcome(target.domain, true);
     this.events.emit({
@@ -138,12 +162,13 @@ export class LearningService {
   private stop(target: WatchTarget, session: LearningSession): void {
     if (session.done) return;
     session.done = true;
-    if (session.answers || session.steps) {
+    // Closed without a confirmation: your answers are kept, the buttons you pressed are not.
+    if (session.answers) {
       this.events.emit({
         type: AgentEventType.LOG,
         level: 'info',
         jobId: target.jobId,
-        message: `${target.jobLabel}: learned ${learnedSummary(session)} from you on ${target.domain}`,
+        message: `${target.jobLabel}: learned ${session.answers} answer(s) from you on ${target.domain} - steps are learned only from a confirmed application`,
       });
     }
   }

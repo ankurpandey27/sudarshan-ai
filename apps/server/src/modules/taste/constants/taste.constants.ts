@@ -1,16 +1,25 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-/** Decisions needed before the model is used: enough in total, and some of each kind. */
-export const MIN_DECISIONS = 20;
-export const MIN_EACH = 5;
-/** A title word must appear in this many decided jobs to become a signal. */
-export const MIN_WORD_COUNT = 2;
-/** Training: plain gradient descent with a little L2, small data and fast. */
-export const TRAIN_STEPS = 600;
-export const LEARNING_RATE = 0.5;
-export const L2 = 0.02;
-/** In Auto mode, a job the model thinks you would very likely skip waits for your review. */
+/** Jobs you applied to or approved before "your interest" is shown - enough to see what they share. */
+export const MIN_KEPT = 15;
+/** Anything in at least this share of the applications your top skill (or title word, platform) is in counts as fully liked. */
+export const FULL_AFFINITY_SHARE = 0.5;
+/** How much each part of a job counts towards your interest in it. */
+export const INTEREST_WEIGHTS = { skill: 0.6, title: 0.25, platform: 0.15 } as const;
+/** A job's best skill matches that count most... */
+export const TOP_SKILLS_COUNTED = 3;
+/** ...and how much the share of its skills you go for counts, next to them. */
+export const SKILL_COVERAGE_WEIGHT = 0.3;
+/** A skill (or word) this liked or more counts as one you go for. */
+export const COVERED_AT = 0.3;
+/** What a job does not say (no skills listed) counts as this - unknown, not a match. */
+export const UNKNOWN_PART = 0.5;
+/** Something you turn down every time halves a job's interest. */
+export const AVOID_PENALTY = 0.5;
+/** Reasons shown when you hover the interest. */
+export const REASONS_SHOWN = 3;
+/** In Auto mode, a job this unlike the ones you apply to waits for your review. */
 export const HOLD_BACK_BELOW = 0.25;
 export const REFRESH_EVERY_MS = 5 * 60_000;
 export const REFRESH_DEBOUNCE_MS = 3000;
@@ -38,5 +47,14 @@ export const STOP_WORDS = new Set([
   'position',
   'opening',
 ]);
-/** Features nearly every job has; shown as a reason only when nothing more specific stands out. */
-export const GENERAL_FEATURES = new Set(['overall fit', 'skills match', 'salary fit', 'location fit', 'easy apply']);
+
+/** "You like": in at least this share of the jobs you kept... */
+export const LIKE_MIN_SHARE = 0.1;
+/** ...and kept at least this often when it was there. */
+export const LIKE_MIN_KEEP = 0.9;
+/** "You skip": turned down at least this often... */
+export const SKIP_MIN_RATE = 0.5;
+/** ...over at least this many of your decisions. */
+export const SKIP_MIN_DECISIONS = 5;
+/** Shown on the taste card, each list. */
+export const HABITS_SHOWN = 6;

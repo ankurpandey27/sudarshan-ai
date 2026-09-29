@@ -6,7 +6,7 @@ import puppeteer, { Browser, Page } from 'puppeteer-core';
 import { EventsService } from '../src/common/events/events.service';
 import { StorageService } from '../src/common/storage/storage.service';
 import { AnswersService } from '../src/modules/answers/answers.service';
-import { LINKEDIN_SCOPE } from '../src/modules/apply/constants/apply.constants';
+import { INDEED_SUCCESS, LINKEDIN_SCOPE } from '../src/modules/apply/constants/apply.constants';
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
 import { AnswerEngineService } from '../src/modules/form-engine/answer-engine.service';
 import { FormRunnerService } from '../src/modules/form-engine/form-runner.service';
@@ -94,6 +94,52 @@ describe('Learning from the user (real browser)', () => {
     expect(answers.lookup("Are you comfortable commuting to this job's location?")?.answer).toBe('Yes');
     expect(answers.lookup('How many years of work experience do you have with React?')?.answer).toBe('4');
     expect(recipes.get('fixture.local').advanceTexts).toContain('next');
+    await page.close();
+  });
+
+  it('marks it applied when you submit and the site confirms on a new page (Indeed, 2026-09-28)', async () => {
+    const storage = new StorageService(':memory:');
+    const events = new EventsService();
+    const answers = new AnswersService(storage);
+    const recipes = new RecipesService(storage);
+    const jobs = new JobsService(storage, events);
+    const playbook = new PlaybookService(storage);
+    const runner = new FormRunnerService(new AnswerEngineService(answers, noLlm), recipes, noLlm, playbook);
+    const learning = new LearningService(runner, answers, recipes, playbook, jobs, events);
+    const url = `file://${join(__dirname, 'fixtures', 'indeed-final-step.html').replace(/\\/g, '/')}`;
+    const [jobId] = jobs.saveDiscovered([
+      {
+        source: JobSource.INDEED,
+        externalId: 'indeed-1',
+        url,
+        title: 'Backend Developer',
+        company: 'Acme',
+        location: 'Noida',
+        isRemote: false,
+        easyApply: true,
+        description: '',
+      },
+    ]);
+    jobs.setStatus(jobId, JobStatus.MANUAL, 'Filled - only the captcha is left');
+
+    page = await browser.newPage();
+    await page.goto(url);
+    await learning.watch(page, {
+      jobId,
+      jobLabel: 'Backend Developer @ Acme',
+      domain: 'smartapply.indeed.com',
+      scopeSelector: null,
+      successPattern: INDEED_SUCCESS,
+    });
+
+    // Later - after every check made at hand-over time has run - you tick the captcha and press
+    // Submit; Indeed loads its confirmation page. Nothing expires: your click starts new checks.
+    await new Promise((r) => setTimeout(r, 20_000));
+    await page.click('#robot');
+    await page.click('#submit');
+    await until(() => jobs.get(jobId).status === JobStatus.APPLIED, 15000);
+    expect(jobs.get(jobId).status).toBe(JobStatus.APPLIED);
+    expect(jobs.get(jobId).reason).toMatch(/^Finished by you/);
     await page.close();
   });
 });

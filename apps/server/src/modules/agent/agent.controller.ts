@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Controller, Get, HttpCode, Param, ParseIntPipe, Post, ServiceUnavailableException, ParseEnumPipe } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, ServiceUnavailableException, ParseEnumPipe } from '@nestjs/common';
 import { ApplyResult } from '../apply/interfaces/apply-adapter.interface';
 import { BrowserUnavailableError } from '../browser/errors/browser-unavailable.error';
 import { AgentService } from './agent.service';
 import { AgentStatus } from './interfaces/agent-status.interface';
 import { Insight } from './interfaces/insight.interface';
+import { DismissInsightDto } from './dto/dismiss-insight.dto';
 import { InsightsService } from './insights.service';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
 import { PlatformHealth } from '../platform-health/interfaces/platform-health.interface';
@@ -23,6 +24,14 @@ export class AgentController {
   @Get('insights')
   insightList(): Promise<Insight[]> {
     return this.insights.list();
+  }
+
+  /** Hides a "Needs attention" card until the situation changes (it then comes back). */
+  @Post('insights/:id/dismiss')
+  @HttpCode(200)
+  dismissInsight(@Param('id') id: string, @Body() dto: DismissInsightDto): { dismissed: true } {
+    this.insights.dismiss(id, dto.version);
+    return { dismissed: true };
   }
 
   @Get('status')

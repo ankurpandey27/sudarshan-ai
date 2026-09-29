@@ -1,0 +1,18 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Review your application - Indeed</title></head>
+<body>
+<!-- Mirrors Indeed's last step after Sudarshan hands it over (2026-09-28): the person ticks the
+     captcha and presses Submit; Indeed takes a few seconds to send it, then loads a separate confirmation page. -->
+<main>
+  <h2>Please review your application</h2>
+  <label><input type="checkbox" id="robot"> I'm not a robot</label>
+  <button id="submit" type="button">Submit your application</button>
+</main>
+<script>
+  document.getElementById('submit').addEventListener('click', () => {
+    setTimeout(() => (location.href = location.href.replace('indeed-final-step.html', 'indeed-submitted.html')), 3000);
+  });
+</script>
+</body>
+</html>

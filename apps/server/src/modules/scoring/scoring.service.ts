@@ -5,6 +5,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
 import { canonicalSkill } from '../discovery/utils/job-normalizer.util';
+import { coreSkillsIn, coreSkillsOf, skillLabel, skillList } from './utils/core-skill.util';
 import { JobsService } from '../jobs/jobs.service';
 import { JobSource } from '../jobs/enums/job-source.enum';
 import { JobStatus } from '../jobs/enums/job-status.enum';
@@ -14,7 +15,14 @@ import { LlmPurpose } from '../llm/enums/llm-purpose.enum';
 import { ProfileService } from '../profile/profile.service';
 import { SettingsService } from '../settings/settings.service';
 import { AgentMode } from '../settings/enums/agent-mode.enum';
-import { LLM_SCORE_BATCH, LLM_SCORE_WEIGHT, TITLE_MISMATCH_PENALTY } from './constants/scoring.constants';
+import {
+  CORE_SKILL_BONUS,
+  CORE_SKILL_BONUS_MAX,
+  LAST_RUN_KEEP_MS,
+  LLM_SCORE_BATCH,
+  LLM_SCORE_WEIGHT,
+  TITLE_MISMATCH_PENALTY,
+} from './constants/scoring.constants';
 import { titleTokens } from './utils/title.util';
 import { containsTerm } from './utils/whole-term.util';
 import { LastScoringRun, LlmJobScore, ScoringRunResult } from './interfaces/llm-score.interface';
@@ -80,6 +88,11 @@ export class ScoringService {
     return this.current ? { ...this.current } : null;
   }
 
+  /** The run that finished in the last few seconds, if any - rule-based scoring often takes under a second. */
+  justFinished(): LastScoringRun | null {
+    return this.last && Date.now() - Date.parse(this.last.at) < LAST_RUN_KEEP_MS ? { ...this.last } : null;
+  }
+
   private async scoreAll(pending: Job[], out: ScoringRunResult, p: ScoringProgress, tick: (done: number) => void): Promise<ScoringRunResult> {
     const profile = this.profile.get();
     const snap = toProfileSnapshot(profile, this.settings.get().search.locations);
@@ -143,12 +156,27 @@ export class ScoringService {
     }
 
     const titleTerms = titleTokens([...s.search.keywords, profile.currentTitle, profile.headline].join(' '));
+    const core = coreSkillsOf({
+      coreSkills: s.search.coreSkills,
+      keywords: s.search.keywords,
+      profileSkills: profile.skills.map((k) => k.name),
+      currentTitle: profile.currentTitle,
+      headline: profile.headline,
+    });
     p.stage = 'saving';
     for (const [n, { job, detail }] of survivors.entries()) {
       let score = detail.llm === null ? detail.engine : Math.round(detail.engine * (1 - LLM_SCORE_WEIGHT) + detail.llm * LLM_SCORE_WEIGHT);
-      if (detail.llm === null && titleTerms.size && ![...titleTokens(job.title)].some((t) => titleTerms.has(t))) {
+      // A job asking for your core skill (e.g. Node.js) is yours to judge, whatever its title or score.
+      const coreHits = coreSkillsIn(job, core);
+      const coreHit = coreHits[0] ?? null;
+      if (detail.llm === null && !coreHit && titleTerms.size && ![...titleTokens(job.title)].some((t) => titleTerms.has(t))) {
         score = Math.max(0, score - TITLE_MISMATCH_PENALTY);
         detail.summary ||= 'Title does not match your search';
+      }
+      // Two or more of your core skills together (e.g. Node.js and NestJS) is a closer fit than one.
+      if (coreHits.length >= 2) {
+        score = Math.min(100, score + Math.min(CORE_SKILL_BONUS * (coreHits.length - 1), CORE_SKILL_BONUS_MAX));
+        detail.summary ||= `Asks for ${skillList(coreHits)} - ${coreHits.length} of your ${core.length} core skills`;
       }
       const external = job.source !== JobSource.WEB && !job.easyApply && !s.sources.externalSites.enabled;
       let status: JobStatus;
@@ -160,8 +188,15 @@ export class ScoringService {
         const taste = status === JobStatus.APPROVED ? this.taste?.predict({ ...job, detail, score }) : null;
         if (taste && taste.p < HOLD_BACK_BELOW) {
           status = JobStatus.REVIEW;
-          reason = `Held for your review - unlike the jobs you usually approve (${Math.round(taste.p * 100)}% your taste)`;
+          reason = `Held for your review - unlike the jobs you usually approve (${Math.round(taste.p * 100)}% your interest)`;
         }
+      } else if (coreHit && score < s.agent.minReviewScore) {
+        // Never skipped for a low score: it waits in Review, saying why. You still decide.
+        status = JobStatus.REVIEW;
+        reason =
+          coreHits.length > 1
+            ? `Below your score (${score}), but it asks for ${skillList(coreHits)} - your core skills`
+            : `Below your score (${score}), but it asks for ${skillLabel(coreHit)} - your core skill`;
       } else if (score >= s.agent.minReviewScore) {
         status = JobStatus.REVIEW;
         reason = external

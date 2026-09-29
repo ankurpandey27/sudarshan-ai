@@ -12,9 +12,13 @@ If a question needs a fact the profile does not contain and no safe default exis
 // Contact details are left out; the model does not need them.
 function candidateBlock(ctx: AnswerContext): string {
   const p = ctx.profile;
+  // The same years the rules use: the highest known, rounded (4.9 -> 5).
   const skills = p.skills
     .slice(0, 60)
-    .map((s) => (s.years !== null ? `${s.name} (${s.years}y)` : s.name))
+    .map((s) => {
+      const y = ctx.skillYears(s.name);
+      return y !== null ? `${s.name} (${Math.round(y)}y)` : s.name;
+    })
     .join(', ');
   const exp = p.experience
     .slice(0, 4)
@@ -26,7 +30,7 @@ function candidateBlock(ctx: AnswerContext): string {
     .join('; ');
   return [
     `Name: ${p.firstName} ${p.lastName}`,
-    `Current: ${p.currentTitle || '-'} at ${p.currentCompany || '-'}; total experience ${p.totalYearsExperience} years`,
+    `Current: ${p.currentTitle || '-'} at ${p.currentCompany || '-'}; total experience ${Math.round(p.totalYearsExperience)} years`,
     `Location: ${[p.city, p.state, p.country].filter(Boolean).join(', ')}; willing to relocate: ${p.willingToRelocate ? 'yes' : 'no'}`,
     `Notice period: ${p.noticePeriodDays ?? 'unknown'} days; current CTC: ${p.currentCtc ?? 'unknown'} ${p.currency}/yr; expected CTC: ${p.expectedCtc ?? 'unknown'} ${p.currency}/yr`,
     `Needs visa sponsorship: ${p.needsSponsorship ? 'yes' : 'no'}; work authorization: ${p.workAuthorization || (p.country ? `not stated - lives in ${p.country}; never claim the right to work in any other country` : 'not stated - never claim any')}`,

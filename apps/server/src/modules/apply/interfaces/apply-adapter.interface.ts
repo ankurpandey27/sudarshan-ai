@@ -5,6 +5,7 @@ import { Page } from 'puppeteer-core';
 import { FormRunOutcome, RunFormOptions } from '../../form-engine/interfaces/form-run.interface';
 import { Job } from '../../jobs/interfaces/job.interface';
 import { PrepareStatus } from '../enums/prepare-status.enum';
+import { LearnedMove } from '../../form-engine/interfaces/learned-move.interface';
 
 export interface PrepareResult {
   status: PrepareStatus;
@@ -15,6 +16,8 @@ export interface PrepareResult {
   /** Set when the form opened in a new tab. */
   page?: Page;
   detail?: string;
+  /** Buttons pressed to reach the form; learned only if the application is then confirmed. */
+  moves?: LearnedMove[];
 }
 
 export interface ApplyAdapter {

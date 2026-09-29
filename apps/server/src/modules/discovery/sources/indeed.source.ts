@@ -13,6 +13,7 @@ import { INDEED_CHALLENGE } from '../../apply/constants/apply.constants';
 import { DiscoverySource, SearchQuery } from '../interfaces/discovery-source.interface';
 import { IndeedCard } from '../interfaces/indeed-card.interface';
 import { indeedCardToDiscovered, indeedSearchUrl } from '../utils/indeed.util';
+import { anyOf } from '../utils/keywords.util';
 
 /**
  * Indeed search in the agent's visible browser. The results are embedded in the
@@ -23,6 +24,11 @@ import { indeedCardToDiscovered, indeedSearchUrl } from '../utils/indeed.util';
 export class IndeedSource implements DiscoverySource {
   readonly source = JobSource.INDEED;
   readonly platform = JobPlatform.INDEED;
+
+  /** Indeed search understands OR ("any of these words"). */
+  combine(keywords: string[]): string {
+    return anyOf(keywords);
+  }
 
   constructor(private readonly browser: BrowserService) {}
 

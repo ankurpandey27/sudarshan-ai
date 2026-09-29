@@ -18,6 +18,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     maxPerSearch: 25,
     excludeCompanies: [],
     excludeTitleWords: [],
+    coreSkills: [],
   },
   sources: {
     // LinkedIn restricts accounts that apply too fast.

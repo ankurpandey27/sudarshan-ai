@@ -12,6 +12,7 @@ import { DiscoveredJob } from '../../jobs/interfaces/discovered-job.interface';
 import { GUEST_HEADERS, LINKEDIN_GUEST_POSTING, LINKEDIN_GUEST_SEARCH, LINKEDIN_MAX_PAGES, LINKEDIN_PAGE_SIZE } from '../constants/platform.constants';
 import { DiscoverySource, SearchQuery } from '../interfaces/discovery-source.interface';
 import { detectRemote } from '../utils/job-normalizer.util';
+import { anyOf } from '../utils/keywords.util';
 
 // LinkedIn's public guest endpoints: plain HTTP, so the user's account is never used for search.
 @Injectable()
@@ -19,6 +20,13 @@ export class LinkedInSource implements DiscoverySource {
   readonly source = JobSource.LINKEDIN;
   readonly platform = JobPlatform.LINKEDIN;
   private readonly logger = new Logger(LinkedInSource.name);
+  // Public pages, no login: a few descriptions at once is safe.
+  readonly enrichAtOnce = 3;
+
+  /** LinkedIn search understands OR (checked live 2026-09-28: the combined results come from each keyword's). */
+  combine(keywords: string[]): string {
+    return anyOf(keywords);
+  }
 
   async search(q: SearchQuery): Promise<DiscoveredJob[]> {
     const jobs = new Map<string, DiscoveredJob>();

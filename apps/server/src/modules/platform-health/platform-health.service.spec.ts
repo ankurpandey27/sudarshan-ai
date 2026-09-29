@@ -80,4 +80,16 @@ describe('PlatformHealthService', () => {
     for (let i = 0; i < 3; i++) attempt('error');
     expect(health.state(JobPlatform.LINKEDIN).status).toBe('ok');
   });
+
+  it('pauses a site that refuses applications, and carries on by itself when the pause is over (Naukri, 2026-09-29)', () => {
+    const health = new PlatformHealthService(new StorageService(':memory:'));
+    const paused = health.coolDown(JobPlatform.NAUKRI, 3 * 60 * 60_000, 'Naukri is refusing applications for now');
+    expect(paused.status).toBe('cooling');
+    expect(Date.parse(paused.until!)).toBeGreaterThan(Date.now());
+    expect(paused.recent).toEqual(['Naukri is refusing applications for now']);
+    // Other sites are not affected.
+    expect(health.state(JobPlatform.LINKEDIN).status).toBe('ok');
+    // A pause that is already over: back to normal, not careful or broken.
+    expect(health.coolDown(JobPlatform.NAUKRI, -1000, 'old').status).toBe('ok');
+  });
 });

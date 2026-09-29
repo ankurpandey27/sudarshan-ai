@@ -5,7 +5,7 @@ import { useMemo, useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Radar } from 'lucide-react';
-import { InsightsPanel } from '../components/insights-panel';
+import { AttentionSummary } from '../components/attention-summary';
 import { api } from '../lib/api';
 import { clock, cn, levelColor, PLATFORMS, platformLabel, sourceLabel, timeAgo, timeUntil } from '../lib/format';
 import { pct, shortDay, trend } from '../lib/chart';
@@ -123,7 +123,7 @@ export function Dashboard() {
 
       {view === 'overview' && (
         <>
-          <InsightsPanel />
+          <AttentionSummary />
 
           <Kpis report={report} days={days} queue={agent?.queue ?? 0} review={stats?.byStatus.review ?? 0} questions={agent?.openQuestions ?? 0} />
 

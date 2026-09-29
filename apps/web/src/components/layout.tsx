@@ -18,11 +18,12 @@ import {
   Sun,
   Target,
   UserRound,
+  Wrench,
   X,
 } from 'lucide-react';
 import { cn } from '../lib/format';
 import { useEvents } from '../lib/events';
-import { useAgent, useStats } from '../lib/queries';
+import { useAgent, useInsights, useStats } from '../lib/queries';
 import { useTheme } from '../lib/theme';
 import { AgentToggle } from './agent-toggle';
 import { SudarshanMark } from './sudarshan-logo';
@@ -69,11 +70,15 @@ export function Layout() {
   const [collapsed, setCollapsed] = useSaved('sudarshan.sidebar.collapsed', false);
   const { data: agent } = useAgent();
   const { data: stats } = useStats();
+  // Only what needs you counts - tips do not.
+  const { data: insights } = useInsights();
+  const needsYou = (insights ?? []).filter((i) => i.severity !== 'info').length;
   const { connected } = useEvents();
 
   const nav = (rail = false) => (
     <nav className="flex flex-col gap-0.5" onClick={() => setOpen(false)}>
       <Item rail={rail} to="/" icon={<Target className="size-4" />} label="Lakshya" />
+      <Item rail={rail} to="/attention" icon={<Wrench className="size-4" />} label="Needs attention" count={needsYou || undefined} tone="warn" />
       <Item rail={rail} to="/review" icon={<Inbox className="size-4" />} label="Review" count={stats?.byStatus.review} />
       <Item rail={rail} to="/questions" icon={<MessageCircleQuestion className="size-4" />} label="Questions" count={agent?.openQuestions} tone="warn" />
       <Item rail={rail} to="/applications" icon={<Briefcase className="size-4" />} label="Applications" count={stats?.appliedTotal} />
@@ -111,7 +116,7 @@ export function Layout() {
 
       {/* Mobile top bar + drawer */}
       <div className="fixed inset-x-0 top-0 z-30 flex h-12 items-center justify-between border-b border-line bg-bg/95 px-4 backdrop-blur md:hidden">
-        <Brand spinning={agent?.running} />
+        <Brand spinning={agent?.running} small />
         <button aria-label="Open menu" onClick={() => setOpen(true)} className="rounded-lg p-1.5 hover:bg-surface-2">
           <Menu className="size-5" />
         </button>
@@ -143,13 +148,16 @@ export function Layout() {
   );
 }
 
-function Brand({ spinning, compact }: { spinning?: boolean; compact?: boolean }) {
+/** The name and wheel; large in the sidebar, where it should be noticed, and small in the phone top bar. */
+function Brand({ spinning, compact, small }: { spinning?: boolean; compact?: boolean; small?: boolean }) {
   return (
-    <div className="flex items-center gap-2.5 px-1" title="Sudarshan - goes out, finishes the task, returns">
-      <SudarshanMark size={30} spinning={spinning} />
-      <span className={cn('leading-tight', compact && 'sr-only')}>
-        <span className="block font-display text-[21px] leading-none tracking-tight">Sudarshan</span>
-        <span className="mt-0.5 block text-[11px] text-ink-3">goes out · finishes · returns</span>
+    <div className={cn('flex min-w-0 items-center px-1', small ? 'gap-2.5' : 'gap-3 py-1')} title="Sudarshan - goes out, finishes the task, returns">
+      <SudarshanMark size={small ? 30 : compact ? 36 : 44} spinning={spinning} />
+      <span className={cn('min-w-0 leading-tight', compact && 'sr-only')}>
+        <span className={cn('block font-display leading-none tracking-tight', small ? 'text-[21px]' : 'text-[28px]')}>Sudarshan</span>
+        <span className={cn('mt-1 block whitespace-nowrap text-accent', small ? 'text-[10.5px]' : 'text-[11.5px] font-medium')}>
+          goes out · finishes · returns
+        </span>
       </span>
     </div>
   );

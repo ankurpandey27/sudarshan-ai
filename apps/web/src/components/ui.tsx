@@ -114,7 +114,7 @@ export function Field({ label, hint, children, className }: { label: string; hin
 }
 
 const control =
-  'w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-ink-3 transition-colors hover:border-ink-3 focus:border-accent focus:outline-none';
+  'w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-ink-3 transition-colors hover:border-ink-3 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30';
 
 export function Input({ className, ...rest }: InputHTMLAttributes<HTMLInputElement>) {
   return <input {...rest} className={cn(control, 'h-9', className)} />;
@@ -146,7 +146,9 @@ export function Toggle({ checked, onChange, label, hint }: { checked: boolean; o
         onClick={() => onChange(!checked)}
         className={cn('relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition-colors', checked ? 'bg-accent' : 'bg-line-strong')}
       >
-        <span className={cn('absolute top-0.5 left-0 size-4 rounded-full bg-surface shadow transition-transform', checked ? 'translate-x-4.5' : 'translate-x-0.5')} />
+        <span
+          className={cn('absolute top-0.5 left-0 size-4 rounded-full bg-surface shadow transition-transform', checked ? 'translate-x-4.5' : 'translate-x-0.5')}
+        />
       </button>
     </label>
   );

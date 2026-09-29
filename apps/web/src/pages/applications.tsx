@@ -8,7 +8,7 @@ import { Briefcase, CheckCheck, Download, Link2, RotateCcw, Search } from 'lucid
 import { api } from '../lib/api';
 import { cn } from '../lib/format';
 import { useJobs } from '../lib/queries';
-import type { JobPlatform } from '../lib/types';
+import type { AppliedSyncResult, JobPlatform } from '../lib/types';
 import { PlatformFilter } from '../components/platform-filter';
 import { JobRow } from '../components/job-row';
 import { Button, Card, Empty, Input, PageTitle, Textarea } from '../components/ui';
@@ -70,6 +70,23 @@ export function Applications() {
     mutationFn: (url: string) => api.post('/browser/open', { url }),
     onError: (e: Error) => toast('error', e.message),
   });
+  // Applications you finished by hand on Indeed, which Sudarshan did not see go through.
+  const syncIndeed = useMutation({
+    mutationFn: () => api.post<AppliedSyncResult>('/applied-sync/indeed'),
+    onSuccess: (r) => {
+      toast(
+        'ok',
+        r.marked.length
+          ? `Indeed lists ${r.listed} application(s): ${r.marked.length} marked Applied here (${r.marked
+              .slice(0, 3)
+              .map((m) => m.company)
+              .join(', ')}${r.marked.length > 3 ? '...' : ''})`
+          : `Indeed lists ${r.listed} application(s) - all already counted here`,
+      );
+      refresh();
+    },
+    onError: (e: Error) => toast('error', e.message),
+  });
 
   return (
     <>
@@ -78,6 +95,13 @@ export function Applications() {
         sub="Every job the agent touched, with the full trace of what it did."
         actions={
           <>
+            <Button icon={<CheckCheck className="size-4" />} onClick={() => syncIndeed.mutate()} loading={syncIndeed.isPending}>
+              Check Indeed
+            </Button>
+            <InfoTip title="Check Indeed">
+              Reads your Indeed "My jobs - Applied" list and marks those jobs Applied here - for applications you finished by hand in a tab Sudarshan left open.
+              It matches by Indeed's own job id, only reads the page, and never clicks anything on Indeed. You need to be logged in to Indeed.
+            </InfoTip>
             <Button icon={<Link2 className="size-4" />} onClick={() => setAdding((a) => !a)}>
               Add job links
             </Button>

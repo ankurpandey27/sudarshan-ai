@@ -31,6 +31,11 @@ export function ApplyOnCard() {
   const on = PLATFORMS.filter((p) => settings?.sources[p.setting].enabled).length;
   const { data: agent } = useAgent();
   const healthOf = (p: string) => agent?.platformHealth.find((h) => h.platform === p)?.status;
+  // When a site that is refusing applications gets tried again, on this computer's clock.
+  const untilOf = (p: string) => {
+    const until = agent?.platformHealth.find((h) => h.platform === p)?.until;
+    return until ? new Date(until).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'later';
+  };
 
   return (
     <Card>
@@ -86,11 +91,13 @@ export function ApplyOnCard() {
                   ? 'paused - site changed?'
                   : healthOf(p.key) === 'careful'
                     ? 'careful mode'
-                    : enabled
-                      ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}`
-                      : queued
-                        ? `off · ${queued} waiting`
-                        : 'off') +
+                    : healthOf(p.key) === 'cooling'
+                      ? `refusing for now - again at ${untilOf(p.key)}`
+                      : enabled
+                        ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}`
+                        : queued
+                          ? `off · ${queued} waiting`
+                          : 'off') +
                 // Indeed puts a captcha on every application: Sudarshan prepares it, you submit.
                 (p.key === 'indeed' ? ' · you submit' : '')
               }

@@ -68,3 +68,9 @@ export const RENDER_WAIT_MS = 10_000;
 
 /** Errors from reading a page the site replaced mid-read; reading again a moment later works. */
 export const PAGE_SWAPPED = /detached Frame|Execution context was destroyed|Cannot find context|Target closed|frame was detached/i;
+
+/**
+ * Naukri refusing an application for now (its apply request answers 403), usually after many in a
+ * short time (2026-09-29: 26 in an hour). Not a problem with the job or the form.
+ */
+export const NAUKRI_REFUSED = /error while processing your request|please try again later/i;

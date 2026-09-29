@@ -12,6 +12,7 @@ import { FieldKind } from './enums/field-kind.enum';
 import { FillInstruction } from './interfaces/fill-instruction.interface';
 import { FormAction, FormSnapshot } from './interfaces/form-field.interface';
 import { FormRunOutcome, RunFormOptions } from './interfaces/form-run.interface';
+import { LearnedMove } from './interfaces/learned-move.interface';
 import { extractFormInPage } from './scripts/extract-form.script';
 import { fillFieldsInPage } from './scripts/fill-fields.script';
 import { documentTextInPage, pickTypeaheadOptionInPage } from './scripts/page-helpers.script';
@@ -26,6 +27,8 @@ const ACTION_PRIORITY: Record<FormAction['kind'], number> = { submit: 4, review:
 @Injectable()
 export class FormRunnerService {
   private readonly logger = new Logger(FormRunnerService.name);
+  // Buttons the AI navigator chose, so a confirmed application credits them to the AI.
+  private readonly aiPicks = new WeakSet<FormAction>();
 
   constructor(
     private readonly answers: AnswerEngineService,
@@ -39,7 +42,10 @@ export class FormRunnerService {
   }
 
   async run(page: Page, opts: RunFormOptions): Promise<FormRunOutcome> {
+    // Buttons that moved the form on; the caller learns them only if the application is confirmed.
+    const moves: LearnedMove[] = [];
     const out: FormRunOutcome = {
+      moves,
       status: 'stuck',
       detail: '',
       unresolved: [],
@@ -171,7 +177,8 @@ export class FormRunnerService {
         repeats++;
         if (repeats >= 2) {
           const why = [...errored.map((f) => `${f.label}: ${f.error}`), ...after.errors].slice(0, 3).join('; ');
-          return { ...out, status: 'stuck', detail: why || 'The form did not move forward' };
+          const stuckAt: LearnedMove = { domain: opts.domain, kind: 'advance', signature, text: action.text, by: this.aiPicks.has(action) ? 'ai' : 'rules' };
+          return { ...out, status: 'stuck', detail: why || 'The form did not move forward', stuckAt };
         }
         // Validation failed: re-answer only those fields, with the error as context.
         force = new Set(errored.map((f) => f.id));
@@ -183,7 +190,8 @@ export class FormRunnerService {
         if (++otherMoves > MAX_OTHER_MOVES) return { ...out, status: 'stuck', detail: 'The form did not move forward' };
         opts.onStep(`Step ${step}: "${action.text}" did nothing - trying another way`);
       } else {
-        this.playbook.record(opts.domain, signature, action.text, true);
+        // Moved on - but only learned once the application is confirmed, never just because the page changed.
+        moves.push({ domain: opts.domain, kind: 'advance', signature, text: action.text, by: this.aiPicks.has(action) ? 'ai' : 'rules' });
         repeats = 0;
         force = new Set();
       }
@@ -258,7 +266,8 @@ export class FormRunnerService {
         maxTokens: 150,
       });
       const action = usable.find((a) => a.id === pick.id);
-      if (action) this.recipes.learn(opts.domain, 'advance', action.text);
+      // Learned only if the application is then confirmed (see the run's moves).
+      if (action) this.aiPicks.add(action);
       return action ?? null;
     } catch (err) {
       this.logger.warn(`Navigator failed: ${(err as Error).message}`);

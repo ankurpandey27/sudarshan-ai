@@ -153,7 +153,7 @@ export function Review() {
               {(
                 [
                   ['score', 'Best match'],
-                  ['taste', 'Your taste'],
+                  ['taste', 'Your interest'],
                 ] as const
               ).map(([id, label]) => (
                 <button

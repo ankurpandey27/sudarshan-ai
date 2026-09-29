@@ -8,6 +8,7 @@ import { FormRunnerService } from '../../form-engine/form-runner.service';
 import { RecipesService } from '../../form-engine/recipes.service';
 import { FormAction, FormSnapshot } from '../../form-engine/interfaces/form-field.interface';
 import { documentTextInPage, visiblePasswordInPage } from '../../form-engine/scripts/page-helpers.script';
+import { LearnedMove } from '../../form-engine/interfaces/learned-move.interface';
 import { buildNavigatePrompt, NAVIGATE_SYSTEM_PROMPT } from '../../form-engine/utils/navigate-prompt.util';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
@@ -31,6 +32,8 @@ import { clickCatchingNewTab } from '../utils/new-tab.util';
 @Injectable()
 export class WebApplyAdapter implements ApplyAdapter {
   private readonly logger = new Logger(WebApplyAdapter.name);
+  // Apply buttons the AI navigator chose.
+  private readonly aiPicks = new WeakSet<FormAction>();
 
   constructor(
     private readonly runner: FormRunnerService,
@@ -48,7 +51,10 @@ export class WebApplyAdapter implements ApplyAdapter {
 
   // Also used when LinkedIn or Naukri hands off to a company site.
   async prepareUrl(page: Page, url: string): Promise<PrepareResult> {
+    // Buttons pressed on the way to the form, handed back so a confirmed application can learn them.
+    const moves: LearnedMove[] = [];
     const result = (status: PrepareStatus, extra: Partial<PrepareResult> = {}): PrepareResult => ({
+      moves,
       status,
       scopeSelector: null,
       successPattern: GENERIC_SUCCESS,
@@ -93,6 +99,7 @@ export class WebApplyAdapter implements ApplyAdapter {
       // An "Apply now" comes first: the captcha often sits inside the application pop-up it opens
       // (Hashcash, 2026-09-28), and is handed over only after the form is filled.
       const action = await this.findApplyAction(snap, domain, text, pressed);
+      if (action) moves.push({ domain, kind: 'apply', signature: null, text: action.text, by: this.aiPicks.has(action) ? 'ai' : 'rules' });
       if (action) pressed.add(action.text.trim().toLowerCase());
       if (!action) return result(snap.captcha ? PrepareStatus.CAPTCHA : PrepareStatus.NO_APPLY_BUTTON, { page: current });
       const tab = await clickCatchingNewTab(current, () => this.runner.click(current, action.id));
@@ -156,7 +163,8 @@ export class WebApplyAdapter implements ApplyAdapter {
         maxTokens: 150,
       });
       const action = usable.find((a) => a.id === pick.id) ?? null;
-      if (action) this.recipes.learn(domain, 'apply', action.text);
+      // Learned only if the application is then confirmed (see the moves in the prepare result).
+      if (action) this.aiPicks.add(action);
       return action;
     } catch (err) {
       this.logger.warn(`Navigator failed on ${domain}: ${(err as Error).message}`);

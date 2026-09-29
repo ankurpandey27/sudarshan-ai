@@ -103,7 +103,7 @@ describe('ScoringService.scoreNew', () => {
 
     await make(0.1).scoreNew();
     expect(setScore.mock.calls[0][3]).toBe('review');
-    expect(setScore.mock.calls[0][4]).toMatch(/Held for your review.*10% your taste/);
+    expect(setScore.mock.calls[0][4]).toMatch(/Held for your review.*10% your interest/);
 
     setScore.mockClear();
     await make(0.8).scoreNew();
@@ -116,5 +116,75 @@ describe('ScoringService.scoreNew', () => {
     await svc.scoreNew();
     await svc.scoreNew();
     expect(unscored).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('ScoringService core skills', () => {
+  it('sends a low-scoring job that asks for your core skill to Review, and still skips the rest', async () => {
+    const posting = (id: number, title: string, skills: string[]) => ({
+      id,
+      title,
+      company: 'Acme',
+      location: '',
+      isRemote: true,
+      skills,
+      description: '',
+      source: 'linkedin',
+      easyApply: true,
+    });
+    const setScore = jest.fn();
+    // "Nodejs" is what you search for: Node.js is your core skill.
+    const settings = { ...DEFAULT_SETTINGS, search: { ...DEFAULT_SETTINGS.search, keywords: ['Nodejs'] } };
+    const svc = new ScoringService(
+      {
+        unscored: () => [posting(1, 'Full Stack Engineer', ['JavaScript', 'Node.js']), posting(2, 'Full Stack Engineer', ['Java', 'Spring'])],
+        setScore,
+      } as unknown as JobsService,
+      { get: () => ({ ...EMPTY_PROFILE, skills: [{ name: 'Node.js', years: 5 }] }) } as unknown as ProfileService,
+      { get: () => settings } as unknown as SettingsService,
+      { isAvailable: () => false } as unknown as LlmService,
+      { score: () => ({ technicalScore: 30, salaryScore: 30, locationScore: 30, overallScore: 30 }) } as unknown as ScoringEngine,
+      {} as KeywordFilterService,
+      new EventsService(),
+    );
+    jest.spyOn(svc as unknown as { gate: () => null }, 'gate').mockReturnValue(null);
+    await svc.scoreNew();
+
+    const byId = new Map(setScore.mock.calls.map((c) => [c[0], { score: c[1], status: c[3], reason: c[4] }]));
+    // Not marked down for its title either (previously "Title does not match your search").
+    expect(byId.get(1)).toEqual({ score: 30, status: 'review', reason: 'Below your score (30), but it asks for Node.js - your core skill' });
+    expect(byId.get(2)?.status).toBe('skipped');
+  });
+});
+
+describe('ScoringService - several core skills', () => {
+  it('scores a job asking for two of your core skills higher, and says which', async () => {
+    const posting = (id: number, skills: string[]) => ({
+      id,
+      title: 'Backend Developer',
+      company: 'Acme',
+      location: '',
+      isRemote: true,
+      skills,
+      description: '',
+      source: 'linkedin',
+      easyApply: true,
+    });
+    const setScore = jest.fn();
+    const settings = { ...DEFAULT_SETTINGS, search: { ...DEFAULT_SETTINGS.search, keywords: ['Backend'], coreSkills: ['Node.js', 'NestJS', 'Express.js'] } };
+    const svc = new ScoringService(
+      { unscored: () => [posting(1, ['Node.js']), posting(2, ['Node.js', 'NestJS'])], setScore } as unknown as JobsService,
+      { get: () => EMPTY_PROFILE } as unknown as ProfileService,
+      { get: () => settings } as unknown as SettingsService,
+      { isAvailable: () => false } as unknown as LlmService,
+      { score: () => ({ technicalScore: 60, salaryScore: 60, locationScore: 60, overallScore: 60 }) } as unknown as ScoringEngine,
+      {} as KeywordFilterService,
+      new EventsService(),
+    );
+    jest.spyOn(svc as unknown as { gate: () => null }, 'gate').mockReturnValue(null);
+    await svc.scoreNew();
+    const byId = new Map(setScore.mock.calls.map((c) => [c[0], { score: c[1], reason: c[4] }]));
+    expect(byId.get(1)?.score).toBe(60);
+    expect(byId.get(2)).toEqual({ score: 65, reason: 'Asks for Node.js and Nestjs - 2 of your 3 core skills' });
   });
 });

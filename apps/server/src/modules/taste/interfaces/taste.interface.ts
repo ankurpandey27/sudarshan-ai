@@ -18,15 +18,20 @@ export interface TasteFeaturesInput {
   } | null;
 }
 
-export interface TasteModel {
-  weights: Record<string, number>;
-  bias: number;
+/** What the jobs you kept have in common, and what you turn down. Keys look like "skill: node.js". */
+export interface InterestProfile {
+  /** Jobs you applied to or approved. */
+  kept: number;
+  /** 0-1: how common each skill, title word or platform is in them (1 = as common as your top ones). */
+  affinity: Record<string, number>;
+  /** How often you turned it down, for what you turn down at least half the time. */
+  avoided: Record<string, number>;
 }
 
 export interface TastePrediction {
-  /** Chance you would approve this job, 0-1. */
+  /** Your interest in this job, 0-1: how much it looks like the jobs you apply to. */
   p: number;
-  /** Plain-language reasons, strongest first, e.g. "title: backend". */
+  /** Plain-language reasons, strongest first, e.g. "+ skill: node.js", "- title: manager". */
   reasons: string[];
 }
 
@@ -35,7 +40,7 @@ export interface TasteState {
   decisions: number;
   wanted: number;
   unwanted: number;
-  /** More decisions needed before the model is used; 0 when ready. */
+  /** More jobs to apply to or approve before your interest is shown; 0 when ready. */
   needed: number;
   /** Share of held-out decisions it predicted right; null with too little data. */
   accuracy: number | null;

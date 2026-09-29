@@ -104,7 +104,9 @@ export interface AgentStatus {
   llm: string | null;
   appliedToday: number;
   scoring: ScoringProgress | null;
-  platformHealth: { platform: JobPlatform; status: 'ok' | 'broken' | 'careful'; recent: string[] }[];
+  /** The scoring run that finished in the last few seconds. */
+  lastScoring: { at: string; scored: number; review: number; queued: number; skipped: number; total: number } | null;
+  platformHealth: { platform: JobPlatform; status: 'ok' | 'broken' | 'careful' | 'cooling'; recent: string[]; until?: string }[];
 }
 
 export interface ScoringProgress {
@@ -161,6 +163,7 @@ export interface Settings {
     maxPerSearch: number;
     excludeCompanies: string[];
     excludeTitleWords: string[];
+    coreSkills: string[];
   };
   sources: Record<'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'links' | 'externalSites', { enabled: boolean; dailyLimit: number }>;
   agent: {
@@ -281,6 +284,8 @@ export interface Insight {
   detail: string;
   fix: string;
   actions: { label: string; to?: string; api?: string }[];
+  /** Changes when the situation changes; a dismissed card comes back only then. */
+  version: string;
 }
 
 export interface ActivityDay {
@@ -320,4 +325,12 @@ export interface TasteState {
   likes: string[];
   dislikes: string[];
   trainedAt: string | null;
+}
+
+/** "Check Indeed": jobs Indeed lists as applied, now marked Applied here. */
+export interface AppliedSyncResult {
+  listed: number;
+  marked: { id: number; title: string; company: string }[];
+  alreadyApplied: number;
+  notInSudarshan: number;
 }

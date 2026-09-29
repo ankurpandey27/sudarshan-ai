@@ -2,16 +2,10 @@
 // SPDX-License-Identifier: MIT
 
 import { AnswerContext } from './answer-context.interface';
+import { LearnedMove } from './learned-move.interface';
 import { UnresolvedField } from './resolve-result.interface';
 
-export type FormRunStatus =
-  | 'applied'
-  | 'needs_input'
-  | 'ready_to_submit'
-  | 'blocked'
-  | 'captcha'
-  | 'stuck'
-  | 'closed';
+export type FormRunStatus = 'applied' | 'needs_input' | 'ready_to_submit' | 'blocked' | 'captcha' | 'stuck' | 'closed' | 'refused';
 
 export interface RunFormOptions {
   /** null for the whole page. */
@@ -34,4 +28,8 @@ export interface FormRunOutcome {
   memoryHits: number;
   profileHits: number;
   llmCalls: number;
+  /** Buttons that moved the form on during this run, in order - not yet learned. */
+  moves?: LearnedMove[];
+  /** The button that failed on the step where the run got stuck, if one did. */
+  stuckAt?: LearnedMove | null;
 }

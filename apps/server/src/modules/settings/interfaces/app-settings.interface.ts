@@ -21,6 +21,11 @@ export interface SearchSettings {
   maxPerSearch: number;
   excludeCompanies: string[];
   excludeTitleWords: string[];
+  /**
+   * Skills you mainly work with. A job asking for one is never skipped for a low score - it waits in
+   * Review instead. Empty: taken from your search keywords, title and headline.
+   */
+  coreSkills: string[];
 }
 
 export interface SourceSettings {

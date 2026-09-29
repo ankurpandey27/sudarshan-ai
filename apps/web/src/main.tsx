@@ -29,6 +29,7 @@ import { ProfilePage } from './pages/profile';
 import { SettingsPage } from './pages/settings';
 import { ActivityPage } from './pages/activity';
 import { signConsole } from './lib/signature';
+import { AttentionPage } from './pages/attention';
 
 // Apply the saved theme before first paint.
 try {
@@ -79,6 +80,7 @@ createRoot(document.getElementById('root')!).render(
                 }
               >
                 <Route index element={<Dashboard />} />
+                <Route path="attention" element={<AttentionPage />} />
                 <Route path="review" element={<Review />} />
                 <Route path="questions" element={<Questions />} />
                 <Route path="applications" element={<Applications />} />

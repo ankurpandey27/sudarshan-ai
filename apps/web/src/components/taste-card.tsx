@@ -6,8 +6,17 @@ import { useTaste } from '../lib/queries';
 import { Badge, Card, CardHeader } from './ui';
 import { InfoTip } from './info-tip';
 
-// "title: backend" -> "backend"; "platform: naukri" -> "Naukri jobs"
-const label = (f: string) => (f.startsWith('title: ') ? f.slice(7) : f.startsWith('platform: ') ? `${f.slice(10)} jobs` : f === 'remote' ? 'remote jobs' : f);
+// "skill: node.js" -> "Node.js"; "platform: naukri" -> "Naukri jobs"
+const label = (f: string) =>
+  f.startsWith('skill: ')
+    ? f.charAt(7).toUpperCase() + f.slice(8)
+    : f.startsWith('title: ')
+      ? f.slice(7)
+      : f.startsWith('platform: ')
+        ? `${f.charAt(10).toUpperCase()}${f.slice(11)} jobs`
+        : f === 'remote'
+          ? 'Remote jobs'
+          : f;
 
 /** What Sudarshan has learned about the jobs you want, from your own Approve / Skip decisions. */
 export function TasteCard() {
@@ -16,13 +25,18 @@ export function TasteCard() {
   return (
     <Card>
       <CardHeader
-        title="Your taste"
-        hint={t.status === 'ready' ? `Learned from ${t.decisions} of your decisions, on this computer.` : 'Learns from the jobs you approve and skip.'}
+        title="Your interest"
+        hint={
+          t.status === 'ready'
+            ? `Learned from ${t.wanted} job${t.wanted === 1 ? '' : 's'} you kept${t.unwanted ? ` and ${t.unwanted} you turned down` : ''}, on this computer.`
+            : 'Learns from the jobs you apply to and approve.'
+        }
         action={
           <InfoTip title="How it learns" align="right">
-            Every job you approve or mark applied counts as "want", every job you skip or dismiss as "don't want". A small model on your computer learns which
-            titles, platforms and kinds of fit you prefer. It sorts Review by "Your taste" and, in Auto mode, holds back jobs you would very likely skip. Your
-            own rules always come first, and it never sends anything by itself.
+            What the jobs you apply to or approve have in common is what you like: the skills they ask for most (Node.js, TypeScript...), their titles and
+            platforms. Each new job gets how much it looks like them - "92% your interest" - and hovering it shows what it shares with your applications.
+            Anything you skip or dismiss again and again counts against a job. It sorts Review by "Your interest" and, in Auto mode, holds back jobs very unlike
+            yours. Your own rules always come first, and it never sends anything by itself.
           </InfoTip>
         }
       />
@@ -30,13 +44,12 @@ export function TasteCard() {
         {t.status === 'learning' ? (
           <>
             <p className="text-ink-2">
-              {t.decisions} decision{t.decisions === 1 ? '' : 's'} so far - {t.needed} more and it starts ranking jobs for you
-              {t.wanted < 5 || t.unwanted < 5 ? ' (it needs some approvals and some skips)' : ''}.
+              {t.wanted} job{t.wanted === 1 ? '' : 's'} applied to or approved so far - {t.needed} more and it starts ranking jobs for you.
             </p>
             <div className="mt-2.5 h-1.5 overflow-hidden rounded-full bg-surface-2">
               <div
                 className="h-full rounded-full bg-accent transition-[width] duration-500"
-                style={{ width: `${Math.min(100, (t.decisions / (t.decisions + t.needed)) * 100)}%` }}
+                style={{ width: `${Math.min(100, (t.wanted / (t.wanted + t.needed)) * 100)}%` }}
               />
             </div>
             <Link to="/review" className="mt-3 inline-block text-info hover:underline">
@@ -67,7 +80,7 @@ export function TasteCard() {
             )}
             <p className="mt-3 text-[12px] text-ink-3">
               {t.accuracy !== null ? `Right about ${Math.round(t.accuracy * 100)}% of the time on decisions it had not seen. ` : ''}
-              Review can be sorted by "Your taste".
+              Review can be sorted by "Your interest".
             </p>
           </>
         )}

@@ -1,7 +1,8 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, ParseIntPipe, Patch, Post, Query, Res } from '@nestjs/common';
+import type { Response } from 'express';
 import { AnswersService } from './answers.service';
 import { PendingQuestionsService } from './pending-questions.service';
 import { AnswerSource } from './enums/answer-source.enum';
@@ -23,6 +24,14 @@ export class AnswersController {
   @Get('answers')
   list(@Query() q: ListAnswersQueryDto): Answer[] {
     return this.answers.list(q.search);
+  }
+
+  /** Downloads your answer memory as a CSV file. */
+  @Get('answers/export.csv')
+  exportCsv(@Res() res: Response): void {
+    res.setHeader('content-type', 'text/csv; charset=utf-8');
+    res.setHeader('content-disposition', `attachment; filename="answer-memory-${new Date().toISOString().slice(0, 10)}.csv"`);
+    res.send(this.answers.exportCsv());
   }
 
   @Post('answers')

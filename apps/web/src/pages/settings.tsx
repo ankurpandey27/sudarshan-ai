@@ -15,12 +15,7 @@ import { useToast } from '../components/toast';
 import { InfoTip } from '../components/info-tip';
 import { useLocation } from 'react-router';
 import { Tabs, useTab, type TabDef } from '../components/tabs';
-
-const csv = (v: string) =>
-  v
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+import { TagInput } from '../components/tag-input';
 
 type SettingsTab = 'ai' | 'search' | 'platforms' | 'agent' | 'accounts' | 'data';
 const SETTINGS_TABS: readonly TabDef<SettingsTab>[] = [
@@ -62,7 +57,11 @@ export function SettingsPage() {
   });
   const rescore = useMutation({
     mutationFn: () => api.post<{ rescored: number }>('/agent/rescore'),
-    onSuccess: (r) => toast('ok', `Scoring ${r.rescored} jobs again with the new settings - progress shows on Lakshya`),
+    onSuccess: (r) => {
+      toast('ok', `Scoring ${r.rescored} jobs again with the new settings`);
+      // Show the bar (or the result, if it already finished) right away.
+      void qc.invalidateQueries({ queryKey: ['agent'] });
+    },
   });
   const importSheet = useMutation({
     mutationFn: (f: File) => api.upload<WorkbookImportResult>('/workbook/import', f),
@@ -131,11 +130,21 @@ export function SettingsPage() {
           <Card>
             <CardHeader title="What to search" />
             <div className="space-y-3 p-4">
-              <Field label="Job titles / keywords" hint="Comma separated">
-                <Input value={draft.search.keywords.join(', ')} onChange={(e) => search('keywords', csv(e.target.value))} />
+              <Field label="Job titles / keywords" hint="Press Enter or a comma after each one">
+                <TagInput
+                  label="Job titles / keywords"
+                  value={draft.search.keywords}
+                  onChange={(v) => search('keywords', v)}
+                  placeholder="e.g. Node.js Developer, Backend Engineer"
+                />
               </Field>
               <Field label="Locations" hint='Add "Remote" for remote roles'>
-                <Input value={draft.search.locations.join(', ')} onChange={(e) => search('locations', csv(e.target.value))} />
+                <TagInput
+                  label="Locations"
+                  value={draft.search.locations}
+                  onChange={(v) => search('locations', v)}
+                  placeholder="e.g. Noida, Bengaluru, Remote"
+                />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Posted within (days)">
@@ -152,10 +161,26 @@ export function SettingsPage() {
                 </Field>
               </div>
               <Field label="Never apply to these companies">
-                <Input value={draft.search.excludeCompanies.join(', ')} onChange={(e) => search('excludeCompanies', csv(e.target.value))} />
+                <TagInput
+                  label="Never apply to these companies"
+                  value={draft.search.excludeCompanies}
+                  onChange={(v) => search('excludeCompanies', v)}
+                  placeholder="Company name"
+                />
               </Field>
               <Field label="Skip titles containing" hint="e.g. Intern, Principal, Manager">
-                <Input value={draft.search.excludeTitleWords.join(', ')} onChange={(e) => search('excludeTitleWords', csv(e.target.value))} />
+                <TagInput
+                  label="Skip titles containing"
+                  value={draft.search.excludeTitleWords}
+                  onChange={(v) => search('excludeTitleWords', v)}
+                  placeholder="e.g. Intern"
+                />
+              </Field>
+              <Field
+                label="Core skills"
+                hint={`A job asking for one of these - in its title, skills or description - is never skipped for a low score; it waits in Review. Blank = your search keywords${draft.search.keywords.length ? ` (${draft.search.keywords.join(', ')})` : ''} and the skills in your title.`}
+              >
+                <TagInput label="Core skills" value={draft.search.coreSkills} onChange={(v) => search('coreSkills', v)} placeholder="e.g. Node.js, NestJS" />
               </Field>
               <Toggle
                 checked={draft.search.easyApplyOnly}

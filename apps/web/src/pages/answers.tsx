@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpenCheck, Plus, Search, Trash2 } from 'lucide-react';
+import { BookOpenCheck, Download, Plus, Search, Trash2 } from 'lucide-react';
 import { api } from '../lib/api';
 import { cn, timeAgo } from '../lib/format';
 import { useDebounced } from '../lib/use-debounced';
@@ -67,9 +67,19 @@ export function AnswersPage() {
         title="Answer memory"
         sub="Every screening question the agent has learned. Similar questions reuse these answers - no AI call, no guessing."
         actions={
-          <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setAdding(true)}>
-            Add answer
-          </Button>
+          <>
+            <a
+              href="/api/answers/export.csv"
+              download
+              title="Every saved question and answer, as a CSV file for Excel or Google Sheets"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3.5 text-sm font-medium hover:bg-surface-2"
+            >
+              <Download className="size-4" /> Export CSV
+            </a>
+            <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setAdding(true)}>
+              Add answer
+            </Button>
+          </>
         }
       />
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">

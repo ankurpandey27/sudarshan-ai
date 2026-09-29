@@ -21,6 +21,7 @@ import { AgentPhase } from './enums/agent-phase.enum';
 import { AgentStatus } from './interfaces/agent-status.interface';
 import { SiteId } from '../browser/interfaces/site-session.interface';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
+import { clockTime } from '../../common/utils/date.util';
 
 const TICK_MS = 10_000;
 
@@ -135,6 +136,7 @@ export class AgentService implements OnApplicationShutdown {
       llm: this.llm.describe(),
       appliedToday: this.jobs.appliedToday(),
       scoring: this.scoring.progress(),
+      lastScoring: this.scoring.justFinished(),
       platformHealth: this.health.all().filter((h) => h.status !== 'ok'),
     };
   }
@@ -239,8 +241,13 @@ export class AgentService implements OnApplicationShutdown {
         if (queued > 0) blocked.push({ source: platform, reason: `switched off - ${queued} approved job(s) wait until you turn it on` });
         return;
       }
-      if (this.health.state(platform).status === 'broken') {
+      const health = this.health.state(platform);
+      if (health.status === 'broken') {
         blocked.push({ source: platform, reason: 'paused - the last applications got stuck, the site may have changed its pages' });
+        return;
+      }
+      if (health.status === 'cooling') {
+        blocked.push({ source: platform, reason: `refusing applications for now - tries again at ${clockTime(health.until)}` });
         return;
       }
       if (this.jobs.appliedToday(platform) >= cfg.dailyLimit) {

@@ -3,11 +3,20 @@
 
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
-import { ANSWER_SOURCE_TRUST, FUZZY_MATCH_THRESHOLD, GENERIC_QUESTION } from './constants/answers.constants';
+import {
+  ANSWER_SOURCE_LABEL,
+  ANSWER_SOURCE_TRUST,
+  FUZZY_MATCH_THRESHOLD,
+  GENERIC_QUESTION,
+  MAX_PLAUSIBLE_YEARS,
+  PERSONAL_DETAILS,
+  YEARS_QUESTION,
+} from './constants/answers.constants';
 import { AnswerSource } from './enums/answer-source.enum';
 import { Answer, AnswerMatch, AnswerRow } from './interfaces/answer.interface';
 import { questionKey, questionSimilarity } from './utils/question-key.util';
 import { toAnswer } from './utils/answer.mapper.util';
+import { toCsv } from '../../common/utils/csv.util';
 
 @Injectable()
 export class AnswersService {
@@ -29,6 +38,37 @@ export class AnswersService {
       if (sim >= FUZZY_MATCH_THRESHOLD && (!best || sim > best.sim)) best = { row, sim };
     }
     return best ? this.match(best.row, best.sim) : null;
+  }
+
+  /**
+   * A saved answer about the same personal detail (PAN, Aadhaar, UAN, passport, date of birth),
+   * however either question is worded - your own answers first, newest first.
+   */
+  lookupDetail(question: string): AnswerMatch | null {
+    const detail = PERSONAL_DETAILS.find((d) => d.test.test(question));
+    if (!detail) return null;
+    const best = this.rows()
+      .filter((r) => detail.test.test(r.question) && r.answer.trim())
+      .sort(
+        (a, b) => ANSWER_SOURCE_TRUST[b.source as AnswerSource] - ANSWER_SOURCE_TRUST[a.source as AnswerSource] || b.updated_at.localeCompare(a.updated_at),
+      )[0];
+    return best ? this.match(best, 1) : null;
+  }
+
+  /**
+   * The most years you gave yourself in answers matching `about` ("How many years of Node.js?" -> 5) -
+   * only your own answers and your spreadsheet, never the AI's.
+   */
+  yearsYouGave(about: (question: string) => boolean): number | null {
+    let best: number | null = null;
+    for (const r of this.rows()) {
+      // "Total Experience: 5" counts as much as "How many years of experience: 5".
+      if (r.source === AnswerSource.LLM || !(YEARS_QUESTION.test(r.question) || /experien/i.test(r.question)) || !about(r.question)) continue;
+      for (const n of (r.answer.match(/\d+(?:\.\d+)?/g) ?? []).map(Number)) {
+        if (n <= MAX_PLAUSIBLE_YEARS && (best === null || n > best)) best = n;
+      }
+    }
+    return best;
   }
 
   // A lower-trust source never overwrites a higher-trust answer.
@@ -97,6 +137,14 @@ export class AnswersService {
   remove(id: number): void {
     this.storage.run('DELETE FROM answers WHERE id = ?', [id]);
     this.cache = null;
+  }
+
+  /** Your whole answer memory as a CSV file - most used first, like the page shows it. */
+  exportCsv(): string {
+    return toCsv(
+      ['Question', 'Answer', 'Source', 'Field type', 'Times used', 'Added', 'Last changed'],
+      this.list().map((a) => [a.question, a.answer, ANSWER_SOURCE_LABEL[a.source], a.fieldType, a.uses, a.createdAt, a.updatedAt]),
+    );
   }
 
   count(): number {

@@ -1,6 +1,8 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+import { LearnedMove } from '../../form-engine/interfaces/learned-move.interface';
+
 export interface WatchTarget {
   jobId: number;
   jobLabel: string;
@@ -8,4 +10,6 @@ export interface WatchTarget {
   /** The application dialog, or null for a whole-page form. */
   scopeSelector: string | null;
   successPattern: RegExp;
+  /** Sudarshan's own steps before handing over; learned too if you finish the application. */
+  agentMoves?: LearnedMove[];
 }
