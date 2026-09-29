@@ -14,6 +14,7 @@ import { LlmFieldAnswer, ResolveOptions, ResolveResult, UnresolvedField } from '
 import { ANSWER_SYSTEM_PROMPT, buildAnswerPrompt } from './utils/answer-prompt.util';
 import { needsAnswer, toInstruction } from './utils/field-value.util';
 import { answerFromProfile, namesACountry, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
+import { OPTIONAL_LEFT_BLANK } from './constants/form-runner.constants';
 import { AGE_QUESTION, GENERIC_QUESTION, YEARS_QUESTION } from '../answers/constants/answers.constants';
 import { AnswerMatch } from '../answers/interfaces/answer.interface';
 import { ageOn, parseBirthDate } from '../answers/utils/birth-date.util';
@@ -89,10 +90,9 @@ export class AnswerEngineService {
         hints.set(field.id, `Candidate previously answered a similar question: "${remembered.answer}".`);
       }
 
-      if (!field.required && !forced && field.kind !== FieldKind.TEXTAREA) {
-        // Optional and unknown: leave it blank.
-        continue;
-      }
+      // Optional fields are filled too when your profile has the answer - a complete application does
+      // better. The AI answers them only from facts; one it cannot answer stays blank and is never asked.
+      if (!field.required && !forced && !this.worthAsking(field)) continue;
       forLlm.push(field);
     }
 
@@ -125,6 +125,15 @@ export class AnswerEngineService {
       }
     }
     return result;
+  }
+
+  /** An optional field the AI may fill from your profile: a real question, not one only you can answer. */
+  private worthAsking(field: FormField): boolean {
+    const question = (field.label || field.placeholder).trim();
+    if (!question || GENERIC_QUESTION.test(question)) return false;
+    // A plain optional checkbox is a newsletter or marketing box; left as it is.
+    if (field.kind === FieldKind.CHECKBOX) return false;
+    return !OPTIONAL_LEFT_BLANK.test(question);
   }
 
   /**

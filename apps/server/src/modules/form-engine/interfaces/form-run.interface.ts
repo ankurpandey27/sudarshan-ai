@@ -11,6 +11,8 @@ export interface RunFormOptions {
   /** null for the whole page. */
   scopeSelector: string | null;
   successPattern: RegExp;
+  /** The site's confirmation page address, when it has one - counts whatever the page says. */
+  successUrl?: RegExp;
   ctx: AnswerContext;
   domain: string;
   maxSteps?: number;

@@ -23,6 +23,7 @@ import { learnRecorderInPage } from './scripts/recorder.script';
 import { formFingerprint, learnedSummary } from './utils/learning.util';
 import { PlaybookService } from '../form-engine/playbook.service';
 import { stepSignature } from '../form-engine/utils/step-signature.util';
+import { CONFIRMED_WORLDWIDE } from '../form-engine/constants/form-runner.constants';
 
 /**
  * Learning by demonstration. When the agent leaves a form to the user, it watches
@@ -124,7 +125,8 @@ export class LearningService {
         void page
           .evaluate(documentTextInPage)
           .then((doc) => {
-            if (!session.done && target.successPattern.test(doc)) this.complete(target, session);
+            if (!session.done && (target.successUrl?.test(page.url()) || target.successPattern.test(doc) || CONFIRMED_WORLDWIDE.test(doc)))
+              this.complete(target, session);
           })
           // Mid-navigation: a later check, or the new page's own check, will see it.
           .catch(() => undefined);

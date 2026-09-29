@@ -12,6 +12,7 @@ import {
   APPLIED_BUTTON,
   CLOSED_TEXT,
   INDEED_SUCCESS,
+  INDEED_SUCCESS_URL,
   INDEED_APPLY_HOST,
   INDEED_CLOSED,
   INDEED_CHALLENGE,
@@ -40,6 +41,7 @@ export class IndeedApplyAdapter implements ApplyAdapter {
       status,
       scopeSelector: null,
       successPattern: INDEED_SUCCESS,
+      successUrl: INDEED_SUCCESS_URL,
       ...extra,
     });
     // Indeed only finishes drawing a job in a visible tab; a background tab stays blank under the header.

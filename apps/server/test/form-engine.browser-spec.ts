@@ -187,6 +187,100 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     expect(steps).toContain('Naukri: "Are you currently serving Notice Period? If yes, when is your LWD?" -> "Yes, 16-Oct-2026" (your saved answer)');
   });
 
+  it('knows Apply, Next, Send and Cancel in the major languages of the world', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'world-buttons.html').replace(/\\/g, '/')}`);
+    const kinds = Object.fromEntries((await runner.snapshot(page, null)).actions.map((a) => [a.text, a.kind]));
+    for (const t of [
+      'Solliciteer nu',
+      'Jetzt bewerben',
+      'Postuler',
+      'Postúlate',
+      'Candidati ora',
+      'Откликнуться',
+      'Başvur',
+      'Lamar sekarang',
+      'Ứng tuyển ngay',
+      'قدم الآن',
+      'अभी आवेदन करें',
+      '立即申请',
+      '今すぐ応募',
+      '지원하기',
+    ]) {
+      expect([t, kinds[t]]).toEqual([t, 'apply']);
+    }
+    for (const t of ['Weiter', 'Siguiente', '下一步', 'Далее']) expect([t, kinds[t]]).toEqual([t, 'next']);
+    for (const t of ['Absenden', 'Enviar solicitud', '送信する', '제출']) expect([t, kinds[t]]).toEqual([t, 'submit']);
+    for (const t of ['Annuleren', 'キャンセル']) expect([t, kinds[t]]).toEqual([t, 'dismiss']);
+    // Whole words only.
+    expect(kinds['Postulates of physics']).toBe('other');
+    expect(kinds['Weiterbildung']).toBe('other');
+  });
+
+  it('applies on a Dutch career page: "Solliciteren", a Dutch form, "Versturen", "Bedankt voor je sollicitatie" (Aethon, 2026-09-29)', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'dutch-careers.html').replace(/\\/g, '/')}`);
+    // The menu link is an Apply in Dutch.
+    const first = await runner.snapshot(page, null);
+    expect(first.actions.find((a) => a.text === 'Solliciteren')?.kind).toBe('apply');
+    await runner.click(page, first.actions.find((a) => a.text === 'Solliciteren')!.id);
+    answers.remember('Motivatie', 'Ik heb vijf jaar ervaring met Node.js en NestJS.', AnswerSource.USER);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    const sent = await page.evaluate(() => (window as unknown as { __sent: Record<string, string> | null }).__sent);
+    if (!sent) throw new Error(JSON.stringify({ status: out.status, detail: out.detail, unresolved: out.unresolved.map((u) => u.field.label) }));
+    expect(sent).toMatchObject({ voornaam: 'Priya', achternaam: 'Sharma', email: 'priya@example.com', motivatie: expect.stringContaining('Node.js') });
+    expect(sent?.telefoon).toContain('9876543210');
+    // The Dutch "thank you for your application" counts, with no AI.
+    expect(out).toMatchObject({ status: 'applied', detail: 'Application submitted', llmCalls: 0 });
+  });
+
+  it('fills and sends a WordPress contact-form application with a Send button, and sees it was sent (Betasoft, 2026-09-29)', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'contact-form7-apply.html').replace(/\\/g, '/')}`);
+    answers.remember('Your message', 'I have 5 years of Node.js and NestJS and would like to apply for this role.', AnswerSource.USER);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx: { ...ctx, profile: { ...ctx.profile, linkedinUrl: 'https://www.linkedin.com/in/priya-sharma' } },
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    const sent = await page.evaluate(() => (window as unknown as { __sent: Record<string, string> | null }).__sent);
+    expect(sent).toMatchObject({
+      'user-name': 'Priya Sharma',
+      'your-email': 'priya@example.com',
+      phone: expect.stringContaining('9876543210'),
+      linkedin_url: 'https://www.linkedin.com/in/priya-sharma',
+      'your-message': expect.stringContaining('Node.js'),
+    });
+    // The form is still on the page (emptied, marked sent) - it counts as sent all the same.
+    expect(out).toMatchObject({ status: 'applied', detail: 'Application submitted' });
+    // The resume was attached too, although the site does not require it.
+    expect(out.steps).toBeGreaterThanOrEqual(2);
+  });
+
+  it('waits for a slow Indeed review page, presses Submit itself (no tick box) and sees "was submitted" (Indeed, 2026-09-29)', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'indeed-review-slow.html').replace(/\\/g, '/')}`);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: INDEED_SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    expect(await page.evaluate(() => (window as unknown as { __submitted: number }).__submitted)).toBe(1);
+    expect(out).toMatchObject({ status: 'applied', detail: 'Application submitted' });
+  });
+
   it('presses Submit on an Indeed review page without a captcha, ignoring bad learned buttons (Indeed, 2026-09-28)', async () => {
     const url = `file://${join(__dirname, 'fixtures', 'indeed-review.html').replace(/\\/g, '/')}`;
     await page.goto(url);

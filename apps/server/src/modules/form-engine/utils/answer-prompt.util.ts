@@ -7,7 +7,8 @@ import { FormField } from '../interfaces/form-field.interface';
 
 export const ANSWER_SYSTEM_PROMPT = `You fill in job application forms on behalf of a candidate.
 Answer every question truthfully from the candidate profile. Never invent employers, degrees, certifications, visas or numbers the profile does not support.
-If a question needs a fact the profile does not contain and no safe default exists, return an empty value with "confident": false.`;
+If a question needs a fact the profile does not contain and no safe default exists, return an empty value with "confident": false.
+Forms may be in any language: understand the question in its own language, and write free-text answers in the language the question is asked in (options are always copied exactly as given).`;
 
 // Contact details are left out; the model does not need them.
 function candidateBlock(ctx: AnswerContext): string {
@@ -72,6 +73,7 @@ RULES
 - Motivation / cover letter / "about you" questions: 2-4 specific sentences in first person using real facts from the profile and the job. Mark these "reusable": false.
 - "reusable": true when the answer would be the same for any job (salary, notice, skills, relocation...).
 - If "previousError" is present, fix the value so it satisfies that error.
+- "required": false questions: answer them too when the profile or job gives the fact - a complete application does better. But only facts: never a default, a guess or a made-up detail (referrer names, other offers, personal data not listed); if the profile does not say, return "" with "confident": false and it stays blank.
 
 Return JSON: {"answers":[{"id":"<id>","value":"<answer>","confident":true|false,"reusable":true|false}]}`;
 }

@@ -58,8 +58,8 @@ export function ApplyOnCard() {
             <span className="mt-2 block font-semibold text-ink">What it can't do on its own</span>
             <span className="mt-1 block">
               <b>Captchas and security checks</b> - by design, you do them. It fills everything else, leaves the tab open and moves on to the next job; the job
-              waits in Applications as "Do by hand". Solve the captcha and press Submit in that tab and it turns Applied by itself. Indeed has one on every
-              application, so on Indeed you always press Submit yourself.
+              waits in Applications as "Do by hand". Solve the captcha and press Submit in that tab and it turns Applied by itself. Everywhere else it presses
+              Submit itself - it stops only when a real captcha (an "I'm not a robot" box or a picture test) shows up.
             </span>
             <span className="mt-1 block">
               <b>Sites that make you create an account or log in</b>, or <b>verify with a code sent to your email or phone (OTP)</b> - these become "Do by hand"
@@ -87,7 +87,7 @@ export function ApplyOnCard() {
                 </>
               }
               meta={
-                (healthOf(p.key) === 'broken'
+                healthOf(p.key) === 'broken'
                   ? 'paused - site changed?'
                   : healthOf(p.key) === 'careful'
                     ? 'careful mode'
@@ -97,14 +97,7 @@ export function ApplyOnCard() {
                         ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}`
                         : queued
                           ? `off · ${queued} waiting`
-                          : 'off') +
-                // Indeed puts a captcha on every application: Sudarshan prepares it, you submit.
-                (p.key === 'indeed' ? ' · you submit' : '')
-              }
-              title={
-                p.key === 'indeed'
-                  ? 'Indeed shows a captcha on every application. Sudarshan finds jobs and fills the form; you tick the captcha and press Submit.'
-                  : undefined
+                          : 'off'
               }
             />
           );

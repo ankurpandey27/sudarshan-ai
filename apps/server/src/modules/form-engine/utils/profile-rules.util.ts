@@ -67,8 +67,29 @@ function noticePeriod(days: number | null, field: FormField): RuleAnswer | null 
   return fact(days <= 0 ? 'Immediate' : `${days} days`);
 }
 
+// Your own details in the world's major languages. Only labels that mean one thing everywhere: Spanish
+// "Nombre", Portuguese "Nome" and French "Nom" can be a first or a full name - the AI reads those.
+// One-word labels in scripts without word breaks must be the whole label ("名", "성"), with an optional "*" or ":".
+const FIRST_NAME_WORLD =
+  // "\b" fails after accented letters ("imię"): a lookahead ends the word instead.
+  /\b(voornaam|vorname|pr[ée]nom|nombre de pila|primeiro nome|imi[eę]|f[öo]rnamn|fornavn|nama depan)(?![a-zà-ÿąćęłńóśźżı])|^(имя|الاسم الأول|पहला नाम|名)\s*[*:]?\s*$/;
+const LAST_NAME_WORLD =
+  /\b(achternaam|nachname|familienname|nom de famille|apellidos?|sobrenome|apelido|cognome|nazwisko|efternamn|etternavn|efternavn|soyad[ıi]?|nama belakang)\b|^(фамилия|họ|اسم العائلة|उपनाम|姓|성)\s*[*:]?\s*$/;
+const FULL_NAME_WORLD =
+  /\b(volledige naam|vollst[äa]ndiger name|nom complet|nombre completo|nome completo|imi[eę] i nazwisko|ad soyad|nama lengkap)\b|^(naam|name|nombre y apellidos?|полное имя|фио|ф\.и\.о\.|họ và tên|họ tên|الاسم الكامل|الاسم|पूरा नाम|नाम|姓名|氏名|이름|성명)\s*[*:]?\s*$/;
+const PHONE_WORLD =
+  /\b(telefoon(nummer)?|mobiel(e nummer)?|telefon(nummer)?|handy(nummer)?|mobilnummer|t[ée]l[ée]phone|tel[ée]fono|celular|m[óo]vil|telefone|telem[óo]vel|cellulare|numero di telefono|nomor (telepon|hp|ponsel))\b|телефон|số điện thoại|رقم (الهاتف|الجوال)|फ़ोन|फोन|मोबाइल|电话|手机|電話番号|携帯|전화번호|휴대폰/;
+const CITY_WORLD =
+  /\b(woonplaats|wohnort|stadt|ville|ciudad|cidade|citt[àa]|miasto|kota)(?![a-zà-ÿąćęłńóśźżı])|город|şehir|thành phố|المدينة|शहर|城市|市区町村|도시/;
+
 // Order matters: specific patterns first ("expected ctc" before "ctc").
 const RULES: ProfileRule[] = [
+  // Full name first: Turkish "Ad Soyad" (name + surname) contains "Soyad" (surname).
+  { test: FULL_NAME_WORLD, answer: (c) => fact(`${c.profile.firstName} ${c.profile.lastName}`.trim()) },
+  { test: FIRST_NAME_WORLD, answer: (c) => fact(c.profile.firstName) },
+  { test: LAST_NAME_WORLD, answer: (c) => fact(c.profile.lastName) },
+  { test: PHONE_WORLD, not: /country\s*code|code/, answer: (c) => fact(c.profile.phone) },
+  { test: CITY_WORLD, answer: (c) => fact(c.profile.city) },
   { test: /\bfirst\s*name\b|\bgiven\s*name\b|\bforename\b/, answer: (c) => fact(c.profile.firstName) },
   { test: /\blast\s*name\b|\bsurname\b|\bfamily\s*name\b/, answer: (c) => fact(c.profile.lastName) },
   { test: /\bmiddle\s*name\b/, answer: () => guess('') },

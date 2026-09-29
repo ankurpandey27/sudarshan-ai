@@ -10,6 +10,8 @@ export interface WatchTarget {
   /** The application dialog, or null for a whole-page form. */
   scopeSelector: string | null;
   successPattern: RegExp;
+  /** The site's confirmation page address, when it has one - counts whatever the page says. */
+  successUrl?: RegExp;
   /** Sudarshan's own steps before handing over; learned too if you finish the application. */
   agentMoves?: LearnedMove[];
 }

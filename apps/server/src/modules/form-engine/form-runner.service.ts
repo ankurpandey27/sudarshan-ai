@@ -16,8 +16,16 @@ import { LearnedMove } from './interfaces/learned-move.interface';
 import { extractFormInPage } from './scripts/extract-form.script';
 import { fillFieldsInPage } from './scripts/fill-fields.script';
 import { documentTextInPage, pickTypeaheadOptionInPage } from './scripts/page-helpers.script';
-import { NAVIGATE_SYSTEM_PROMPT, buildNavigatePrompt } from './utils/navigate-prompt.util';
-import { CAPTCHA_WAIT_MS, MAX_OTHER_MOVES, RESUME_ON_PAGE, NEVER_ADVANCE } from './constants/form-runner.constants';
+import { CONFIRM_SYSTEM_PROMPT, NAVIGATE_SYSTEM_PROMPT, buildConfirmPrompt, buildNavigatePrompt } from './utils/navigate-prompt.util';
+import {
+  CAPTCHA_WAIT_MS,
+  MAX_OTHER_MOVES,
+  RESUME_ON_PAGE,
+  NEVER_ADVANCE,
+  SENT_FORM,
+  CONFIRMED_WORLDWIDE,
+  STEP_RENDER_WAIT_MS,
+} from './constants/form-runner.constants';
 import { needsAnswer } from './utils/field-value.util';
 import { PlaybookService } from './playbook.service';
 import { stepSignature } from './utils/step-signature.util';
@@ -66,6 +74,10 @@ export class FormRunnerService {
     let uploads = 0;
     // Buttons pressed in this run; nothing has been sent before the first one.
     let pressed = 0;
+    // Steps already given time to finish drawing.
+    const waitedOn = new Set<string>();
+    // The last button pressed sent the form: a page that is not a form any more may be its confirmation.
+    let justSent = false;
 
     for (let step = 1; step <= maxSteps; step++) {
       out.steps = step;
@@ -75,9 +87,23 @@ export class FormRunnerService {
       // still a form waiting to be sent (fields plus a Submit button, or an unsolved captcha) -
       // job sites mention "applied" and "application" all over their forms.
       const stillAForm = snap.captcha || (snap.fields.length > 0 && snap.actions.some((a) => a.kind === 'submit'));
-      if (pressed > 0 && !stillAForm && (opts.successPattern.test(snap.text) || opts.successPattern.test(await this.docText(page)))) {
+      const confirmedAt = !!opts.successUrl?.test(snap.url);
+      // A form that marks itself sent (WordPress Contact Form 7) stays on the page, emptied - it still counts.
+      const sentForm = pressed > 0 && (await page.$(SENT_FORM).catch(() => null)) !== null;
+      if (
+        sentForm ||
+        (pressed > 0 &&
+          !stillAForm &&
+          (confirmedAt || this.confirms(opts.successPattern, snap.text) || this.confirms(opts.successPattern, await this.docText(page))))
+      ) {
         return { ...out, status: 'applied', detail: 'Application submitted' };
       }
+      // A confirmation in a language or wording not known above: the AI reads it, once per send.
+      if (justSent && !stillAForm && opts.allowLlm && (await this.confirmedByAi(page, snap.text))) {
+        out.llmCalls++;
+        return { ...out, status: 'applied', detail: 'Application submitted' };
+      }
+      justSent = false;
       if (opts.scopeSelector && !snap.scopeFound) {
         return { ...out, status: 'closed', detail: 'The application dialog closed unexpectedly' };
       }
@@ -156,6 +182,14 @@ export class FormRunnerService {
               : 'Submit stays greyed out - finish the form',
           };
         }
+        // Nothing to press yet: often the next step is still being drawn (Indeed shows its review page a few
+        // seconds after the address changes). Wait for it once per step before calling it stuck.
+        // Keyed by what is on the page, not just its address: "Loading..." and the drawn step share one URL.
+        const shape = `${stepShape(snap)}|${snap.actions.map((a) => a.text).join('#')}|${snap.text.length}`;
+        if (!waitedOn.has(shape)) {
+          waitedOn.add(shape);
+          if (await this.waitForStep(page, opts.scopeSelector, snap)) continue;
+        }
         return { ...out, status: 'stuck', detail: `No way forward found on ${new URL(snap.url).hostname}` };
       }
       // "Apply now" at the end of a form with fields sends it too; on a bare job page it only opens the form.
@@ -166,6 +200,7 @@ export class FormRunnerService {
       opts.onStep(`Step ${step}: "${action.text}"`);
       await this.click(page, action.id);
       pressed++;
+      justSent = sends;
       await this.settle(page);
 
       const after = await this.snapshot(page, opts.scopeSelector);
@@ -275,6 +310,29 @@ export class FormRunnerService {
     }
   }
 
+  /**
+   * Waits for a step that showed nothing to press to finish drawing: true once it has a button that
+   * moves the form on, different fields, a captcha or other text; false if nothing changed in STEP_RENDER_WAIT_MS.
+   */
+  private async waitForStep(page: Page, scope: string | null, before: FormSnapshot): Promise<boolean> {
+    const deadline = Date.now() + STEP_RENDER_WAIT_MS;
+    while (Date.now() < deadline) {
+      await sleep(1500);
+      const now = await this.snapshot(page, scope).catch(() => null);
+      if (!now) continue;
+      // Anything new: a button to press, other fields, a captcha, or a changed page (a confirmation).
+      if (
+        now.captcha ||
+        stepShape(now) !== stepShape(before) ||
+        now.text !== before.text ||
+        now.actions.some((a) => a.kind !== 'other' && a.kind !== 'dismiss' && !a.disabled)
+      ) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   private async waitForCaptcha(page: Page, scope: string | null): Promise<boolean> {
     const deadline = Date.now() + CAPTCHA_WAIT_MS;
     await page.bringToFront().catch(() => undefined);
@@ -284,6 +342,28 @@ export class FormRunnerService {
       if (snap && !snap.captcha) return true;
     }
     return false;
+  }
+
+  /** Whether the page confirms the application was sent, read by the AI (any language). */
+  private async confirmedByAi(page: Page, snapText: string): Promise<boolean> {
+    if (!this.llm.isAvailable()) return false;
+    try {
+      const text = (await this.docText(page)) || snapText;
+      const r = await this.llm.json<{ confirmed?: boolean }>(buildConfirmPrompt(text), {
+        purpose: LlmPurpose.NAVIGATE,
+        system: CONFIRM_SYSTEM_PROMPT,
+        maxTokens: 30,
+      });
+      return r.confirmed === true;
+    } catch (err) {
+      this.logger.warn(`Confirmation check failed: ${(err as Error).message}`);
+      return false;
+    }
+  }
+
+  /** The site's own confirmation wording, or "thank you for your application" in any major language. */
+  private confirms(pattern: RegExp, text: string): boolean {
+    return pattern.test(text) || CONFIRMED_WORLDWIDE.test(text);
   }
 
   private docText(page: Page): Promise<string> {

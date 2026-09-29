@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="nl">
+<head><meta charset="utf-8"><title>Lead Software Engineer - Werken bij</title></head>
+<body>
+<!-- A Dutch career page (like Aethon, 2026-09-29): "Solliciteren" in the page menu, then a Dutch form
+     with "Versturen", confirmed with "Bedankt voor je sollicitatie". -->
+<nav>
+  <a href="#uitdaging">Jouw uitdaging</a>
+  <a href="#talent">Jouw talent</a>
+  <a href="#solliciteren" id="to-form">Solliciteren</a>
+</nav>
+<main>
+  <h1>Lead Software Engineer</h1>
+  <p>Jij wil werken met betekenis, in een team vol energie en ambitie.</p>
+  <section id="solliciteren" hidden>
+    <form>
+      <label>Voornaam * <input name="voornaam" required></label>
+      <label>Achternaam * <input name="achternaam" required></label>
+      <label>E-mailadres * <input type="email" name="email" required></label>
+      <label>Telefoonnummer * <input type="tel" name="telefoon" required></label>
+      <label>CV <input type="file" name="cv"></label>
+      <label>Motivatie * <textarea name="motivatie" required></textarea></label>
+      <button type="submit">Versturen</button>
+    </form>
+  </section>
+</main>
+<script>
+  window.__sent = null;
+  document.getElementById('to-form').addEventListener('click', () => {
+    document.getElementById('solliciteren').hidden = false;
+  });
+  document.querySelector('form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    window.__sent = Object.fromEntries(new FormData(e.target).entries());
+    delete window.__sent.cv;
+    setTimeout(() => {
+      document.getElementById('solliciteren').innerHTML = '<h2>Bedankt voor je sollicitatie!</h2><p>We nemen binnen vijf werkdagen contact met je op.</p>';
+    }, 500);
+  });
+</script>
+</body>
+</html>

@@ -9,8 +9,9 @@ export const LINKEDIN_SCOPE = 'dialog[open], .jobs-easy-apply-modal, [data-test-
 export const GENERIC_DIALOG = 'dialog[open], [role=dialog], [aria-modal=true], .modal.show, .modal[open]';
 export const LINKEDIN_SUCCESS = /your application was sent|application (was )?sent to|application submitted|you applied to/i;
 export const LINKEDIN_APPLIED = /\bapplied \d+ (second|minute|hour|day|week|month)s? ago\b|application submitted|see application/i;
+// Also Dutch, German, French and Spanish ("404 Vacature vervuld", Aethon, 2026-09-29).
 export const CLOSED_TEXT =
-  /no longer accepting applications|job (has )?expired|this job is (no longer available|closed)|position has been filled|job is not available/i;
+  /no longer accepting applications|job (has )?expired|this job is (no longer available|closed)|position has been filled|job is not available|vacature (is )?(vervuld|gesloten|verlopen)|vacature (is )?niet meer beschikbaar|stelle (ist )?(nicht mehr verfügbar|bereits besetzt|besetzt)|offre (n'est plus disponible|expirée|pourvue)|poste (a été )?pourvu|oferta (ya no está disponible|cerrada|caducada)/i;
 
 export const NAUKRI_DRAWER = '.chatbot_DrawerContentWrapper, [class*="chatbot_Drawer"], [class*="chatbot-drawer"]';
 // After a one-click apply Naukri opens a page headed: Applied to "<job title>".
@@ -21,8 +22,9 @@ export const NAUKRI_APPLIED_URL = /\/(myapply|saveApply)\b/i;
 /** A button that has turned into a confirmation, e.g. "Application sent!" or "Applied". */
 export const APPLIED_BUTTON = /^(✓\s*)?(application sent|applied|already applied)!?$/i;
 
+// Also WordPress contact-form applications (Betasoft, 2026-09-29): "Thank you for your message. It has been sent."
 export const GENERIC_SUCCESS =
-  /thank(s| you) for (applying|your application|your interest)|application (has been |was )?(received|submitted|sent)|successfully (applied|submitted)|we('ve| have) received your application|you('ve| have) applied/i;
+  /thank(s| you) for (applying|your application|your interest|your message|contacting)|application (has been |was )?(received|submitted|sent)|your message (has been |was )?sent|successfully (applied|submitted|sent)|we('ve| have) received your (application|message)|you('ve| have) applied/i;
 
 export const LOGIN_WALL = /sign in to (apply|continue)|log ?in to (apply|continue)|create an account to apply|please (sign|log) in/i;
 
@@ -47,7 +49,11 @@ export const ONE_CLICK_SUCCESS =
 export const ALREADY_APPLIED_TEXT =
   /you('ve| have) already applied|already applied (to|for) this|application (was |has been )?already (submitted|sent|received)/i;
 /** Indeed's own confirmation after Submit - its forms mention "applied" everywhere else. */
-export const INDEED_SUCCESS = /your application has been submitted|application (has been )?submitted to|we('ve| have) received your application/i;
+// "Your application was submitted to SAMMAAN Capital Finance" (2026-09-29), "...has been submitted".
+export const INDEED_SUCCESS =
+  /your application (has been |was |is )?submitted|application (has been |was )?submitted to|we('ve| have) received your application/i;
+/** Indeed's confirmation page, whatever its wording. */
+export const INDEED_SUCCESS_URL = /smartapply\.indeed\.com\/.*\/post-apply\b/i;
 /** A Naukri chat question that asks for a file (resume, CV); only then is the resume sent. */
 export const NAUKRI_FILE_QUESTION = /\b(resume|cv|curriculum vitae|upload|attach)/i;
 
@@ -74,3 +80,6 @@ export const PAGE_SWAPPED = /detached Frame|Execution context was destroyed|Cann
  * short time (2026-09-29: 26 in an hour). Not a problem with the job or the form.
  */
 export const NAUKRI_REFUSED = /error while processing your request|please try again later/i;
+
+/** How long LinkedIn's Apply may take to reach the company's site (its redirect page comes first). */
+export const COMPANY_SITE_WAIT_MS = 15_000;

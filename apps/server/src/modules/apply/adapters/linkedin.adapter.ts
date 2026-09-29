@@ -9,10 +9,11 @@ import { FormRunnerService } from '../../form-engine/form-runner.service';
 import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
-import { CLOSED_TEXT, LINKEDIN_APPLIED, LINKEDIN_SCOPE, LINKEDIN_SUCCESS } from '../constants/apply.constants';
+import { CLOSED_TEXT, COMPANY_SITE_WAIT_MS, LINKEDIN_APPLIED, LINKEDIN_SCOPE, LINKEDIN_SUCCESS } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
+import { companySiteOf } from '../utils/offsite-url.util';
 
 @Injectable()
 export class LinkedInApplyAdapter implements ApplyAdapter {
@@ -36,7 +37,9 @@ export class LinkedInApplyAdapter implements ApplyAdapter {
 
     await page.goto(job.url, { waitUntil: 'domcontentloaded' });
     await page
-      .waitForSelector('.jobs-apply-button, .jobs-s-apply, .jobs-unified-top-card, .job-details-jobs-unified-top-card__container--two-pane', { timeout: 15_000 })
+      .waitForSelector('.jobs-apply-button, .jobs-s-apply, .jobs-unified-top-card, .job-details-jobs-unified-top-card__container--two-pane', {
+        timeout: 15_000,
+      })
       .catch(() => undefined);
     await sleep(800);
     if (/\/(login|authwall|checkpoint|uas\/)/.test(page.url())) return result(PrepareStatus.LOGIN_REQUIRED);
@@ -52,8 +55,10 @@ export class LinkedInApplyAdapter implements ApplyAdapter {
       const external = buttons.find((a) => /^apply\b/i.test(a.text));
       if (!external) return result(PrepareStatus.NO_APPLY_BUTTON);
       const tab = await clickCatchingNewTab(page, () => this.runner.click(page, external.id));
-      const url = tab?.url() ?? page.url();
+      // The company's address, once LinkedIn's own redirect is out of the way - never a linkedin.com page.
+      const url = await companySiteOf(tab ?? page, COMPANY_SITE_WAIT_MS);
       await tab?.close().catch(() => undefined);
+      if (!url) return result(PrepareStatus.NO_APPLY_BUTTON, { detail: "LinkedIn's Apply did not open the company's site - apply by hand from the job page" });
       return result(PrepareStatus.EXTERNAL, { externalUrl: url });
     }
 

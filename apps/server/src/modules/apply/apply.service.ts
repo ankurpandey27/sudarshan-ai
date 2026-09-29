@@ -119,6 +119,7 @@ export class ApplyService {
         const opts = {
           scopeSelector: prep.scopeSelector,
           successPattern: prep.successPattern,
+          successUrl: prep.successUrl,
           ctx,
           domain: new URL(page.url()).hostname.replace(/^www\./, ''),
           allowLlm: true,
@@ -141,6 +142,7 @@ export class ApplyService {
             domain: opts.domain,
             scopeSelector: prep.scopeSelector,
             successPattern: prep.successPattern,
+            successUrl: prep.successUrl,
             // Sudarshan's own steps so far: learned too if you then finish the application.
             agentMoves: [...moves],
           };
@@ -165,6 +167,7 @@ export class ApplyService {
           domain: new URL(page.url()).hostname.replace(/^www\./, ''),
           scopeSelector: prep.scopeSelector,
           successPattern: prep.successPattern,
+          successUrl: prep.successUrl,
           agentMoves: [...moves],
         };
       }

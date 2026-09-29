@@ -1,7 +1,16 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { ALREADY_APPLIED_TEXT, APPLIED_BUTTON, ONE_CLICK_SUCCESS, LINKEDIN_SUCCESS, NAUKRI_APPLIED_URL, NAUKRI_SUCCESS } from './apply.constants';
+import {
+  ALREADY_APPLIED_TEXT,
+  APPLIED_BUTTON,
+  INDEED_SUCCESS,
+  INDEED_SUCCESS_URL,
+  ONE_CLICK_SUCCESS,
+  LINKEDIN_SUCCESS,
+  NAUKRI_APPLIED_URL,
+  NAUKRI_SUCCESS,
+} from './apply.constants';
 
 describe('application confirmations', () => {
   it("recognises Naukri's one-click confirmation page", () => {
@@ -38,5 +47,22 @@ describe('application confirmations', () => {
     expect(ALREADY_APPLIED_TEXT.test('Thank you for your interest in Acme. Already have an account? Sign in')).toBe(false);
     expect(ALREADY_APPLIED_TEXT.test("You've already applied to this job")).toBe(true);
     expect(ALREADY_APPLIED_TEXT.test('Your application was already submitted on 3 May')).toBe(true);
+  });
+});
+
+describe("Indeed's confirmation", () => {
+  it('reads every wording Indeed uses', () => {
+    // 2026-09-29: the one that was missed.
+    expect(INDEED_SUCCESS.test('Your application was submitted to SAMMAAN Capital Finance')).toBe(true);
+    expect(INDEED_SUCCESS.test('Your application has been submitted!')).toBe(true);
+    expect(INDEED_SUCCESS.test("We've received your application")).toBe(true);
+    // The review page before Submit is not a confirmation.
+    expect(INDEED_SUCCESS.test('By submitting your application, you agree to our Terms. Submit your application')).toBe(false);
+  });
+
+  it("knows Indeed's confirmation page by its address", () => {
+    expect(INDEED_SUCCESS_URL.test('https://smartapply.indeed.com/beta/indeedapply/form/post-apply')).toBe(true);
+    expect(INDEED_SUCCESS_URL.test('https://smartapply.indeed.com/beta/indeedapply/form/review')).toBe(false);
+    expect(INDEED_SUCCESS_URL.test('https://smartapply.indeed.com/beta/indeedapply/form/post-applyx')).toBe(false);
   });
 });

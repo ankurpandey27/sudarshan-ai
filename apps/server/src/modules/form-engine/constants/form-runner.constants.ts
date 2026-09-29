@@ -28,6 +28,50 @@ export const NEVER_ADVANCE = new RegExp(
 );
 
 /** A learned "apply" button must say so; anything else (a job title, a search box) is noise. */
-export const APPLY_WORDING = /\bapply\b|i'?m interested|continue|start/i;
+export const APPLY_WORDING = /\bapply\b|i'?m interested|continue|start|sollicit|reageer|bewerb|postul|candidat|aplicar|aplikuj|ansök|ansøg|søk/i;
 /** Different buttons tried on one step before handing the form over as stuck. */
 export const MAX_OTHER_MOVES = 3;
+
+/** How long a step that shows nothing to press may take to finish drawing (Indeed: a few seconds). */
+export const STEP_RENDER_WAIT_MS = 12_000;
+
+/**
+ * Optional questions left blank even when the AI could answer: facts only you can give (who referred
+ * you, a promo code) and voluntary self-identification (gender, race, disability, veteran status),
+ * which is your choice to share.
+ */
+export const OPTIONAL_LEFT_BLANK =
+  /\b(refer(r?al|red|rer)|promo|coupon|voucher|gender|pronouns?|sex|race|ethnicity|ethnic|disability|disabilities|disabled|veteran|religion|caste|sexual orientation|marital|self[- ]identif\w*|search|password)\b/i;
+
+/** A form that says it was sent: WordPress Contact Form 7 marks its form "sent" and keeps it on the page, emptied. */
+export const SENT_FORM = 'form.wpcf7-form.sent, .wpcf7 form[data-status="sent"]';
+
+/**
+ * "Thank you for your application" / "Your application was sent" in the world's major languages -
+ * a confirmation on any site, next to the site's own English wording.
+ */
+export const CONFIRMED_WORLDWIDE = new RegExp(
+  [
+    // Dutch, German, French, Spanish, Portuguese, Italian, Polish, Swedish, Danish/Norwegian
+    'bedankt voor (je|uw) (sollicitatie|reactie)|(je|uw) sollicitatie is (verzonden|ontvangen|verstuurd)',
+    'vielen dank für ihre bewerbung|danke für deine bewerbung|ihre bewerbung (wurde|ist) (erfolgreich )?(versendet|übermittelt|eingegangen|gesendet)',
+    'merci pour votre candidature|votre candidature (a bien été|a été) (envoyée|reçue|transmise)',
+    'gracias por (tu|su) (postulación|solicitud|candidatura)|(tu|su) (postulación|solicitud|candidatura) (ha sido|fue) (enviada|recibida)',
+    'obrigad[oa] pela (sua )?candidatura|sua candidatura foi (enviada|recebida)',
+    'grazie per (la tua|la sua) candidatura|candidatura (inviata|ricevuta) con successo',
+    'dziękujemy za (twoją |przesłanie )?aplikacj[eę]|twoja aplikacja została wysłana',
+    'tack för din ansökan|din ansökan (har skickats|är skickad)|tak for din ansøgning|takk for din søknad',
+    // Russian, Turkish, Indonesian, Vietnamese, Arabic, Hindi
+    'спасибо за (ваш )?отклик|ваш отклик (отправлен|получен)|ваша заявка (отправлена|принята)',
+    'başvurunuz (alındı|gönderildi|iletildi)|başvurunuz için teşekkür',
+    'terima kasih (telah|sudah) melamar|lamaran anda (telah|sudah) (terkirim|dikirim|diterima)',
+    'cảm ơn bạn đã ứng tuyển|hồ sơ (của bạn )?đã được gửi',
+    'شكرا(ً)? (لك )?على (تقديمك|طلبك)|تم (إرسال|استلام) طلبك',
+    'आवेदन (के लिए )?धन्यवाद|आपका आवेदन (भेज दिया गया|प्राप्त हो गया|सफलतापूर्वक)',
+    // Chinese, Japanese, Korean
+    '感谢您的申请|申请已提交|您的简历已(投递|发送)|投递成功',
+    '応募(いただき|して頂き)?ありがとうございます|応募が完了しました|応募を受け付けました',
+    '지원해 주셔서 감사합니다|지원이 완료되었습니다|지원서가 제출되었습니다',
+  ].join('|'),
+  'i',
+);

@@ -1,0 +1,45 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>NodeJS Developer | Careers</title></head>
+<body>
+<!-- A company careers page whose application is a WordPress Contact Form 7 (Betasoft, 2026-09-29):
+     "Send" instead of "Apply", no captcha. After sending, the form stays on the page, emptied, marked
+     "sent", with "Thank you for your message. It has been sent." -->
+<main>
+  <h1>NodeJS Developer</h1>
+  <p>At least 2Y experience as a Node.js developer.</p>
+  <div class="wpcf7">
+    <form class="wpcf7-form init" data-status="init" novalidate>
+      <p><label>YOUR NAME(REQUIRED)<br><input type="text" name="user-name" aria-required="true" class="wpcf7-validates-as-required"></label></p>
+      <p><label>YOUR EMAIL(REQUIRED)<br><input type="email" name="your-email" aria-required="true"></label></p>
+      <p><label>PHONE NUMBER(REQUIRED)<br><input type="tel" name="phone" aria-required="true"></label></p>
+      <p><label>LINKEDIN PROFILE URL(REQUIRED)<br><input type="url" name="linkedin_url" aria-required="true"></label></p>
+      <p><label>YOUR MESSAGE(REQUIRED)<br><textarea name="your-message" aria-required="true"></textarea></label></p>
+      <p><label>UPLOAD RESUME<br><input type="file" name="resume"></label></p>
+      <p><input type="submit" value="Send" class="wpcf7-form-control wpcf7-submit"></p>
+      <div class="wpcf7-response-output" aria-hidden="true"></div>
+    </form>
+  </div>
+</main>
+<script>
+  window.__sent = null;
+  const form = document.querySelector('form');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = Object.fromEntries([...form.querySelectorAll('input[name], textarea[name]')].filter((el) => el.type !== 'file').map((el) => [el.name, el.value]));
+    const out = form.querySelector('.wpcf7-response-output');
+    if (Object.values(data).some((v) => !v.trim())) {
+      out.textContent = 'One or more fields have an error. Please check and try again.';
+      return;
+    }
+    window.__sent = data;
+    setTimeout(() => {
+      form.reset();
+      form.className = 'wpcf7-form sent';
+      form.setAttribute('data-status', 'sent');
+      out.textContent = 'Thank you for your message. It has been sent.';
+    }, 600);
+  });
+</script>
+</body>
+</html>

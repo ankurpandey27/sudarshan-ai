@@ -28,6 +28,7 @@ import {
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
+import { onJobBoard } from '../utils/offsite-url.util';
 
 @Injectable()
 export class WebApplyAdapter implements ApplyAdapter {
@@ -60,7 +61,12 @@ export class WebApplyAdapter implements ApplyAdapter {
       successPattern: GENERIC_SUCCESS,
       ...extra,
     });
-    await page.goto(url, { waitUntil: 'domcontentloaded' });
+    // A site that redirects straight away swaps the page out mid-load ("detached Frame"): once more, then read what loaded.
+    await page.goto(url, { waitUntil: 'domcontentloaded' }).catch(async (err: Error) => {
+      if (!PAGE_SWAPPED.test(err.message)) throw err;
+      await sleep(1500);
+      if (onJobBoard(page.url())) await page.goto(url, { waitUntil: 'domcontentloaded' });
+    });
     await this.runner.settle(page);
     let current = page;
     const domain = new URL(current.url()).hostname.replace(/^www\./, '');
@@ -138,7 +144,13 @@ export class WebApplyAdapter implements ApplyAdapter {
 
   private hasApplicationForm(snap: FormSnapshot): boolean {
     const labels = snap.fields.map((f) => `${f.label} ${f.name} ${f.kind}`.toLowerCase());
-    const signals = [/name/, /e-?mail/, /phone|mobile/, /resume|cv|file/].filter((re) => labels.some((l) => re.test(l))).length;
+    // In other languages too: Naam, Name, Nom, Nombre, Nome, Imię, Namn/Navn; Telefoon, Téléphone...; Lebenslauf, Curriculum.
+    const signals = [
+      /name|naam|\bnom\b|nombre|\bnome\b|imi[eę]|namn|navn/,
+      /e-?mail|courriel|correo/,
+      /phone|mobile|telefo|téléphone|teléfono|m[oó]vil|handy|celular|cellulare/,
+      /resume|cv|file|lebenslauf|curriculum/,
+    ].filter((re) => labels.some((l) => re.test(l))).length;
     return snap.fields.length >= 2 && signals >= 2;
   }
 
@@ -148,7 +160,8 @@ export class WebApplyAdapter implements ApplyAdapter {
   }
 
   private async findApplyAction(snap: FormSnapshot, domain: string, text: string, pressed = new Set<string>()): Promise<FormAction | null> {
-    const usable = snap.actions.filter((a) => !a.disabled && !pressed.has(a.text.trim().toLowerCase()));
+    // Links in words Sudarshan does not know are candidates too: "Apply" may be in any language.
+    const usable = [...snap.actions, ...(snap.links ?? [])].filter((a) => !a.disabled && !pressed.has(a.text.trim().toLowerCase()));
     const recipe = this.recipes.get(domain);
     const learned = usable.find((a) => recipe.applyTexts.includes(a.text.toLowerCase()));
     if (learned) return learned;

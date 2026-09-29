@@ -12,6 +12,8 @@ export interface PrepareResult {
   /** null when the form is the page itself. */
   scopeSelector: string | null;
   successPattern: RegExp;
+  /** The site's confirmation page address, when it has one - counts whatever the page says. */
+  successUrl?: RegExp;
   externalUrl?: string;
   /** Set when the form opened in a new tab. */
   page?: Page;

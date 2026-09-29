@@ -337,6 +337,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   }
 
   const actions: FormSnapshot['actions'] = [];
+
+  const links: FormSnapshot['links'] = [];
   // Links without an address that a script turns into buttons count too: <a data-toggle="modal">Apply Now</a>
   // opens the application pop-up on many career sites (Bootstrap), <a onclick> or <a class="btn"> does the same.
   const clickables = Array.from(
@@ -353,17 +355,58 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     const isLink = el.tagName === 'A';
     const lower = text.toLowerCase();
     let kind: FormSnapshot['actions'][number]['kind'] = 'other';
+    // Career sites in other languages too (Aethon, Dutch, 2026-09-29): Dutch, German, French, Spanish,
+    // Portuguese, Italian, Polish, Swedish, Danish/Norwegian. Whole words only - accented letters break \b.
+    const word = (words: string) => new RegExp(`^(${words})(?=$|[\\s!.:,>»→-])`, 'i');
     if (
       /^(submit|submit application|send application|send|finish|complete application|submit & apply|confirm and apply)$/i.test(lower) ||
       // "Submit your application" (Indeed); not "Submit resume" (an upload step) or "Send me jobs like this" (Naukri).
-      /^submit( now)?!?$|(submit|send) (your |my |the )?application/.test(lower)
+      /^submit( now)?!?$|(submit|send) (your |my |the )?application/.test(lower) ||
+      /^(verzenden|versturen|verstuur|indienen|sollicitatie (versturen|verzenden|indienen)|absenden|senden|bewerbung (absenden|senden|abschicken)|jetzt absenden|envoyer|soumettre|envoyer (ma|la) candidature|enviar|enviar (solicitud|candidatura|postulación)|invia|invia candidatura|wyślij|wyślij aplikację|skicka|skicka ansökan|send ansøgning|send søknad)!?$/i.test(
+        lower,
+      ) ||
+      // Russian, Turkish, Indonesian, Vietnamese, Arabic, Hindi, Chinese, Japanese, Korean.
+      /^(отправить|отправить отклик|отправить заявку|gönder|başvuruyu gönder|kirim|kirim lamaran|gửi|gửi hồ sơ|nộp hồ sơ|إرسال|أرسل|إرسال الطلب|भेजें|सबमिट करें|आवेदन भेजें|提交|提交申请|发送|送信|応募する|送信する|제출|지원서 제출|보내기)!?$/i.test(
+        lower,
+      )
     )
       kind = 'submit';
     else if (/^review\b|review (your )?application/.test(lower)) kind = 'review';
     else if (/^(next|continue|proceed|save and continue|save & continue|save & next|next step)\b/.test(lower)) kind = 'next';
+    else if (
+      word(
+        'volgende|verder|ga verder|weiter|nächste|fortfahren|suivant|continuer|siguiente|continuar|próximo|avanti|successivo|continua|dalej|nästa|fortsätt|næste|neste|videre',
+      ).test(lower) ||
+      /^(далее|продолжить|ileri|devam|devam et|lanjut|berikutnya|tiếp tục|tiếp theo|التالي|متابعة|आगे|अगला|जारी रखें|下一步|继续|次へ|続ける|다음|계속)!?$/i.test(
+        lower,
+      )
+    )
+      kind = 'next';
     else if (/^(easy apply|apply|apply now|apply for this job|apply to this job|i'?m interested|quick apply)\b/.test(lower)) kind = 'apply';
+    else if (
+      word(
+        'solliciteer|solliciteren|nu solliciteren|direct solliciteren|solliciteer nu|solliciteer direct|reageer|reageren|reageer direct|bewerben|jetzt bewerben|bewerbung starten|hier bewerben|postuler|postulez|candidater|je postule|postular|postúlate|postulate|aplicar|inscribirse|candidatar-se|candidatura|candidati|candidati ora|invia la tua candidatura|aplikuj|aplikuj teraz|ansök|sök jobbet|ansøg|søk',
+      ).test(lower) ||
+      /^(откликнуться|подать заявку|başvur|hemen başvur|başvuru yap|lamar|lamar sekarang|ứng tuyển|ứng tuyển ngay|قدّم الآن|قدم الآن|تقدم الآن|التقديم|تقدم|आवेदन करें|अभी आवेदन करें|申请|立即申请|申请职位|投递简历|応募|今すぐ応募|この求人に応募する|지원하기|지원|바로 지원)!?$/i.test(
+        lower,
+      )
+    )
+      kind = 'apply';
     else if (/^(dismiss|close|cancel|discard|not now|done|back)\b/.test(lower)) kind = 'dismiss';
-    if (isLink && kind === 'other') continue;
+    else if (
+      word(
+        'annuleren|sluiten|terug|abbrechen|schließen|zurück|annuler|fermer|retour|cancelar|cerrar|volver|annulla|chiudi|indietro|anuluj|zamknij|avbryt|stäng|luk|lukk',
+      ).test(lower) ||
+      /^(отмена|закрыть|назад|iptal|kapat|geri|batal|tutup|kembali|hủy|đóng|quay lại|إلغاء|إغلاق|رجوع|रद्द करें|बंद करें|वापस|取消|关闭|返回|キャンセル|閉じる|戻る|취소|닫기|뒤로)$/i.test(
+        lower,
+      )
+    )
+      kind = 'dismiss';
+    if (isLink && kind === 'other') {
+      // A short link in words Sudarshan does not know may still be "Apply" in another language.
+      if (text.split(/\s+/).length <= 5 && links.length < 40) links.push({ id: tag(el, 'data-jaa-act', 'a'), text, kind, disabled: false });
+      continue;
+    }
     const b = el as HTMLButtonElement;
     actions.push({
       id: tag(el, 'data-jaa-act', 'a'),
@@ -393,6 +436,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     scopeFound,
     fields,
     actions,
+    links,
     text: textOf(scope).slice(0, 3000),
     errors,
     captcha,
