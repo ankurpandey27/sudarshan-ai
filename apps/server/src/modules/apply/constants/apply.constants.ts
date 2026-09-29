@@ -83,3 +83,13 @@ export const NAUKRI_REFUSED = /error while processing your request|please try ag
 
 /** How long LinkedIn's Apply may take to reach the company's site (its redirect page comes first). */
 export const COMPANY_SITE_WAIT_MS = 15_000;
+
+/** How long a click may take to open a new tab (LinkedIn opens the company site after a few seconds). */
+export const NEW_TAB_WAIT_MS = 15_000;
+/** A button on a company site that may open its form in a new tab: most open none, so this stays short. */
+export const SAME_SITE_TAB_WAIT_MS = 7000;
+/** Hiring systems whose application a career page may show inside a frame; opened as a page instead. */
+export const EMBEDDED_ATS =
+  /^https:\/\/([a-z0-9-]+\.)*(ashbyhq\.com|greenhouse\.io|lever\.co|workable\.com|smartrecruiters\.com|recruitee\.com|bamboohr\.com|breezy\.hr|jobvite\.com|teamtailor\.com|personio\.(de|com)|pinpointhq\.com|rippling-ats\.com|rippling\.com|homerun\.co|jazzhr\.com|applytojob\.com|zohorecruit\.(com|in|eu)|freshteam\.com|keka\.com|darwinbox\.in|comeet\.(co|com))\//i;
+/** How long a career page that looks like a login may take to add its embedded application. */
+export const EMBED_WAIT_MS = 6000;

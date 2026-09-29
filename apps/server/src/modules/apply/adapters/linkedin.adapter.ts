@@ -9,7 +9,7 @@ import { FormRunnerService } from '../../form-engine/form-runner.service';
 import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
-import { CLOSED_TEXT, COMPANY_SITE_WAIT_MS, LINKEDIN_APPLIED, LINKEDIN_SCOPE, LINKEDIN_SUCCESS } from '../constants/apply.constants';
+import { CLOSED_TEXT, COMPANY_SITE_WAIT_MS, LINKEDIN_APPLIED, NEW_TAB_WAIT_MS, LINKEDIN_SCOPE, LINKEDIN_SUCCESS } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
@@ -54,7 +54,7 @@ export class LinkedInApplyAdapter implements ApplyAdapter {
       if (LINKEDIN_APPLIED.test(text)) return result(PrepareStatus.ALREADY_APPLIED);
       const external = buttons.find((a) => /^apply\b/i.test(a.text));
       if (!external) return result(PrepareStatus.NO_APPLY_BUTTON);
-      const tab = await clickCatchingNewTab(page, () => this.runner.click(page, external.id));
+      const tab = await clickCatchingNewTab(page, () => this.runner.click(page, external.id), NEW_TAB_WAIT_MS);
       // The company's address, once LinkedIn's own redirect is out of the way - never a linkedin.com page.
       const url = await companySiteOf(tab ?? page, COMPANY_SITE_WAIT_MS);
       await tab?.close().catch(() => undefined);

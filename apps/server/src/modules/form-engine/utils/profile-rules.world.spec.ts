@@ -76,3 +76,19 @@ describe('profile rules in the major languages', () => {
     expect(answer('Is the role portable to other offices?')).not.toBe('9876543210');
   });
 });
+
+describe('years questions about a subject that is not a known skill (HCLTech, 2026-09-29)', () => {
+  const years = (label: string) => answerFromProfile({ ...ctx, profile: { ...ctx.profile, totalYearsExperience: 4.9 } }, field(label))?.value;
+
+  it('never answers your total career for "work experience with <something else>"', () => {
+    expect(years('How many years of work experience do you have with Aruba Wireless?')).toBeUndefined();
+    expect(years('How many years of work experience do you have with Automation?')).toBeUndefined();
+  });
+
+  it('still answers your total when the question is about your career', () => {
+    expect(years('How many years of work experience do you have?')).toBe('5');
+    expect(years('How many years of experience do you have in total?')).toBe('5');
+    expect(years('Total years of work experience in the IT industry')).toBe('5');
+    expect(years('How many years of experience do you have in software development?')).toBe('5');
+  });
+});

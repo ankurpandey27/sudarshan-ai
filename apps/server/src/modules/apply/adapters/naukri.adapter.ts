@@ -12,7 +12,15 @@ import { FormRunOutcome, RunFormOptions } from '../../form-engine/interfaces/for
 import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
-import { CLOSED_TEXT, NAUKRI_APPLIED_URL, NAUKRI_DRAWER, NAUKRI_FILE_QUESTION, NAUKRI_REFUSED, NAUKRI_SUCCESS } from '../constants/apply.constants';
+import {
+  CLOSED_TEXT,
+  NAUKRI_APPLIED_URL,
+  NAUKRI_DRAWER,
+  NAUKRI_FILE_QUESTION,
+  NAUKRI_REFUSED,
+  NEW_TAB_WAIT_MS,
+  NAUKRI_SUCCESS,
+} from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { naukriDoneTypingInPage, naukriLastQuestionInPage, naukriSendInPage, naukriSendReadyInPage } from '../scripts/naukri-chat.script';
@@ -55,7 +63,7 @@ export class NaukriApplyAdapter implements ApplyAdapter {
     }
     const companySite = actions.find((a) => /apply on company (site|website)/i.test(a.text));
     if (companySite) {
-      const tab = await clickCatchingNewTab(page, () => this.runner.click(page, companySite.id));
+      const tab = await clickCatchingNewTab(page, () => this.runner.click(page, companySite.id), NEW_TAB_WAIT_MS);
       const url = tab?.url() ?? page.url();
       await tab?.close().catch(() => undefined);
       return result(PrepareStatus.EXTERNAL, { externalUrl: url });

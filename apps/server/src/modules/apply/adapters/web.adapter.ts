@@ -23,12 +23,14 @@ import {
   LOGIN_WALL,
   ONE_CLICK_SUCCESS,
   PAGE_SWAPPED,
+  EMBED_WAIT_MS,
   RENDER_WAIT_MS,
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 import { onJobBoard } from '../utils/offsite-url.util';
+import { embeddedApplicationUrl } from '../utils/embedded-ats.util';
 
 @Injectable()
 export class WebApplyAdapter implements ApplyAdapter {
@@ -100,6 +102,17 @@ export class WebApplyAdapter implements ApplyAdapter {
         const dialog = await current.$(DIALOG);
         return result(PrepareStatus.READY, { scopeSelector: dialog ? DIALOG : null, page: current });
       }
+      // The application is in a hiring system's frame on the page (LVT embeds Ashby): open it as a page -
+      // before the login check: a menu's "Sign in" and a newsletter email box are not the application (LVT).
+      // The frame is often added by a script a moment after the page loads: give it a few seconds when the
+      // page would otherwise be taken for a login.
+      const embedded = embeddedApplicationUrl(current) ?? (this.looksLikeLogin(snap, text) ? await this.waitForEmbedded(current) : null);
+      if (embedded && !pressed.has(embedded)) {
+        pressed.add(embedded);
+        await current.goto(embedded, { waitUntil: 'domcontentloaded' });
+        await this.runner.settle(current);
+        continue;
+      }
       if (this.looksLikeLogin(snap, text)) return result(PrepareStatus.LOGIN_REQUIRED, { detail: `Log in to ${domain} in the agent browser`, page: current });
 
       // An "Apply now" comes first: the captcha often sits inside the application pop-up it opens
@@ -140,6 +153,17 @@ export class WebApplyAdapter implements ApplyAdapter {
       }
       await sleep(1000);
     }
+  }
+
+  /** An embedded hiring-system frame that appears within EMBED_WAIT_MS, or null. */
+  private async waitForEmbedded(page: Page): Promise<string | null> {
+    const deadline = Date.now() + EMBED_WAIT_MS;
+    while (Date.now() < deadline) {
+      await sleep(1000);
+      const url = embeddedApplicationUrl(page);
+      if (url) return url;
+    }
+    return null;
   }
 
   private hasApplicationForm(snap: FormSnapshot): boolean {

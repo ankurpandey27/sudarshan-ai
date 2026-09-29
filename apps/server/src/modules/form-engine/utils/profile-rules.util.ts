@@ -34,6 +34,11 @@ function jobInHomeCountry(c: AnswerContext): boolean {
 // Forms want whole years: 4.9 is 5, 4.4 is 4.
 const wholeYears = (y: number): number => Math.max(0, Math.round(y));
 
+// "...experience with X / in X / using X / on X": about one subject. "In total", "overall", "in the industry",
+// "in IT", "in software development" still mean your whole career.
+const ABOUT_A_SUBJECT =
+  /\b(experience|worked|working)\b.*\b(with|in|using|on)\s+(?!(total|overall|all\b|years?|yrs|months?|numbers?|digits|the industry|industry|it\b|the it\b|software (development|engineering|industry)|tech(nology)? industry|your career|this (field|industry)|a professional)\b)[a-z0-9]/;
+
 // "at least 5 years", "minimum of 3 yrs", "5+ years": the years a question requires.
 const REQUIRED_YEARS =
   /(?:at\s*least|atleast|minimum(?:\s*of)?|min\.?|more than|over)\s*(\d+(?:\.\d+)?)\s*\+?\s*(?:years?|yrs?)|(\d+(?:\.\d+)?)\s*\+\s*(?:years?|yrs?)/;
@@ -237,6 +242,9 @@ function skillYearsRule(ctx: AnswerContext, field: FormField): RuleAnswer | null
 
   if (asksYears) {
     if (skills.length === 0) {
+      // "...work experience with Aruba Wireless?" asks about Aruba, not your whole career (HCLTech, 2026-09-29):
+      // a subject that is not a known skill is left to your answers or the AI, which reads your resume.
+      if (ABOUT_A_SUBJECT.test(q)) return null;
       if (/total|overall|professional|relevant|work experience|industry/.test(q) || /^how many years of experience/.test(q)) {
         return fact(wholeYears(ctx.profile.totalYearsExperience));
       }

@@ -18,6 +18,7 @@ import {
   INDEED_CHALLENGE,
   INDEED_LOGIN_URL,
   SIGN_IN_PAGE,
+  NEW_TAB_WAIT_MS,
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
@@ -68,7 +69,7 @@ export class IndeedApplyAdapter implements ApplyAdapter {
 
     const companySite = snap.actions.find((a) => !a.disabled && /apply on company site/i.test(a.text));
     if (companySite) {
-      const tab = await clickCatchingNewTab(page, () => this.runner.click(page, companySite.id));
+      const tab = await clickCatchingNewTab(page, () => this.runner.click(page, companySite.id), NEW_TAB_WAIT_MS);
       // The link goes through Indeed's redirect first; wait for where it really lands.
       const target = tab ?? page;
       await target.waitForFunction(() => !/indeed\.com\/(rc\/clk|pagead|applystart)/i.test(location.href), { timeout: 15_000 }).catch(() => undefined);

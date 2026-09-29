@@ -1,0 +1,13 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Job - apply on company site (late)</title></head>
+<body>
+<!-- LinkedIn opens the company site seconds after Apply, in a tab not linked to the job page (2026-09-29). -->
+<button id="apply">Apply</button>
+<script>
+  document.getElementById('apply').addEventListener('click', () => {
+    setTimeout(() => window.open('contact-form7-apply.html', '_blank', 'noopener'), 2500);
+  });
+</script>
+</body>
+</html>
