@@ -50,3 +50,24 @@ describe('yearsYouGave (your saved answers)', () => {
     expect(e.total).toBe(5);
   });
 });
+
+describe('experienceFrom: a number beats an assumption (2026-09-30)', () => {
+  it('uses the years you typed for a skill your resume lists without years', () => {
+    const e = experienceFrom({
+      profileTotal: 4.9,
+      profileSkill: (s) => (s === 'React' ? 4.9 : null),
+      statedSkill: () => null,
+      yearsYouGave: typed({ 'React / Next.js experience (years)': 2 }),
+    });
+    expect(e.skillYears('React')).toBe(2);
+  });
+
+  it('still takes the higher of two numbers (AWS: 4.9 in your profile, "3" typed)', () => {
+    const e = experienceFrom({ profileTotal: 4.9, profileSkill: () => 4.9, statedSkill: () => 4.9, yearsYouGave: typed({ 'AWS experience (years)': 3 }) });
+    expect(e.skillYears('AWS')).toBe(4.9);
+  });
+
+  it('falls back to your whole career for a listed skill when no number is known anywhere', () => {
+    expect(experienceFrom({ profileTotal: 4.9, profileSkill: () => 4.9, statedSkill: () => null, yearsYouGave: () => null }).skillYears('React')).toBe(4.9);
+  });
+});

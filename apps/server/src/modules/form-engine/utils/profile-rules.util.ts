@@ -116,7 +116,14 @@ const RULES: ProfileRule[] = [
     answer: (c) => fact(c.profile.phone),
   },
   // "LinkedIn", and the misspellings people type: "LinkdeIn", "Linkdin".
-  { test: /\blink(?:ed|de|d)\s*in\b/, answer: (c) => fact(c.profile.linkedinUrl) },
+  {
+    test: /\blink(?:ed|de|d)\s*in\b/,
+    // "Do you have a LinkedIn profile?" is a yes/no question: "Yes", with the link where there is room for it.
+    answer: (c, f) =>
+      /^(do|does|have|has|are)\b/.test(f.label.toLowerCase().trim()) && c.profile.linkedinUrl
+        ? fact([FieldKind.RADIO, FieldKind.SELECT, FieldKind.CHECKBOX].includes(f.kind) ? 'Yes' : `Yes - ${c.profile.linkedinUrl}`)
+        : fact(c.profile.linkedinUrl),
+  },
   { test: /git\s*hub/, answer: (c) => fact(c.profile.githubUrl) },
   { test: /portfolio|personal\s*(web)?site|^website$|blog/, answer: (c) => fact(c.profile.portfolioUrl || c.profile.githubUrl || c.profile.linkedinUrl) },
   { test: /\b(pin\s*code|pincode|zip|postal\s*code)\b/, answer: (c) => fact(c.profile.postalCode) },

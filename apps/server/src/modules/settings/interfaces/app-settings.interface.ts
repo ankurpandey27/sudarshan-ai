@@ -57,6 +57,8 @@ export interface AgentSettings {
   llmScoring: boolean;
   tokenBudgetPerDay: number;
   pauseBeforeSubmit: boolean;
+  /** Show the AI your own answers to similar questions (found by a small model on this computer). */
+  pastAnswers: boolean;
 }
 
 export interface AppSettings {

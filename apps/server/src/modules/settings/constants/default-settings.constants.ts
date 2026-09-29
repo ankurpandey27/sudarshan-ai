@@ -44,6 +44,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     llmScoring: true,
     tokenBudgetPerDay: 300_000,
     pauseBeforeSubmit: false,
+    pastAnswers: true,
   },
 };
 

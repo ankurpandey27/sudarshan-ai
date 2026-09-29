@@ -286,6 +286,7 @@ export class ApplyService {
     const experience = experienceFrom({
       profileTotal: profile.totalYearsExperience,
       profileSkill: (skill) => this.profile.skillYears(skill),
+      statedSkill: (skill) => this.profile.statedSkillYears(skill),
       yearsYouGave: (about) => this.answers.yearsYouGave(about),
     });
     return {

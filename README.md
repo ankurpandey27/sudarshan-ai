@@ -104,7 +104,7 @@ npm start
 
 No Git? Click **Code -> Download ZIP** on this page, unzip it, open a terminal in the `sudarshan-ai` folder and run `npm start`.
 
-That's the only command. The first run installs and builds (a few minutes), then opens **http://localhost:4747** in your browser. Later runs start in seconds and rebuild automatically after you pull updates.
+That's the only command. The first run installs and builds (a few minutes), downloads the answer-matching model (about 130 MB, once, into the `models` folder), then opens **http://localhost:4747** in your browser. Later runs start in seconds and rebuild automatically after you pull updates. Without internet the model is skipped - Sudarshan works without it and fetches it on a later start.
 
 **Stop:** press `Ctrl + C` in the terminal.
 
@@ -367,9 +367,11 @@ scripts/    start.mjs (the one command), dev.mjs
 
 ## How Sudarshan learns
 
-Everything below runs and is stored on your computer. None of it needs an AI model.
+Everything below runs and is stored on your computer. None of it needs an AI model, except where it says so.
 
 **Your answers.** Every answer - yours, from your profile, or from the AI - goes into **Answer memory** and is reused for the same question on any site. Your own answers always win.
+
+**Answers to similar questions.** A small multilingual model runs on your computer (about 130 MB, no GPU): `npm install` / `npm start` download it once into the project's `models` folder, then it works offline. It is not in the Git repository (it is larger than GitHub allows per file); for an offline machine, copy the `models` folder over. `SUDARSHAN_MODELS_DIR` keeps it elsewhere, `SUDARSHAN_SKIP_MODEL=1` never downloads it. When a question goes to the AI, it finds your own saved answers to questions that *mean* the same - in any wording or language - and shows them to the AI, which decides whether one really answers this question. They are never filled in by themselves: similar-looking questions can ask opposite things ("current" vs "expected" CTC, 10th vs 12th board). Only your answers and your spreadsheet's are shown, never the AI's own earlier guesses, and a "years of X" question sees only past answers about X. Measured on real saved answers (40 questions, 2026-09-30): answered right 19 vs 15 before, asked the user 12 vs 15 times, wrong 9 vs 10. The flight log says when it helped. Turn it off in **Settings -> Agent -> Use my past answers for similar questions**; if the model cannot run on a computer, everything works as before.
 
 **Each site's steps.** For every site and every kind of step (for example Indeed's resume step), Sudarshan remembers which button moved the form forward - but only from applications the site actually **confirmed**. A page changing is not proof: a button that left the form (such as a notifications link) is never learned. Next time it presses the learned button first. If a click changes nothing - the site was redesigned - it notes that and tries the next safe button (never *Save and close*, *Withdraw* or *Delete*). If an application gets stuck, only the button that led into the dead end gets a strike.
 
@@ -379,7 +381,7 @@ Everything below runs and is stored on your computer. None of it needs an AI mod
 
 **When a site changes.** If a platform's last three applications all got stuck - with no success since - Sudarshan stops applying there instead of failing quietly, and **What needs attention** says so. Finish one stuck application by hand (it learns the new steps), or press **Try again carefully**: it resumes and stops before every Submit until one application goes through. Captchas, questions for you and logins never count as the site changing.
 
-**Your interest.** Every job you approve or mark applied counts as "want"; every job you skip or dismiss as "don't want". After about 20 of your decisions (some of each), a small model on your computer combines them with how well each job matches your resume, and learns which skills, titles, platforms and kinds of fit you go for. You then see **"87% your interest"** on each job in Review (hover for why), can sort Review by **Your interest**, and in **Auto** mode a job you would very likely skip waits for your review instead of being sent. Lakshya's **Your interest** card shows what you like - the skills and platforms common to the jobs you keep - and what you skip, but only what you have really turned down. It only ranks - your own rules (score, skip lists, limits) always come first.
+**Your interest.** What the jobs you apply to or approve have in common is what you like: the skills they ask for most, their title words and platforms; anything you skip or dismiss again and again counts against a job. After 15 jobs you kept, each job in Review shows **"87% your interest"** - how much it looks like the ones you apply to (hover for what it shares and what counts against it). Review can be sorted by **Your interest**, and in **Auto** mode a job very unlike yours waits for your review instead of being sent. (A meaning model comparing whole job descriptions was measured too, and ranked worse - so it is not used here.) Lakshya's **Your interest** card shows what you like - the skills and platforms common to the jobs you keep - and what you skip, but only what you have really turned down. It only ranks - your own rules (score, skip lists, limits) always come first.
 
 **Your core skills.** Settings -> What to search -> **Core skills** (blank = your search keywords). A job asking for one - in its title, skill list or description, however it is spelled - is never skipped for a low score: it waits in Review, saying why. A job asking for two or more of them scores a little higher.
 

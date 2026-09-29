@@ -1,8 +1,9 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { AnswersService } from '../answers/answers.service';
+import { PastAnswersService } from '../answers/past-answers.service';
 import { AnswerSource } from '../answers/enums/answer-source.enum';
 import { LlmService } from '../llm/llm.service';
 import { LlmPurpose } from '../llm/enums/llm-purpose.enum';
@@ -15,6 +16,7 @@ import { ANSWER_SYSTEM_PROMPT, buildAnswerPrompt } from './utils/answer-prompt.u
 import { needsAnswer, toInstruction } from './utils/field-value.util';
 import { answerFromProfile, namesACountry, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
 import { OPTIONAL_LEFT_BLANK } from './constants/form-runner.constants';
+import { sameSubject } from './utils/subject.util';
 import { AGE_QUESTION, GENERIC_QUESTION, YEARS_QUESTION } from '../answers/constants/answers.constants';
 import { AnswerMatch } from '../answers/interfaces/answer.interface';
 import { ageOn, parseBirthDate } from '../answers/utils/birth-date.util';
@@ -31,6 +33,8 @@ export class AnswerEngineService {
   constructor(
     private readonly answers: AnswersService,
     private readonly llm: LlmService,
+    // The type must be the class alone: a union hides it from Nest's injector.
+    @Optional() private readonly pastAnswers?: PastAnswersService,
   ) {}
 
   async resolve(fields: FormField[], ctx: AnswerContext, opts: ResolveOptions): Promise<ResolveResult> {
@@ -55,7 +59,12 @@ export class AnswerEngineService {
         continue;
       }
 
-      const fromProfile = answerFromProfile(ctx, field);
+      let fromProfile = answerFromProfile(ctx, field);
+      // A default ("Yes" to onsite, "Prefer not to say") never beats your own answer to this exact question.
+      if (fromProfile && !fromProfile.confident) {
+        const yours = this.answers.lookup(field.label || field.placeholder);
+        if (yours && yours.similarity === 1 && yours.source !== AnswerSource.LLM && toInstruction(field, yours.answer)) fromProfile = null;
+      }
       if (fromProfile && !forced) {
         const ins = toInstruction(field, fromProfile.value);
         if (ins) {
@@ -98,7 +107,9 @@ export class AnswerEngineService {
 
     if (forLlm.length === 0) return result;
 
-    const llmAnswers = opts.allowLlm && this.llm.isAvailable() ? await this.askLlm(forLlm, ctx, hints, result) : null;
+    const useLlm = opts.allowLlm && this.llm.isAvailable();
+    if (useLlm) await this.addPastAnswers(forLlm, hints, unknownCountry, result);
+    const llmAnswers = useLlm ? await this.askLlm(forLlm, ctx, hints, result) : null;
     for (const field of forLlm) {
       const a = llmAnswers?.get(field.id);
       const ins = a && a.value.trim() ? toInstruction(field, a.value) : null;
@@ -125,6 +136,28 @@ export class AnswerEngineService {
       }
     }
     return result;
+  }
+
+  /**
+   * Shows the AI your own answers to questions close in meaning, found by the local model - in any
+   * wording or language. The AI decides whether one answers this question; nothing is filled from them
+   * directly. A work-authorization question for an unnamed country gets none (they name other countries).
+   */
+  private async addPastAnswers(fields: FormField[], hints: Map<string, string>, unknownCountry: Set<string>, result: ResolveResult): Promise<void> {
+    if (!this.pastAnswers) return;
+    const asked = fields.filter((f) => !unknownCountry.has(f.id) && (f.label || f.placeholder).trim());
+    const found = await this.pastAnswers.similar(asked.map((f) => (f.label || f.placeholder).trim())).catch(() => asked.map(() => []));
+    asked.forEach((f, i) => {
+      // "Years of X": only past answers about X - another subject's years make the AI bolder, not righter
+      // ("DevOps experience (years)" answered from "Automation experience", 2026-09-30).
+      const question = (f.label || f.placeholder).trim();
+      const past = YEARS_QUESTION.test(question) ? found[i]?.filter((p) => sameSubject(question, p.question)) : found[i];
+      if (!past?.length) return;
+      const list = past.map((p) => `"${p.question}" -> "${p.answer}" (${p.similarity})`).join('; ');
+      const before = hints.get(f.id);
+      hints.set(f.id, `${before ? before + ' ' : ''}Candidate's own answers to similar questions: ${list}.`);
+      result.stats.pastAnswerHints = (result.stats.pastAnswerHints ?? 0) + 1;
+    });
   }
 
   /** An optional field the AI may fill from your profile: a real question, not one only you can answer. */
@@ -167,7 +200,10 @@ export class AnswerEngineService {
       const age = born ? ageOn(born) : null;
       return dob && age !== null && age > 14 && age < 80 ? { ...dob, answer: String(age) } : null;
     }
-    return this.fitting(question, field, this.answers.lookupDetail(question));
+    const found = this.fitting(question, field, this.answers.lookupDetail(question));
+    // "Do you have a PAN card?" asks whether you have one, not for its number.
+    if (found && /^(do|does|have|has|are|is)\b/i.test(question.trim()) && !/^(yes|no)\b/i.test(found.answer.trim())) return { ...found, answer: 'Yes' };
+    return found;
   }
 
   private resolveFile(field: FormField, ctx: AnswerContext, result: ResolveResult): void {

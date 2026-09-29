@@ -73,6 +73,7 @@ RULES
 - Motivation / cover letter / "about you" questions: 2-4 specific sentences in first person using real facts from the profile and the job. Mark these "reusable": false.
 - "reusable": true when the answer would be the same for any job (salary, notice, skills, relocation...).
 - If "previousError" is present, fix the value so it satisfies that error.
+- "hint" may list the candidate's own answers to similar questions, found by meaning. Use one only when it answers THIS exact question - the same thing, the same person, the same time: "current" is not "expected" (CTC, salary, location), 10th is not 12th, one skill's years are not another's, a permanent address is not a local one. Convert units and formats as the question asks (12 LPA = 1200000 per year; 30 days = 1 month). When none truly answers it, ignore them all.
 - "required": false questions: answer them too when the profile or job gives the fact - a complete application does better. But only facts: never a default, a guess or a made-up detail (referrer names, other offers, personal data not listed); if the profile does not say, return "" with "confident": false and it stays blank.
 
 Return JSON: {"answers":[{"id":"<id>","value":"<answer>","confident":true|false,"reusable":true|false}]}`;

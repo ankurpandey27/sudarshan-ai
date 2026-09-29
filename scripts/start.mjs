@@ -6,6 +6,7 @@ import { spawn } from 'node:child_process';
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { request } from 'node:http';
 import { join } from 'node:path';
+import { fetchModel, haveModel } from './fetch-model.mjs';
 
 const root = join(import.meta.dirname, '..');
 const p = (...parts) => join(root, ...parts);
@@ -109,6 +110,16 @@ if (serverStale || webStale) {
   await npm(`Building the app (${!serverBuilt || !webBuilt ? 'first build' : 'code changed since the last build'})`, 'App built', ['run', 'build']);
 } else {
   done('App is up to date');
+}
+
+// The answer-matching model: fetched once if an earlier install could not (offline, or installed before it
+// existed). Never stops the start - without it, Sudarshan works as before.
+if (haveModel()) {
+  done('Answer-matching model ready');
+} else if (process.env.SUDARSHAN_SKIP_MODEL !== '1') {
+  const s = step('Getting the answer-matching model (about 130 MB, once)');
+  const ok = await fetchModel({ quiet: true });
+  s.stop(ok ? 'Answer-matching model ready' : 'Answer-matching model not available now - starting without it');
 }
 
 // Start the server; the spinner runs until it answers, then its own log takes over.

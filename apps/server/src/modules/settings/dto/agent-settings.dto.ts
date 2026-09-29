@@ -72,4 +72,8 @@ export class AgentSettingsDto {
   @IsOptional()
   @IsBoolean()
   pauseBeforeSubmit?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  pastAnswers?: boolean;
 }

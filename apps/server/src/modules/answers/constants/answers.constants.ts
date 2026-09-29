@@ -46,3 +46,8 @@ export const MAX_PLAUSIBLE_YEARS = 50;
 
 /** Stand-in labels for fields with no real question; answers to them are never remembered or reused. */
 export const GENERIC_QUESTION = /^(choose an option|select( an?)?( option| one)?|please select|choose|pick one|option|answer|-+)$/i;
+
+/** Past answers shown to the AI for a question: the closest few... */
+export const PAST_ANSWERS_SHOWN = 5;
+/** ...that are at least this similar in meaning (0-1). Below it, they are about something else. */
+export const PAST_ANSWER_MIN_SIMILARITY = 0.5;

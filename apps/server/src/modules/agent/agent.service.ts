@@ -22,6 +22,7 @@ import { AgentStatus } from './interfaces/agent-status.interface';
 import { SiteId } from '../browser/interfaces/site-session.interface';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
 import { clockTime } from '../../common/utils/date.util';
+import { EmbeddingsService } from '../../common/embeddings/embeddings.service';
 
 const TICK_MS = 10_000;
 
@@ -52,6 +53,7 @@ export class AgentService implements OnApplicationShutdown {
     private readonly pending: PendingQuestionsService,
     private readonly llm: LlmService,
     private readonly events: EventsService,
+    private readonly embeddings: EmbeddingsService,
   ) {
     // Subscribe here, before any bootstrap hook can emit.
     this.events.stream().subscribe((e) => {
@@ -138,6 +140,7 @@ export class AgentService implements OnApplicationShutdown {
       scoring: this.scoring.progress(),
       lastScoring: this.scoring.justFinished(),
       platformHealth: this.health.all().filter((h) => h.status !== 'ok'),
+      meaningModel: this.embeddings.status(),
     };
   }
 

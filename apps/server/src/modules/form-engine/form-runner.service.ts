@@ -146,7 +146,9 @@ export class FormRunnerService {
       if (resolved.instructions.length) {
         opts.onStep(
           `Step ${step}: filled ${resolved.instructions.length} field(s)` +
-            ` (${resolved.stats.profileHits} profile, ${resolved.stats.memoryHits} memory, ${resolved.stats.llmAnswers} AI)`,
+            ` (${resolved.stats.profileHits} profile, ${resolved.stats.memoryHits} memory, ${resolved.stats.llmAnswers} AI` +
+            (resolved.stats.pastAnswerHints ? `, the AI saw your answers to ${resolved.stats.pastAnswerHints} similar question(s)` : '') +
+            ')',
         );
         await this.fill(page, resolved.instructions);
         await jitter(250, 600);

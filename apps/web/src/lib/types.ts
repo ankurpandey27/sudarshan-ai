@@ -106,6 +106,7 @@ export interface AgentStatus {
   scoring: ScoringProgress | null;
   /** The scoring run that finished in the last few seconds. */
   lastScoring: { at: string; scored: number; review: number; queued: number; skipped: number; total: number } | null;
+  meaningModel: { state: 'off' | 'loading' | 'ready' | 'unavailable'; model: string; reason: string | null };
   platformHealth: { platform: JobPlatform; status: 'ok' | 'broken' | 'careful' | 'cooling'; recent: string[]; until?: string }[];
 }
 
@@ -180,6 +181,7 @@ export interface Settings {
     llmScoring: boolean;
     tokenBudgetPerDay: number;
     pauseBeforeSubmit: boolean;
+    pastAnswers: boolean;
   };
 }
 

@@ -181,4 +181,13 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE platform_health ADD COLUMN cool_until TEXT;
   ALTER TABLE platform_health ADD COLUMN cool_reason TEXT;
   `,
+  // Meaning-vectors of saved questions, by question key and model, computed once on this computer.
+  `
+  CREATE TABLE answer_vectors (
+    key    TEXT NOT NULL,
+    model  TEXT NOT NULL,
+    vector BLOB NOT NULL,
+    PRIMARY KEY (key, model)
+  );
+  `,
 ];

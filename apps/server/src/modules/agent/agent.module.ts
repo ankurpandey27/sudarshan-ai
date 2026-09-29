@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Module } from '@nestjs/common';
+import { EmbeddingsModule } from '../../common/embeddings/embeddings.module';
 import { AnswersModule } from '../answers/answers.module';
 import { ApplyModule } from '../apply/apply.module';
 import { BrowserModule } from '../browser/browser.module';
@@ -15,7 +16,7 @@ import { InsightsService } from './insights.service';
 import { PlatformHealthModule } from '../platform-health/platform-health.module';
 
 @Module({
-  imports: [PlatformHealthModule, AnswersModule, ApplyModule, BrowserModule, DiscoveryModule, JobsModule, ProfileModule, ScoringModule],
+  imports: [PlatformHealthModule, EmbeddingsModule, AnswersModule, ApplyModule, BrowserModule, DiscoveryModule, JobsModule, ProfileModule, ScoringModule],
   controllers: [AgentController],
   providers: [AgentService, InsightsService],
 })

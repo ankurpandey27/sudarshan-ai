@@ -5,8 +5,8 @@ import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Download, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
-import { useSettings } from '../lib/queries';
-import type { Settings, WorkbookImportResult } from '../lib/types';
+import { useAgent, useSettings } from '../lib/queries';
+import type { AgentStatus, Settings, WorkbookImportResult } from '../lib/types';
 import { LlmForm } from '../components/llm-form';
 import { SiteConnections } from '../components/site-connections';
 import { DropUpload } from '../components/drop-upload';
@@ -29,6 +29,7 @@ const SETTINGS_TABS: readonly TabDef<SettingsTab>[] = [
 
 export function SettingsPage() {
   const { data } = useSettings();
+  const { data: agentStatus } = useAgent();
   const [tab, setTab] = useTab(SETTINGS_TABS);
   const { hash } = useLocation();
   // Older links (and "Log in" buttons) point at #sites.
@@ -266,6 +267,12 @@ export function SettingsPage() {
                 hint="Dry run: fills everything, you press Submit in the agent browser"
               />
               <Toggle
+                checked={draft.agent.pastAnswers}
+                onChange={(v) => agent('pastAnswers', v)}
+                label="Use my past answers for similar questions"
+                hint={pastAnswersHint(agentStatus?.meaningModel)}
+              />
+              <Toggle
                 checked={draft.agent.llmScoring}
                 onChange={(v) => agent('llmScoring', v)}
                 label="AI job scoring"
@@ -333,4 +340,13 @@ export function SettingsPage() {
       </div>
     </>
   );
+}
+
+/** What the local meaning model is doing, in one line under its switch. */
+function pastAnswersHint(m: AgentStatus['meaningModel'] | undefined): string {
+  const what = 'A small model on this computer finds your answers to questions that mean the same, in any language; the AI decides if they fit';
+  if (!m || m.state === 'off') return what;
+  if (m.state === 'loading') return `${what}. Starting - the first time it downloads about 120 MB, once.`;
+  if (m.state === 'unavailable') return `Not available on this computer (${m.reason ?? 'could not start'}) - everything else works as before.`;
+  return `${what}. Ready.`;
 }

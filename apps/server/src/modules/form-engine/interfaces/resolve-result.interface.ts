@@ -15,6 +15,8 @@ export interface ResolveStats {
   memoryHits: number;
   llmCalls: number;
   llmAnswers: number;
+  /** Questions the AI answered with your own past answers to similar questions in front of it. */
+  pastAnswerHints?: number;
 }
 
 export interface ResolveResult {

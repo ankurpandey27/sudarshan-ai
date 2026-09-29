@@ -168,6 +168,18 @@ export class ProfileService implements OnApplicationBootstrap {
     return Math.max(...hits.map((h) => h.years ?? p.totalYearsExperience));
   }
 
+  /**
+   * Only the years your profile states for a skill (or a related one); null when it lists the skill
+   * without years or not at all. A number you gave yourself beats a skill listed without years.
+   */
+  statedSkillYears(skill: string): number | null {
+    const p = this.get();
+    const target = canonicalSkill(skill);
+    const family = new Set([target, ...(SKILL_FAMILIES[target] ?? []).map(canonicalSkill)]);
+    const stated = p.skills.filter((s) => family.has(canonicalSkill(s.name)) && s.years !== null && s.years !== undefined).map((s) => s.years as number);
+    return stated.length ? Math.max(...stated) : null;
+  }
+
   private save(profile: CandidateProfile): void {
     this.storage.run(
       `INSERT INTO profile (id, data, updated_at) VALUES (1, ?, ?)

@@ -21,7 +21,9 @@
     "build": "npm run build -w apps/web && npm run build -w apps/server",
     "test": "npm test -w apps/server && node scripts/test-browser.mjs",
     "typecheck": "npm run typecheck -w apps/server && npm run typecheck -w apps/web",
-    "lint": "npm run lint -w apps/server"
+    "lint": "npm run lint -w apps/server",
+    "model": "node scripts/fetch-model.mjs",
+    "postinstall": "node scripts/fetch-model.mjs"
   },
   "repository": {
     "type": "git",
