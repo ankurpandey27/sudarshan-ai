@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
@@ -11,14 +11,21 @@ import { AnswersService } from './answers.service';
 import { AnswerSource } from './enums/answer-source.enum';
 import { PendingQuestionGroup, PendingQuestionInput, PendingQuestionRow } from './interfaces/pending-question.interface';
 import { questionKey } from './utils/question-key.util';
+import { looksNonEnglish } from './utils/language.util';
+import { LlmPurpose } from '../llm/enums/llm-purpose.enum';
+import { LlmService } from '../llm/llm.service';
 
 @Injectable()
 export class PendingQuestionsService {
+  // Questions being translated right now, so one is never translated twice at once.
+  private readonly translating = new Set<string>();
+
   constructor(
     private readonly storage: StorageService,
     private readonly answers: AnswersService,
     private readonly jobs: JobsService,
     private readonly events: EventsService,
+    @Optional() private readonly llm?: LlmService,
   ) {}
 
   add(input: PendingQuestionInput): void {
@@ -36,11 +43,49 @@ export class PendingQuestionsService {
       jobId: input.jobId,
       message: `Needs your answer: "${input.question.slice(0, 120)}"`,
     });
+    void this.translate(key);
+  }
+
+  /**
+   * Puts an English version next to a question asked in another language (and its options), so you
+   * know what you are answering. Once per question, in the background; without an AI it just stays as it is.
+   */
+  async translate(key: string): Promise<void> {
+    const row = this.storage.get<{ question: string; options: string; question_en: string | null }>(
+      'SELECT question, options, question_en FROM pending_questions WHERE key = ? LIMIT 1',
+      [key],
+    );
+    if (!row || row.question_en || !this.llm?.isAvailable()) return;
+    const options = JSON.parse(row.options) as string[];
+    if (!looksNonEnglish([row.question, ...options].join(' '))) return;
+    if (this.translating.has(key)) return;
+    this.translating.add(key);
+    try {
+      const res = await this.llm.json<{ question?: string; options?: string[] }>(
+        `Translate this job application question and its options into plain English. Keep the meaning exact; keep numbers and names.
+Return JSON: {"question":"<English>","options":["<English of each option, same order>"]}
+
+${JSON.stringify({ question: row.question, options })}`,
+        { purpose: LlmPurpose.TRANSLATE, maxTokens: 300 + options.length * 30 },
+      );
+      const en = String(res?.question ?? '').trim();
+      if (!en) return;
+      const optionsEn = Array.isArray(res.options) && res.options.length === options.length ? res.options.map((o) => String(o)) : null;
+      this.storage.run('UPDATE pending_questions SET question_en = ?, options_en = ? WHERE key = ?', [
+        en.slice(0, 500),
+        optionsEn ? JSON.stringify(optionsEn) : null,
+        key,
+      ]);
+    } catch {
+      // No translation this time: the question still shows as it was asked.
+    } finally {
+      this.translating.delete(key);
+    }
   }
 
   open(): PendingQuestionGroup[] {
     const rows = this.storage.all<PendingQuestionRow>(
-      `SELECT q.key, q.question, q.field_type, q.options, q.suggestion, q.job_id, j.title, j.company, q.created_at
+      `SELECT q.key, q.question, q.field_type, q.options, q.suggestion, q.question_en, q.options_en, q.job_id, j.title, j.company, q.created_at
        FROM pending_questions q JOIN jobs j ON j.id = q.job_id
        WHERE q.status = 'open' ORDER BY q.created_at`,
     );
@@ -54,6 +99,8 @@ export class PendingQuestionsService {
           fieldType: r.field_type,
           options: JSON.parse(r.options) as string[],
           suggestion: r.suggestion,
+          questionEn: r.question_en,
+          optionsEn: r.options_en ? (JSON.parse(r.options_en) as string[]) : null,
           jobIds: [],
           jobs: [],
           firstAskedAt: r.created_at,
@@ -63,6 +110,8 @@ export class PendingQuestionsService {
       g.jobIds.push(r.job_id);
       g.jobs.push({ id: r.job_id, title: r.title, company: r.company });
     }
+    // Questions asked before translation existed (or while the AI was away) get theirs now.
+    for (const g of groups.values()) if (!g.questionEn) void this.translate(g.key);
     return [...groups.values()].sort((a, b) => b.jobIds.length - a.jobIds.length);
   }
 
@@ -93,15 +142,11 @@ export class PendingQuestionsService {
   private resolve(key: string): number {
     const jobIds = this.jobIdsFor(key);
     this.storage.run("UPDATE pending_questions SET status = 'resolved' WHERE key = ? AND status = 'open'", [key]);
-    const ready = jobIds.filter(
-      (id) => !this.storage.get("SELECT 1 FROM pending_questions WHERE job_id = ? AND status = 'open' LIMIT 1", [id]),
-    );
+    const ready = jobIds.filter((id) => !this.storage.get("SELECT 1 FROM pending_questions WHERE job_id = ? AND status = 'open' LIMIT 1", [id]));
     return this.jobs.setStatusMany(ready, JobStatus.APPROVED, 'Your answer unblocked it', [JobStatus.NEEDS_INPUT]);
   }
 
   private jobIdsFor(key: string): number[] {
-    return this.storage
-      .all<{ job_id: number }>("SELECT job_id FROM pending_questions WHERE key = ? AND status = 'open'", [key])
-      .map((r) => r.job_id);
+    return this.storage.all<{ job_id: number }>("SELECT job_id FROM pending_questions WHERE key = ? AND status = 'open'", [key]).map((r) => r.job_id);
   }
 }

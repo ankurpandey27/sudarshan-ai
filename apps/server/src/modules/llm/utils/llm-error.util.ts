@@ -32,8 +32,13 @@ export function isProtocolMismatch(err: unknown): boolean {
   const status = err.response.status;
   const body = JSON.stringify(err.response.data ?? '').toLowerCase();
   if (status === 404 || status === 405) return true;
-  return (
-    (status === 400 || status === 422) &&
-    /(not supported|unsupported|endpoint|use the .*api|invalid model|model not found|does not support)/.test(body)
+  return (status === 400 || status === 422) && /(not supported|unsupported|endpoint|use the .*api|invalid model|model not found|does not support)/.test(body);
+}
+
+/** The provider said the prompt is too long for this model; a shorter one may work. */
+export function isContextTooLong(err: unknown): boolean {
+  const m = err instanceof Error ? err.message : String(err);
+  return /context (length|window)|maximum context|too many tokens|prompt is too long|too long|reduce the length|token limit|exceeds? the (maximum|limit)/i.test(
+    m,
   );
 }

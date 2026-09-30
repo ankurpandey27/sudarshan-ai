@@ -16,5 +16,5 @@ export function csvCell(value: string | number | null | undefined): string {
  * non-English text (Hindi, accents) correctly; lines end in CRLF as the CSV standard says.
  */
 export function toCsv(header: string[], rows: (string | number | null | undefined)[][]): string {
-  return '﻿' + [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
+  return '\uFEFF' + [header, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n') + '\r\n';
 }

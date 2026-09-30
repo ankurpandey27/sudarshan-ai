@@ -6,6 +6,8 @@ import { AnswerContext, RuleAnswer } from './answer-context.interface';
 import { FormField } from './form-field.interface';
 
 export interface ProfileRule {
+  /** Which of your details it fills ("phone"); none for defaults and guesses, which teach nothing. */
+  key?: string;
   test: RegExp;
   not?: RegExp;
   kinds?: FieldKind[];

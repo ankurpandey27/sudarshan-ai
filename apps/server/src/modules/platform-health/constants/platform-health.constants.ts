@@ -12,3 +12,6 @@ export const BROKEN_ENDINGS = ['run:stuck', 'run:closed', 'prep:no_apply_button'
 
 /** How long a site that refused applications ("please try again later") is left alone. */
 export const REFUSED_COOLDOWN_MS = 3 * 60 * 60_000;
+
+/** A platform paused as "may have changed" gets one new attempt this long after its last stuck one. */
+export const BROKEN_RETRY_AFTER_MS = 6 * 60 * 60_000;

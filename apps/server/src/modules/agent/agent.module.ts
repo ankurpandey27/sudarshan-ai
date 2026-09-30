@@ -14,9 +14,21 @@ import { AgentController } from './agent.controller';
 import { AgentService } from './agent.service';
 import { InsightsService } from './insights.service';
 import { PlatformHealthModule } from '../platform-health/platform-health.module';
+import { FormEngineModule } from '../form-engine/form-engine.module';
 
 @Module({
-  imports: [PlatformHealthModule, EmbeddingsModule, AnswersModule, ApplyModule, BrowserModule, DiscoveryModule, JobsModule, ProfileModule, ScoringModule],
+  imports: [
+    PlatformHealthModule,
+    EmbeddingsModule,
+    FormEngineModule,
+    AnswersModule,
+    ApplyModule,
+    BrowserModule,
+    DiscoveryModule,
+    JobsModule,
+    ProfileModule,
+    ScoringModule,
+  ],
   controllers: [AgentController],
   providers: [AgentService, InsightsService],
 })

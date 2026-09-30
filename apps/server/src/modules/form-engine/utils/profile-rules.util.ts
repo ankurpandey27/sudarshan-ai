@@ -6,6 +6,8 @@ import { FieldKind } from '../enums/field-kind.enum';
 import { AnswerContext, RuleAnswer } from '../interfaces/answer-context.interface';
 import { FormField } from '../interfaces/form-field.interface';
 import { ProfileRule } from '../interfaces/profile-rule.interface';
+import { BACKGROUND_QUESTION } from '../constants/background.constants';
+import { cleanRecordAnswer } from './background.util';
 
 const yes = (b: boolean): string => (b ? 'Yes' : 'No');
 const fact = (value: string | number | null | undefined): RuleAnswer | null =>
@@ -89,34 +91,45 @@ const CITY_WORLD =
 
 // Order matters: specific patterns first ("expected ctc" before "ctc").
 const RULES: ProfileRule[] = [
+  // Your record, as you declared it in Profile; never assumed.
+  { test: BACKGROUND_QUESTION, answer: (c, f) => (c.profile.cleanRecord ? fact(cleanRecordAnswer(f.label || f.placeholder, f.kind)) : null) },
   // Full name first: Turkish "Ad Soyad" (name + surname) contains "Soyad" (surname).
-  { test: FULL_NAME_WORLD, answer: (c) => fact(`${c.profile.firstName} ${c.profile.lastName}`.trim()) },
-  { test: FIRST_NAME_WORLD, answer: (c) => fact(c.profile.firstName) },
-  { test: LAST_NAME_WORLD, answer: (c) => fact(c.profile.lastName) },
-  { test: PHONE_WORLD, not: /country\s*code|code/, answer: (c) => fact(c.profile.phone) },
-  { test: CITY_WORLD, answer: (c) => fact(c.profile.city) },
-  { test: /\bfirst\s*name\b|\bgiven\s*name\b|\bforename\b/, answer: (c) => fact(c.profile.firstName) },
-  { test: /\blast\s*name\b|\bsurname\b|\bfamily\s*name\b/, answer: (c) => fact(c.profile.lastName) },
+  { key: 'fullName', test: FULL_NAME_WORLD, answer: (c) => fact(`${c.profile.firstName} ${c.profile.lastName}`.trim()) },
+  { key: 'firstName', test: FIRST_NAME_WORLD, answer: (c) => fact(c.profile.firstName) },
+  { key: 'lastName', test: LAST_NAME_WORLD, answer: (c) => fact(c.profile.lastName) },
+  { key: 'phone', test: PHONE_WORLD, not: /country\s*code|code/, answer: (c) => fact(c.profile.phone) },
+  { key: 'city', test: CITY_WORLD, answer: (c) => fact(c.profile.city) },
+  { key: 'firstName', test: /\bfirst\s*name\b|\bgiven\s*name\b|\bforename\b/, answer: (c) => fact(c.profile.firstName) },
+  { key: 'lastName', test: /\blast\s*name\b|\bsurname\b|\bfamily\s*name\b/, answer: (c) => fact(c.profile.lastName) },
   { test: /\bmiddle\s*name\b/, answer: () => guess('') },
   {
+    key: 'fullName',
     test: /^(your\s+)?(full\s+)?name$|\bfull\s*name\b|\bcandidate('s)?\s*name\b|^name\b/,
     // "Do you know anyone working here? Mention the full name" asks about someone else.
     not: /company|employer|school|university|college|reference|referr|refer\b|father|mother|spouse|manager|recruiter|anyone|someone|know|friend|relative|employee|working (at|in|with)|contact person/,
     answer: (c) => fact(`${c.profile.firstName} ${c.profile.lastName}`.trim()),
   },
   // One address per email box: a profile listing several ("a@x.com, b@y.com") sends the first.
-  { test: /e-?mail/, not: /manager|reference|referr/, answer: (c) => fact(c.profile.email.split(/[\s,;]+/).find((e) => e.includes('@')) ?? c.profile.email) },
   {
+    key: 'email',
+    test: /e-?mail/,
+    not: /manager|reference|referr/,
+    answer: (c) => fact(c.profile.email.split(/[\s,;]+/).find((e) => e.includes('@')) ?? c.profile.email),
+  },
+  {
+    key: 'phoneCode',
     test: /country\s*code|phone.*\bcode\b|dial(ing)?\s*code|\bcountry\b.*\bphone\b/,
     answer: (c) => fact(c.profile.phoneCountryCode),
   },
   {
+    key: 'phone',
     test: /\b(phone|mobile|contact number|cell|whatsapp|telephone)\b/,
     not: /country\s*code|type|extension/,
     answer: (c) => fact(c.profile.phone),
   },
   // "LinkedIn", and the misspellings people type: "LinkdeIn", "Linkdin".
   {
+    key: 'linkedin',
     test: /\blink(?:ed|de|d)\s*in\b/,
     // "Do you have a LinkedIn profile?" is a yes/no question: "Yes", with the link where there is room for it.
     answer: (c, f) =>
@@ -124,28 +137,41 @@ const RULES: ProfileRule[] = [
         ? fact([FieldKind.RADIO, FieldKind.SELECT, FieldKind.CHECKBOX].includes(f.kind) ? 'Yes' : `Yes - ${c.profile.linkedinUrl}`)
         : fact(c.profile.linkedinUrl),
   },
-  { test: /git\s*hub/, answer: (c) => fact(c.profile.githubUrl) },
-  { test: /portfolio|personal\s*(web)?site|^website$|blog/, answer: (c) => fact(c.profile.portfolioUrl || c.profile.githubUrl || c.profile.linkedinUrl) },
-  { test: /\b(pin\s*code|pincode|zip|postal\s*code)\b/, answer: (c) => fact(c.profile.postalCode) },
-  { test: /\bstate\b|\bprovince\b/, not: /statement|united states/, answer: (c) => fact(c.profile.state) },
-  { test: /\bcountry\b/, not: /code|authori|citizen|visa/, answer: (c) => fact(c.profile.country) },
+  { key: 'github', test: /git\s*hub/, answer: (c) => fact(c.profile.githubUrl) },
   {
+    key: 'portfolio',
+    test: /portfolio|personal\s*(web)?site|^website$|blog/,
+    answer: (c) => fact(c.profile.portfolioUrl || c.profile.githubUrl || c.profile.linkedinUrl),
+  },
+  { key: 'postalCode', test: /\b(pin\s*code|pincode|zip|postal\s*code)\b/, answer: (c) => fact(c.profile.postalCode) },
+  { key: 'state', test: /\bstate\b|\bprovince\b/, not: /statement|united states/, answer: (c) => fact(c.profile.state) },
+  { key: 'country', test: /\bcountry\b/, not: /code|authori|citizen|visa/, answer: (c) => fact(c.profile.country) },
+  {
+    key: 'city',
     test: /\b(current\s*)?city\b|current\s*location|location\s*\(city\)|where are you (currently )?(based|located)|^location$|your location/,
     not: /preferred|willing|relocat/,
     answer: (c) => fact(c.profile.city),
   },
-  { test: /\baddress\b/, not: /e-?mail|web/, answer: (c) => fact([c.profile.city, c.profile.state, c.profile.country].filter(Boolean).join(', ')) },
   {
+    key: 'address',
+    test: /\baddress\b/,
+    not: /e-?mail|web/,
+    answer: (c) => fact([c.profile.city, c.profile.state, c.profile.country].filter(Boolean).join(', ')),
+  },
+  {
+    key: 'currentCompany',
     test: /current\s*(company|employer|organi[sz]ation)|present\s*(company|employer)|company name/,
     not: /previous|last/,
     answer: (c) => fact(c.profile.currentCompany),
   },
   {
+    key: 'currentTitle',
     test: /current\s*(job\s*)?(title|designation|role|position)|^designation$|job title/,
     answer: (c) => fact(c.profile.currentTitle),
   },
-  { test: /headline/, answer: (c) => fact(c.profile.headline || c.profile.currentTitle) },
+  { key: 'headline', test: /headline/, answer: (c) => fact(c.profile.headline || c.profile.currentTitle) },
   {
+    key: 'noticePeriod',
     test: /notice\s*period/,
     // "Are you serving your notice? When is your LWD?" asks for a yes and a date, not the notice length.
     not: /currently serving|serving (your |the )?notice|\blwd\b|last working/,
@@ -157,21 +183,25 @@ const RULES: ProfileRule[] = [
     answer: (c) => (c.profile.noticePeriodDays === null ? null : fact(yes(c.profile.noticePeriodDays <= 15))),
   },
   {
+    key: 'expectedCtc',
     test: /expected\s*(ctc|salary|compensation|package|pay)|salary\s*expectation|desired\s*(salary|compensation)|expected annual/,
     answer: (c, f) => money(c.profile.expectedCtc, f),
   },
   {
+    key: 'currentCtc',
     test: /current\s*(ctc|salary|compensation|package|pay)|present\s*(ctc|salary)|\bctc\b|annual\s*(salary|compensation)/,
     not: /expected|desired/,
     answer: (c, f) => money(c.profile.currentCtc, f),
   },
   {
+    key: 'currency',
     test: /currency/,
     kinds: [FieldKind.SELECT, FieldKind.RADIO, FieldKind.TEXT, FieldKind.COMBOBOX],
     answer: (c) => fact(c.profile.currency),
   },
-  { test: /relocat/, answer: (c) => fact(yes(c.profile.willingToRelocate)) },
+  { key: 'relocate', test: /relocat/, answer: (c) => fact(yes(c.profile.willingToRelocate)) },
   {
+    key: 'sponsorship',
     test: /sponsor/,
     answer: (c) => fact(yes(c.profile.needsSponsorship)),
   },
@@ -190,36 +220,47 @@ const RULES: ProfileRule[] = [
     answer: (c) => (c.profile.gender ? fact(c.profile.gender) : guess('Prefer not to say')),
   },
   { test: /disabilit|veteran|ethnic|race\b|hispanic|latino|sexual orientation|transgender/, answer: () => guess('Prefer not to say') },
-  { test: /date\s*of\s*birth|\bdob\b|birth\s*date/, answer: (c) => fact(c.profile.dateOfBirth) },
+  { key: 'dateOfBirth', test: /date\s*of\s*birth|\bdob\b|birth\s*date/, answer: (c) => fact(c.profile.dateOfBirth) },
   {
+    key: 'highestQualification',
     test: /highest\s*(level\s*of\s*)?(education|qualification|degree)|education\s*level|qualification/,
     answer: (c) => fact(c.profile.education[0]?.degree),
   },
   {
+    key: 'degree',
     test: /^(course|degree)$|\bcourse\s*name\b|\bdegree\s*(name|title)?$|name of (the )?(course|degree)/,
     not: /start|end|year|duration|date|percent|grade/,
     answer: (c) => fact(c.profile.education[0]?.degree),
   },
   {
+    key: 'fieldOfStudy',
     test: /branch|speciali[sz]ation|\bmajor\b|field\s*of\s*study|\bstream\b|discipline/,
     not: /year|date|percent|grade/,
     answer: (c) => fact(c.profile.education[0]?.field),
   },
   {
+    key: 'institution',
     test: /\b(university|college|institution|school)\b/,
     not: /year|gpa|grade|degree|percent/,
     answer: (c) => fact(c.profile.education[0]?.institution),
   },
   {
+    key: 'graduationYear',
     test: /graduat(ion|ed)\s*year|year\s*of\s*(passing|graduation)|passing\s*year|batch/,
     answer: (c) => fact(c.profile.education[0]?.endYear),
   },
-  { test: /\b(cgpa|gpa|percentage|grade)\b/, answer: (c) => fact(c.profile.education[0]?.grade) },
+  { key: 'grade', test: /\b(cgpa|gpa|percentage|grade)\b/, answer: (c) => fact(c.profile.education[0]?.grade) },
   {
     test: /how did you (hear|find|learn)|source of (application|hire)|where did you (hear|find)/,
     answer: (c) => guess(c.job.foundOn || 'LinkedIn'),
   },
-  { test: /language/, not: /programming|coding/, kinds: [FieldKind.TEXT, FieldKind.TEXTAREA], answer: (c) => fact(c.profile.languages.join(', ')) },
+  {
+    key: 'languages',
+    test: /language/,
+    not: /programming|coding/,
+    kinds: [FieldKind.TEXT, FieldKind.TEXTAREA],
+    answer: (c) => fact(c.profile.languages.join(', ')),
+  },
 ];
 
 // Tick consent boxes; leave marketing and "follow company" boxes alone.
@@ -285,9 +326,29 @@ export function answerFromProfile(ctx: AnswerContext, field: FormField): RuleAns
     if (rule.not?.test(q)) continue;
     if (rule.kinds && !rule.kinds.includes(field.kind)) continue;
     const a = rule.answer(ctx, field);
-    if (a && a.value !== '') return a;
+    if (a && a.value !== '') return rule.key ? { ...a, key: rule.key } : a;
     // The matching rule has no data: let memory or the user answer instead of a weaker rule.
     return null;
   }
   return null;
 }
+
+/** Which of your details a question asks for, by the rules alone ("Mobile number" -> phone); null if none. */
+export function ruleKeyFor(label: string): string | null {
+  const q = label.toLowerCase().trim();
+  for (const rule of RULES) {
+    if (!rule.test.test(q) || rule.not?.test(q)) continue;
+    return rule.key ?? null;
+  }
+  return null;
+}
+
+/** The answer for this field as the named detail ("phone"), with its units and format - a learned field uses it. */
+export function answerForKey(ctx: AnswerContext, field: FormField, key: string): RuleAnswer | null {
+  const rule = RULES.find((r) => r.key === key);
+  const a = rule?.answer(ctx, field) ?? null;
+  return a && a.value !== '' && a.confident ? { ...a, key } : null;
+}
+
+/** Every named detail the rules know. */
+export const RULE_KEYS: string[] = [...new Set(RULES.map((r) => r.key).filter((k): k is string => !!k))];

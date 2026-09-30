@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Apply - almost done</title></head>
+<body>
+<!-- An application handed over at a captcha (2026-09-30): everything is filled; the person solves the
+     captcha, and Sudarshan carries on and presses Submit. The "captcha" is a stand-in widget. -->
+<main id="app">
+  <h1>Review and submit</h1>
+  <form onsubmit="return false">
+    <label>Full name <input name="fullname" value="Priya Sharma" required></label>
+    <iframe title="captcha widget" src="about:blank#recaptcha" width="300" height="80"></iframe>
+    <textarea name="g-recaptcha-response" style="display:none"></textarea>
+    <button type="button" id="submit">Submit application</button>
+  </form>
+</main>
+<script>
+  window.__sent = false;
+  document.getElementById('submit').addEventListener('click', () => {
+    if (!document.querySelector('textarea[name="g-recaptcha-response"]').value) return;
+    window.__sent = true;
+    document.getElementById('app').innerHTML = '<h1>Thank you for applying!</h1>';
+  });
+  // What ticking the captcha does: a token appears.
+  window.solveCaptcha = () => (document.querySelector('textarea[name="g-recaptcha-response"]').value = '03AFcWeA7xQk2mP9vR4sT8uY1zB6nC3dE5fG0hJ2kL4mN6pQ8rS');
+</script>
+</body>
+</html>

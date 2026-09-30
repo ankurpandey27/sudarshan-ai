@@ -10,6 +10,7 @@ import { PAST_ANSWER_MIN_SIMILARITY, PAST_ANSWERS_SHOWN } from './constants/answ
 import { AnswerSource } from './enums/answer-source.enum';
 import { AnswerRow } from './interfaces/answer.interface';
 import { PastAnswer } from './interfaces/past-answer.interface';
+import { isSensitive } from './utils/sensitive.util';
 
 /**
  * Your saved answers closest in meaning to a new question, in any wording or language - found by the
@@ -40,10 +41,18 @@ export class PastAnswersService {
     return asked.map((q) =>
       rows
         .map((r) => ({ question: r.question, answer: r.answer, similarity: Math.round(cosine(q, this.vectors.get(r.key)!) * 100) / 100 }))
-        .filter((p) => p.similarity >= PAST_ANSWER_MIN_SIMILARITY && !exclude(p))
+        // Nothing that identifies you (PAN, phone, date of birth...) is ever shown to the AI.
+        .filter((p) => p.similarity >= PAST_ANSWER_MIN_SIMILARITY && !isSensitive(p.question, p.answer) && !exclude(p))
         .sort((a, b) => b.similarity - a.similarity)
         .slice(0, PAST_ANSWERS_SHOWN),
     );
+  }
+
+  /** Your saved answers with their meaning-vectors (for learning which questions are the same); null without the model. */
+  async trusted(): Promise<{ question: string; answer: string; vector: Float32Array }[] | null> {
+    const rows = this.storage.all<AnswerRow>('SELECT * FROM answers WHERE source <> ?', [AnswerSource.LLM]);
+    if (!(await this.ensureVectors(rows))) return null;
+    return rows.map((r) => ({ question: r.question, answer: r.answer, vector: this.vectors.get(r.key)! }));
   }
 
   /** Every saved question has its vector: read from the database, or computed once and stored. */

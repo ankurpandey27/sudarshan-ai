@@ -15,11 +15,12 @@ import {
   APPLIED_MAX_SCROLLS,
   APPLIED_SCROLL_WAIT_MS,
   APPLIED_STABLE_SCROLLS,
+  SIGN_IN_SETTLE_MS,
   CONFIRMED_ON_INDEED,
   INDEED_APPLIED_URL,
 } from './constants/applied-sync.constants';
 import { AppliedSyncResult } from './interfaces/applied-sync-result.interface';
-import { indeedAppliedKeysInPage, indeedSignInShownInPage } from './scripts/indeed-applied.script';
+import { indeedAppliedKeysInPage, indeedPageStateInPage } from './scripts/indeed-applied.script';
 
 /**
  * Brings in applications the site knows about but Sudarshan missed - ones you finished by hand in a
@@ -49,18 +50,7 @@ export class AppliedSyncService {
   /** Every job key on My jobs -> Applied, scrolling until the list stops growing. */
   private async readAppliedKeys(page: Page): Promise<string[]> {
     await page.goto(INDEED_APPLIED_URL, { waitUntil: 'domcontentloaded', timeout: 60_000 });
-    if (await page.evaluate(indeedSignInShownInPage)) {
-      throw new BadRequestException('Indeed asked you to sign in again - log in to Indeed (Settings, Site logins), then check again.');
-    }
-    // The list is drawn after the page loads; an empty list is fine too.
-    await page
-      .waitForFunction(
-        () => /\bapplied\b[^\n]{0,60}\bon indeed\b/i.test(document.body?.innerText ?? '') || /no (applications|jobs)/i.test(document.body?.innerText ?? ''),
-        {
-          timeout: APPLIED_LIST_WAIT_MS,
-        },
-      )
-      .catch(() => undefined);
+    await this.waitForList(page);
     const keys = new Set<string>();
     let unchanged = 0;
     for (let i = 0; i < APPLIED_MAX_SCROLLS && unchanged < APPLIED_STABLE_SCROLLS; i++) {
@@ -71,6 +61,30 @@ export class AppliedSyncService {
       await sleep(APPLIED_SCROLL_WAIT_MS);
     }
     return [...keys];
+  }
+
+  /**
+   * Waits for My jobs to settle: its list (or empty list) means go on. Indeed's sign-in form staying on
+   * screen means you are really signed out - not the moment the page passes through Indeed's sign-in
+   * address to check your session, which it does when you are logged in too.
+   */
+  private async waitForList(page: Page): Promise<void> {
+    const deadline = Date.now() + APPLIED_LIST_WAIT_MS;
+    let signInSince: number | null = null;
+    while (Date.now() < deadline) {
+      const state = await page.evaluate(indeedPageStateInPage).catch(() => 'loading' as const);
+      if (state === 'list') return;
+      if (state === 'signin') {
+        signInSince ??= Date.now();
+        if (Date.now() - signInSince >= SIGN_IN_SETTLE_MS) {
+          throw new BadRequestException('Indeed is showing its sign-in page - log in to Indeed (Settings, Site logins), then check again.');
+        }
+      } else {
+        signInSince = null;
+      }
+      await sleep(1000);
+    }
+    throw new BadRequestException("Could not read Indeed's list of your applications (the page did not finish loading) - try again in a moment.");
   }
 
   /** Marks the listed jobs Applied - at when Sudarshan last handed them to you, or when they were found. */

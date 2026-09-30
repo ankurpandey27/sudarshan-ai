@@ -94,7 +94,7 @@ describe('personal details', () => {
     const { answers, answer } = make();
     answers.remember('My Date of Birth', '15/03/1995', AnswerSource.USER);
     const now = new Date();
-    const expected = now.getFullYear() - 1998 - (now < new Date(now.getFullYear(), 7, 8) ? 1 : 0);
+    const expected = now.getFullYear() - 1995 - (now < new Date(now.getFullYear(), 2, 15) ? 1 : 0);
     expect(await answer(text('How old are you?'))).toBe(String(expected));
     expect(await answer(text('Date of birth (DD/MM/YYYY)'))).toBe('15/03/1995');
   });

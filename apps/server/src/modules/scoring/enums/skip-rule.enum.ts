@@ -8,6 +8,7 @@ export enum SkipRule {
   NOT_REMOTE = 'not_remote',
   EXCLUDED_COMPANY = 'excluded_company',
   EXCLUDED_TITLE = 'excluded_title',
+  BELOW_LEVEL = 'below_level',
   DUPLICATE = 'duplicate',
   LOW_SCORE = 'low_score',
 }

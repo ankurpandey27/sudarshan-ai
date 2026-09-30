@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Optional, Logger } from '@nestjs/common';
 import { FOUND_ON } from './constants/apply.constants';
 import { capAttempts } from './utils/attempt-cap.util';
 import { experienceFrom } from './utils/experience.util';
@@ -34,11 +34,22 @@ import { PrepareStatus } from './enums/prepare-status.enum';
 import { ApplyAdapter, ApplyResult, PrepareResult } from './interfaces/apply-adapter.interface';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
 import { REFUSED_COOLDOWN_MS } from '../platform-health/constants/platform-health.constants';
+import { AttemptShot } from '../jobs/interfaces/attempt.interface';
+import { LearnersTrainerService } from '../learners/learners-trainer.service';
+import { CONTINUE_IDLE_MS, MAX_SHOTS } from './constants/apply.constants';
+import { OpenTab } from './interfaces/open-tab.interface';
+import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
+import { AppSettings } from '../settings/interfaces/app-settings.interface';
 
 @Injectable()
 export class ApplyService {
   private readonly logger = new Logger(ApplyService.name);
   private readonly adapters: ApplyAdapter[];
+
+  // Step pictures of each running attempt, saved with it when it finishes.
+  private readonly shots = new Map<number, AttemptShot[]>();
+  // Tabs handed over to you, by job: carried on from once you have unblocked them.
+  private readonly tabs = new Map<number, OpenTab>();
 
   constructor(
     linkedin: LinkedInApplyAdapter,
@@ -57,6 +68,7 @@ export class ApplyService {
     private readonly events: EventsService,
     private readonly learning: LearningService,
     private readonly health: PlatformHealthService,
+    @Optional() private readonly trainer?: LearnersTrainerService,
   ) {
     this.adapters = [linkedin, naukri, indeed, web];
   }
@@ -74,6 +86,7 @@ export class ApplyService {
       this.events.emit({ type: AgentEventType.APPLY_STEP, jobId: job.id, source: job.platform, message: m });
     };
     const attemptId = this.jobs.startAttempt(job.id);
+    this.shots.set(attemptId, []);
     this.jobs.setStatus(job.id, JobStatus.APPLYING, null);
     this.pending.clearForJob(job.id);
     step(`Applying: ${job.title} @ ${job.company}`);
@@ -82,6 +95,8 @@ export class ApplyService {
     let keepOpen = false;
     let learnFrom: WatchTarget | null = null;
     let outcome: FormRunOutcome | null = null;
+    // What was prepared, so Sudarshan can carry on in the tab after you unblock it.
+    let preparedFor: { prep: PrepareResult; adapter: ApplyAdapter } | null = null;
     // `ended` says how the attempt ended (e.g. "run:stuck"); platform health reads it.
     let final: { status: JobStatus; detail: string; ended?: string };
     // Buttons pressed on the way; learned only once the site confirms the application.
@@ -114,19 +129,9 @@ export class ApplyService {
       }
 
       final = { ...this.mapPrepare(prep, job, onCompanySite), ended: `prep:${prep.status}` };
+      preparedFor = { prep, adapter: active };
       if (prep.status === PrepareStatus.READY) {
-        const ctx = this.context(job);
-        const opts = {
-          scopeSelector: prep.scopeSelector,
-          successPattern: prep.successPattern,
-          successUrl: prep.successUrl,
-          ctx,
-          domain: new URL(page.url()).hostname.replace(/^www\./, ''),
-          allowLlm: true,
-          // Careful mode (the site seemed to change): stop before Submit until one application works again.
-          pauseBeforeSubmit: s.agent.pauseBeforeSubmit || this.health.state(job.platform).status === 'careful',
-          onStep: step,
-        };
+        const opts = this.formOptions(job, prep, page, attemptId, step, s);
         const run: FormRunOutcome = active.runForm ? await active.runForm(page, prep, opts) : await this.runner.run(page, opts);
         outcome = run;
         moves.push(...(run.moves ?? []));
@@ -187,7 +192,105 @@ export class ApplyService {
     final = capAttempts(final, job.attempts);
     const result = await this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
     if (page && learnFrom) await this.learning.watch(page, learnFrom);
+    if (page && keepOpen && preparedFor) this.remember(job.id, page, preparedFor.prep, preparedFor.adapter, moves, /captcha/i.test(final.detail));
     return result;
+  }
+
+  /** Jobs whose tab is still open for you - Sudarshan can carry on in them. */
+  openTabs(): number[] {
+    for (const [id, t] of this.tabs) if (t.page.isClosed()) this.tabs.delete(id);
+    return [...this.tabs.keys()];
+  }
+
+  /**
+   * Handed over for a captcha that you have since solved, and you have not touched the tab for a
+   * moment (so it never races you pressing Submit yourself): Sudarshan can carry on.
+   */
+  async readyToContinue(): Promise<number[]> {
+    if (this.settings.get().agent.pauseBeforeSubmit) return [];
+    const ready: number[] = [];
+    for (const [id, t] of this.tabs) {
+      if (!t.captcha || t.page.isClosed() || this.learning.finished(t.page)) continue;
+      const idle = Date.now() - Math.max(t.since, this.learning.lastActivity(t.page) ?? 0);
+      if (idle < CONTINUE_IDLE_MS) continue;
+      const snap = await this.runner.snapshot(t.page, t.prep.scopeSelector).catch(() => null);
+      if (snap && !snap.captcha) ready.push(id);
+    }
+    return ready;
+  }
+
+  /** Carries on in the tab you unblocked (a captcha solved, a login done), from where it is now. */
+  continue(job: Job): Promise<ApplyResult> {
+    return this.browser.busyWith(() => this.continueIn(job));
+  }
+
+  private async continueIn(job: Job): Promise<ApplyResult> {
+    const tab = this.tabs.get(job.id);
+    if (!tab || tab.page.isClosed()) {
+      this.tabs.delete(job.id);
+      return { status: job.status, detail: 'Its tab is closed - approve the job again to start over' };
+    }
+    if (job.status === JobStatus.APPLIED || this.learning.finished(tab.page)) {
+      this.tabs.delete(job.id);
+      return { status: JobStatus.APPLIED, detail: 'Already applied' };
+    }
+    const s = this.settings.get();
+    const trace: string[] = [];
+    const step = (m: string) => {
+      trace.push(`${new Date().toISOString().slice(11, 19)} ${m}`);
+      this.events.emit({ type: AgentEventType.APPLY_STEP, jobId: job.id, source: job.platform, message: m });
+    };
+    const attemptId = this.jobs.startAttempt(job.id);
+    this.shots.set(attemptId, []);
+    this.jobs.setStatus(job.id, JobStatus.APPLYING, null);
+    step(`Continuing: ${job.title} @ ${job.company} - from where it was handed to you`);
+    const page = tab.page;
+    // Sudarshan's own clicks now are not yours to learn from.
+    this.learning.pause(page, true);
+    const moves = [...tab.moves];
+    let run: FormRunOutcome | null = null;
+    let final: { status: JobStatus; detail: string; ended?: string };
+    try {
+      const opts = this.formOptions(job, tab.prep, page, attemptId, step, s);
+      run = tab.adapter.runForm ? await tab.adapter.runForm(page, tab.prep, opts) : await this.runner.run(page, opts);
+      moves.push(...(run.moves ?? []));
+      final = { ...this.mapOutcome(job, run), ended: `run:${run.status}` };
+      if (run.status === 'applied') await tab.adapter.afterSuccess?.(page);
+    } catch (err) {
+      final = { status: JobStatus.MANUAL, detail: `Could not continue: ${(err as Error).message.slice(0, 160)} - finish it in the open tab`, ended: 'error' };
+    }
+    this.learnFromEnding(final, moves, run);
+    const keepOpen = !!run && ['ready_to_submit', 'captcha', 'stuck', 'blocked'].includes(run.status);
+    const result = await this.finish(job, attemptId, final, run, trace, page, keepOpen);
+    if (keepOpen) {
+      this.learning.pause(page, false);
+      this.remember(job.id, page, tab.prep, tab.adapter, moves, run?.status === 'captcha');
+    } else {
+      this.tabs.delete(job.id);
+    }
+    return result;
+  }
+
+  private remember(jobId: number, page: Page, prep: PrepareResult, adapter: ApplyAdapter, moves: LearnedMove[], captcha: boolean): void {
+    this.tabs.set(jobId, { page, prep, adapter, moves: [...moves], captcha, since: Date.now() });
+    page.once('close', () => this.tabs.delete(jobId));
+  }
+
+  /** How a form is filled for this job: the same rules whether it starts now or carries on after you. */
+  private formOptions(job: Job, prep: PrepareResult, page: Page, attemptId: number, step: (m: string) => void, s: AppSettings): RunFormOptions {
+    return {
+      scopeSelector: prep.scopeSelector,
+      successPattern: prep.successPattern,
+      successUrl: prep.successUrl,
+      ctx: this.context(job),
+      domain: new URL(page.url()).hostname.replace(/^www\./, ''),
+      allowLlm: true,
+      // Careful mode (the site seemed to change): stop before Submit until one application works again.
+      pauseBeforeSubmit: s.agent.pauseBeforeSubmit || this.health.state(job.platform).status === 'careful',
+      onStep: step,
+      onShot: (p: Page, label: string) => this.shoot(attemptId, job.id, p, label),
+      rescue: s.agent.rescue !== false,
+    };
   }
 
   /**
@@ -195,10 +298,20 @@ export class ApplyService {
    * button that got it there; one that got stuck blames only the button that led into the dead end
    * (e.g. "Save and close", which leaves the form). Hand-overs (captcha, questions, login) teach nothing yet.
    */
+  /** A picture of the page for this attempt's replay (at most a couple of dozen per attempt). */
+  private async shoot(attemptId: number, jobId: number, page: Page, label: string): Promise<void> {
+    const list = this.shots.get(attemptId);
+    if (!list || list.length >= MAX_SHOTS) return;
+    const file = await this.browser.stepShot(page, `job-${jobId}-${attemptId}`);
+    if (file) list.push({ label, file, at: new Date().toISOString() });
+  }
+
   private learnFromEnding(final: { ended?: string }, moves: LearnedMove[], run: FormRunOutcome | null): void {
     if (final.ended === 'run:applied' || final.ended === `prep:${PrepareStatus.APPLIED}`) {
       this.playbook.confirm(moves);
       this.recipes.confirm(moves);
+      // Steps the AI worked out (a rescue) just got an application through: the learners pick them up soon, not in hours.
+      if (moves.some((m) => m.by === 'ai')) this.trainer?.trainSoon();
     } else if (final.ended === 'run:stuck') {
       this.playbook.blame(run?.stuckAt ?? run?.moves?.at(-1));
     }
@@ -213,6 +326,8 @@ export class ApplyService {
     page: Page | null,
     keepOpen: boolean,
   ): Promise<ApplyResult> {
+    this.jobs.saveShots(attemptId, this.shots.get(attemptId) ?? []);
+    this.shots.delete(attemptId);
     const screenshot = page && final.status !== JobStatus.APPLIED ? await this.browser.screenshot(page, `job-${job.id}`) : null;
     this.jobs.finishAttempt(
       attemptId,

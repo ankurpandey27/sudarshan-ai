@@ -35,6 +35,7 @@ import { CONFIRMED_WORLDWIDE } from '../form-engine/constants/form-runner.consta
 export class LearningService {
   private readonly logger = new Logger(LearningService.name);
   private readonly watched = new WeakSet<Page>();
+  private readonly sessions = new WeakMap<Page, LearningSession>();
 
   constructor(
     private readonly runner: FormRunnerService,
@@ -49,13 +50,15 @@ export class LearningService {
     if (this.watched.has(page) || page.isClosed()) return;
     this.watched.add(page);
     const session: LearningSession = { known: new Map(), pending: null, moves: [], answers: 0, steps: 0, done: false };
+    this.sessions.set(page, session);
     try {
       // What is already filled (by the site or the agent) is not the user's answer.
       const start = await this.snapshot(page, target);
       for (const f of start.fields) if (f.value) session.known.set(f.label, f.value);
 
       await page.exposeFunction('__sudarshanLearn', (e: LearnEvent) => {
-        if (session.done || !e.snap) return;
+        if (session.done || session.paused || !e.snap) return;
+        session.lastActivity = Date.now();
         this.learnStep(target, session, e.snap);
         this.learnAnswers(e.snap, session, new Set(e.touched ?? []));
         if (e.type === 'click') this.onClick(page, target, session, e.text, e.snap);
@@ -78,6 +81,23 @@ export class LearningService {
     } catch (err) {
       this.logger.debug(`Could not watch ${target.domain}: ${(err as Error).message}`);
     }
+  }
+
+  /** While Sudarshan continues in the tab itself, what happens there is not learned as yours. */
+  pause(page: Page, paused: boolean): void {
+    const s = this.sessions.get(page);
+    if (s) s.paused = paused;
+  }
+
+  /** When you last typed or clicked in this tab (0 if never); undefined when it is not watched. */
+  lastActivity(page: Page): number | undefined {
+    const s = this.sessions.get(page);
+    return s ? (s.lastActivity ?? 0) : undefined;
+  }
+
+  /** The application in this tab was confirmed (by you or by Sudarshan). */
+  finished(page: Page): boolean {
+    return this.sessions.get(page)?.done === true;
   }
 
   private async snapshot(page: Page, target: WatchTarget): Promise<FormSnapshot> {

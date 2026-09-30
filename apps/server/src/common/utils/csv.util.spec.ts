@@ -30,6 +30,6 @@ describe('csv', () => {
           ['हिंदी', 'हाँ'],
         ],
       ),
-    ).toBe('﻿Q,A\r\nNotice period,30 days\r\nहिंदी,हाँ\r\n');
+    ).toBe('\uFEFFQ,A\r\nNotice period,30 days\r\nहिंदी,हाँ\r\n');
   });
 });

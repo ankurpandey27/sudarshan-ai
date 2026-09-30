@@ -23,6 +23,7 @@ import { SiteId } from '../browser/interfaces/site-session.interface';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
 import { clockTime } from '../../common/utils/date.util';
 import { EmbeddingsService } from '../../common/embeddings/embeddings.service';
+import { RescueService } from '../form-engine/rescue.service';
 
 const TICK_MS = 10_000;
 
@@ -54,6 +55,7 @@ export class AgentService implements OnApplicationShutdown {
     private readonly llm: LlmService,
     private readonly events: EventsService,
     private readonly embeddings: EmbeddingsService,
+    private readonly rescue: RescueService,
   ) {
     // Subscribe here, before any bootstrap hook can emit.
     this.events.stream().subscribe((e) => {
@@ -122,6 +124,13 @@ export class AgentService implements OnApplicationShutdown {
     return this.runApply(job, () => this.browser.ensure());
   }
 
+  /** Carry on in a tab handed over to you, now that you have unblocked it (the Continue button). */
+  async continueNow(jobId: number): Promise<ApplyResult> {
+    if (this.applying) return { status: 'busy', detail: 'Another application is in progress - try again in a moment' };
+    const job = this.jobs.get(jobId);
+    return this.runApply(job, undefined, () => this.apply.continue(job));
+  }
+
   status(): AgentStatus {
     return {
       running: this.running,
@@ -141,6 +150,7 @@ export class AgentService implements OnApplicationShutdown {
       lastScoring: this.scoring.justFinished(),
       platformHealth: this.health.all().filter((h) => h.status !== 'ok'),
       meaningModel: this.embeddings.status(),
+      rescue: this.rescue.status(),
     };
   }
 
@@ -163,6 +173,16 @@ export class AgentService implements OnApplicationShutdown {
         void this.runDiscovery();
       }
       if (!this.discovery.isRunning() && this.jobs.unscored(1).length) await this.scoring.scoreNew();
+      // You solved a captcha in a tab handed over to you and left it: carry on there first - it is nearly done.
+      if (!this.applying) {
+        const [ready] = await this.apply.readyToContinue().catch(() => []);
+        if (ready !== undefined && !this.applying) {
+          const job = this.jobs.get(ready);
+          this.log('info', `${job.title} @ ${job.company}: captcha solved - carrying on where it stopped`);
+          await this.runApply(job, undefined, () => this.apply.continue(job));
+          return;
+        }
+      }
       if (this.applying || Date.now() < this.nextApplyAt) {
         if (!this.applying) this.setPhase(AgentPhase.WAITING);
         return;
@@ -202,13 +222,13 @@ export class AgentService implements OnApplicationShutdown {
   }
 
   /** Claims the single apply slot synchronously (no await before it is set), then applies. */
-  private async runApply(job: ReturnType<JobsService['get']>, before?: () => Promise<unknown>): Promise<ApplyResult> {
+  private async runApply(job: ReturnType<JobsService['get']>, before?: () => Promise<unknown>, work?: () => Promise<ApplyResult>): Promise<ApplyResult> {
     this.currentJob = { id: job.id, title: job.title, company: job.company };
     this.idleNote = null;
     this.setPhase(AgentPhase.APPLYING);
     this.applying = (async () => {
       await before?.();
-      return this.apply.apply(job);
+      return work ? work() : this.apply.apply(job);
     })();
     try {
       return await this.applying;
@@ -246,7 +266,10 @@ export class AgentService implements OnApplicationShutdown {
       }
       const health = this.health.state(platform);
       if (health.status === 'broken') {
-        blocked.push({ source: platform, reason: 'paused - the last applications got stuck, the site may have changed its pages' });
+        blocked.push({
+          source: platform,
+          reason: `paused - the last applications got stuck, the site may have changed its pages; tries one again at ${clockTime(health.until)}`,
+        });
         return;
       }
       if (health.status === 'cooling') {

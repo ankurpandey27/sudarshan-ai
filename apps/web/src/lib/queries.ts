@@ -17,6 +17,7 @@ import type {
   PendingQuestion,
   ProfileState,
   Settings,
+  LearnerStatus,
 } from './types';
 
 export const useSettings = () => useQuery({ queryKey: ['settings'], queryFn: () => api.get<Settings>('/settings') });
@@ -65,3 +66,4 @@ export const useAnalytics = (days: number, platform: string) =>
   });
 
 export const useTaste = () => useQuery({ queryKey: ['taste'], queryFn: () => api.get<TasteState>('/taste'), refetchInterval: 60000 });
+export const useLearners = () => useQuery({ queryKey: ['learners'], queryFn: () => api.get<LearnerStatus[]>('/learners'), refetchInterval: 60000 });

@@ -6,6 +6,7 @@ import { LastScoringRun } from '../../scoring/interfaces/llm-score.interface';
 import { AgentPhase } from '../enums/agent-phase.enum';
 import { PlatformHealth } from '../../platform-health/interfaces/platform-health.interface';
 import { EmbeddingStatus } from '../../../common/embeddings/interfaces/embedding-status.interface';
+import { RescueStatus } from '../../form-engine/interfaces/rescue-status.interface';
 
 export interface AgentStatus {
   running: boolean;
@@ -28,4 +29,6 @@ export interface AgentStatus {
   platformHealth: PlatformHealth[];
   /** The local meaning model that finds your answers to similar questions. */
   meaningModel: EmbeddingStatus;
+  /** How the rescue agent does with the AI model in use. */
+  rescue: RescueStatus;
 }

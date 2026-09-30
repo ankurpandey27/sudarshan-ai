@@ -16,6 +16,7 @@ import { InfoTip } from '../components/info-tip';
 import { useLocation } from 'react-router';
 import { Tabs, useTab, type TabDef } from '../components/tabs';
 import { TagInput } from '../components/tag-input';
+import { LearnersCard } from '../components/learners-card';
 
 type SettingsTab = 'ai' | 'search' | 'platforms' | 'agent' | 'accounts' | 'data';
 const SETTINGS_TABS: readonly TabDef<SettingsTab>[] = [
@@ -161,6 +162,19 @@ export function SettingsPage() {
                   <Input type="number" min={5} max={100} value={draft.search.maxPerSearch} onChange={(e) => search('maxPerSearch', num(e.target.value))} />
                 </Field>
               </div>
+              <Field
+                label="Your experience level (years)"
+                hint="Internships, trainee, fresher and junior roles, and jobs asking at most fewer years than this (like 0-2 years), are skipped. Blank = automatic: your experience minus a year, at most 3. 0 = skip none."
+              >
+                <Input
+                  type="number"
+                  min={0}
+                  max={30}
+                  placeholder="Automatic"
+                  value={draft.search.minExperience ?? ''}
+                  onChange={(e) => search('minExperience', e.target.value === '' ? null : num(e.target.value))}
+                />
+              </Field>
               <Field label="Never apply to these companies">
                 <TagInput
                   label="Never apply to these companies"
@@ -273,6 +287,12 @@ export function SettingsPage() {
                 hint={pastAnswersHint(agentStatus?.meaningModel)}
               />
               <Toggle
+                checked={draft.agent.rescue}
+                onChange={(v) => agent('rescue', v)}
+                label="Rescue stuck applications with AI"
+                hint={rescueHint(agentStatus?.rescue)}
+              />
+              <Toggle
                 checked={draft.agent.llmScoring}
                 onChange={(v) => agent('llmScoring', v)}
                 label="AI job scoring"
@@ -299,6 +319,7 @@ export function SettingsPage() {
             </div>
           </Card>
         )}
+        {tab === 'agent' && <LearnersCard />}
 
         {tab === 'accounts' && (
           <Card>
@@ -349,4 +370,13 @@ function pastAnswersHint(m: AgentStatus['meaningModel'] | undefined): string {
   if (m.state === 'loading') return `${what}. Starting - the first time it downloads about 120 MB, once.`;
   if (m.state === 'unavailable') return `Not available on this computer (${m.reason ?? 'could not start'}) - everything else works as before.`;
   return `${what}. Ready.`;
+}
+
+/** How the rescue agent does with the AI model in use, in one line under its switch. */
+function rescueHint(r: AgentStatus['rescue'] | undefined): string {
+  const what =
+    'When the usual way gets stuck on a site, the AI takes several steps to move the application on (never solving captchas, never typing your details). What gets an application through is learned for that site.';
+  if (!r?.model || r.tries === 0) return what;
+  if (r.paused) return `Paused: failed ${r.failedInARow} times in a row with ${r.model} - those jobs come to you. See Needs attention.`;
+  return `${what} So far with ${r.model}: helped ${r.helped} of ${r.tries}.`;
 }

@@ -1,5 +1,6 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
+import type { Page } from 'puppeteer-core';
 
 import { AnswerContext } from './answer-context.interface';
 import { LearnedMove } from './learned-move.interface';
@@ -19,6 +20,10 @@ export interface RunFormOptions {
   allowLlm: boolean;
   pauseBeforeSubmit: boolean;
   onStep: (message: string) => void;
+  /** A picture of the page at each step, for the step-by-step replay. */
+  onShot?: (page: Page, label: string) => Promise<void>;
+  /** Let the rescue agent take over when the usual way gets stuck (default: yes, when the AI may be used). */
+  rescue?: boolean;
 }
 
 export interface FormRunOutcome {

@@ -67,7 +67,7 @@ export class LlmService {
   async json<T>(prompt: string, opts: LlmCallOptions): Promise<T> {
     if (this.chain.length === 0) throw new LlmUnavailableError();
     const system = [opts.system, 'Reply with valid JSON only. No markdown, no commentary.'].filter(Boolean).join('\n');
-    const first = await this.call(prompt, { ...opts, system }, true);
+    const first = await this.withImages(prompt, { ...opts, system });
     try {
       return extractJson<T>(first);
     } catch (err) {
@@ -137,6 +137,50 @@ export class LlmService {
     return { calls: Number(r.calls), failedCalls: Number(r.failed ?? 0), promptTokens: p, completionTokens: c, tokens: p + c };
   }
 
+  /** The model in use (the first of the chain), for per-model notes such as what it accepts. */
+  current(): { provider: string; model: string } | null {
+    const t = this.chain[0];
+    return t ? { provider: t.kind, model: t.model } : null;
+  }
+
+  /** Whether the current model accepts images: true, false, or null when not tried yet. */
+  acceptsImages(): boolean | null {
+    const c = this.current();
+    if (!c) return false;
+    const row = this.storage.get<{ images: number | null }>('SELECT images FROM llm_capabilities WHERE provider = ? AND model = ?', [c.provider, c.model]);
+    return row?.images === null || row?.images === undefined ? null : row.images === 1;
+  }
+
+  /**
+   * A call with screenshots, when there are any and the model has not turned them down before. A model
+   * that rejects them is found out here - the same call works without them - and remembered, so no
+   * list of models is ever needed.
+   */
+  private async withImages(prompt: string, opts: LlmCallOptions): Promise<string> {
+    if (!opts.images?.length || this.acceptsImages() === false) return this.call(prompt, { ...opts, images: undefined }, true);
+    try {
+      const text = await this.call(prompt, opts, true);
+      this.noteImages(true);
+      return text;
+    } catch (err) {
+      if (err instanceof LlmBudgetExceededError || this.lastFailure?.kind === 'quota' || this.lastFailure?.kind === 'auth') throw err;
+      const text = await this.call(prompt, { ...opts, images: undefined }, true);
+      // Without the image it worked: this model does not take images.
+      this.noteImages(false);
+      this.logger.log(`${this.current()?.model} does not accept images - it gets page text only from now on`);
+      return text;
+    }
+  }
+
+  private noteImages(ok: boolean): void {
+    const c = this.current();
+    if (!c) return;
+    this.storage.run(
+      'INSERT INTO llm_capabilities (provider, model, images, at) VALUES (?, ?, ?, ?) ON CONFLICT(provider, model) DO UPDATE SET images = excluded.images, at = excluded.at',
+      [c.provider, c.model, ok ? 1 : 0, new Date().toISOString()],
+    );
+  }
+
   private async call(prompt: string, opts: LlmCallOptions, json: boolean): Promise<string> {
     if (this.chain.length === 0) throw new LlmUnavailableError();
     const errors: string[] = [];
@@ -160,7 +204,7 @@ export class LlmService {
       }
       const started = Date.now();
       try {
-        const res = await transport.complete({ system: opts.system, prompt, maxTokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS, json });
+        const res = await transport.complete({ system: opts.system, prompt, maxTokens: opts.maxTokens ?? DEFAULT_MAX_TOKENS, json, images: opts.images });
         this.record(transport, opts.purpose, res.promptTokens, res.completionTokens, Date.now() - started, true);
         this.lastFailure = null;
         return res.text;

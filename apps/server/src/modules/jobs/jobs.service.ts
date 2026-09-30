@@ -15,7 +15,7 @@ import { MERGE_KEEP_ORDER, MERGEABLE, SAME_ROLE_WINDOW_DAYS } from './constants/
 import { roleKey } from './utils/role-key.util';
 import { JobList } from './interfaces/job-list.interface';
 import { JobStatus } from './enums/job-status.enum';
-import { Attempt, AttemptRow, AttemptStats } from './interfaces/attempt.interface';
+import { Attempt, AttemptShot, AttemptRow, AttemptStats } from './interfaces/attempt.interface';
 import { DiscoveredJob } from './interfaces/discovered-job.interface';
 import { Job, JobRow, ScoreDetail } from './interfaces/job.interface';
 import { JobStats } from './interfaces/job-stats.interface';
@@ -276,7 +276,8 @@ export class JobsService implements OnApplicationBootstrap {
     if (platforms.length === 0) return null;
     const row = this.storage.get<JobRow>(
       `SELECT * FROM jobs WHERE status = ? AND ${PLATFORM_SQL} IN (${platforms.map(() => '?').join(',')})
-       ORDER BY (origin = 'link') DESC, COALESCE(score, 0) DESC, discovered_at LIMIT 1`,
+       ORDER BY (origin = 'link') DESC, CAST(COALESCE(score, 0) / 10 AS INTEGER) DESC, COALESCE(success_chance, 0.5) DESC,
+         COALESCE(score, 0) DESC, discovered_at LIMIT 1`,
       [JobStatus.APPROVED, ...platforms],
     );
     return row ? toJob(row) : null;
@@ -466,6 +467,11 @@ export class JobsService implements OnApplicationBootstrap {
         attemptId,
       ],
     );
+  }
+
+  /** The step pictures of an attempt, for its replay. */
+  saveShots(attemptId: number, shots: AttemptShot[]): void {
+    if (shots.length) this.storage.run('UPDATE attempts SET shots = ? WHERE id = ?', [JSON.stringify(shots), attemptId]);
   }
 
   attempts(jobId: number): Attempt[] {

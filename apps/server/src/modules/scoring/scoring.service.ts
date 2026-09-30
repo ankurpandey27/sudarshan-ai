@@ -36,6 +36,7 @@ import { ScoringEngine } from './scoring-engine.service';
 import { SCORE_SYSTEM_PROMPT, buildBatchScorePrompt } from './utils/score-prompt.util';
 import { TasteService } from '../taste/taste.service';
 import { HOLD_BACK_BELOW } from '../taste/constants/taste.constants';
+import { belowLevel, levelFor } from './utils/seniority.util';
 
 @Injectable()
 export class ScoringService {
@@ -245,6 +246,12 @@ export class ScoringService {
     const title = job.title.toLowerCase();
     const word = prefs.excludeTitleWords.find((w) => containsTerm(title, w));
     if (word) return { rule: SkipRule.EXCLUDED_TITLE, reason: `Title contains "${word}", which you chose to skip` };
+    // Internships, fresher and junior roles, "0-2 years": not for someone at your level.
+    const junior = belowLevel(
+      { title: job.title, url: job.applyUrl || job.url, description: job.description ?? '' },
+      levelFor(prefs.minExperience, snap.yearsExperience),
+    );
+    if (junior) return { rule: SkipRule.BELOW_LEVEL, reason: junior };
     if (prefs.remoteOnly && !job.isRemote) return { rule: SkipRule.NOT_REMOTE, reason: 'Not remote (you chose remote only)' };
     if (this.jobs.isAlreadyApplied(job.company, job.title)) return { rule: SkipRule.DUPLICATE, reason: 'You already applied to this role' };
     const verdict = this.filter.filter(snap, toJobSnapshot(job));

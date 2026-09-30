@@ -26,7 +26,7 @@ describe('AnswersService.exportCsv', () => {
     answers.remember('Notice period, in days?', '30', AnswerSource.USER);
     const ai = answers.remember('Why this company?', 'I like "hard" problems', AnswerSource.LLM)!;
     answers.markUsed(ai.id);
-    const lines = answers.exportCsv().replace('﻿', '').trim().split('\r\n');
+    const lines = answers.exportCsv().replace('\uFEFF', '').trim().split('\r\n');
     expect(lines[0]).toBe('Question,Answer,Source,Field type,Times used,Added,Last changed');
     expect(lines[1]).toMatch(/^Why this company\?,"I like ""hard"" problems",From AI,,1,/);
     expect(lines[2]).toMatch(/^"Notice period, in days\?",30,Yours,,0,/);

@@ -5,7 +5,7 @@ import { Injectable } from '@nestjs/common';
 import { StorageService } from '../../common/storage/storage.service';
 import { PLATFORM_SQL } from '../jobs/constants/job-platform.constants';
 import { JobPlatform } from '../jobs/enums/job-platform.enum';
-import { BROKEN_ENDINGS, BROKEN_STREAK } from './constants/platform-health.constants';
+import { BROKEN_ENDINGS, BROKEN_RETRY_AFTER_MS, BROKEN_STREAK } from './constants/platform-health.constants';
 import { PlatformHealth } from './interfaces/platform-health.interface';
 
 /**
@@ -23,7 +23,8 @@ export class PlatformHealthService {
     const stamp = this.stamp();
     const hit = this.cache.get(platform);
     // A pause ends by the clock, not by a change in the data: recompute once it is over.
-    const pauseOver = hit?.value.status === 'cooling' && (hit.value.until ?? '') <= new Date().toISOString();
+    // A pause ends by the clock (a cool-down, or the retry of a paused site), not by a change in the data.
+    const pauseOver = (hit?.value.status === 'cooling' || hit?.value.status === 'broken') && !!hit.value.until && hit.value.until <= new Date().toISOString();
     if (hit && hit.stamp === stamp && !pauseOver) return hit.value;
     const value = this.compute(platform);
     this.cache.set(platform, { stamp, value });
@@ -56,15 +57,25 @@ export class PlatformHealthService {
       this.storage.get<{ at: string | null }>(`SELECT MAX(applied_at) at FROM jobs WHERE status = 'applied' AND ${PLATFORM_SQL} = ?`, [platform])?.at ?? '';
     // Only attempts after the latest success or "Try again" count.
     const since = resetAt > lastSuccess ? resetAt : lastSuccess;
-    const recent = this.storage.all<{ result: string | null; detail: string | null }>(
-      `SELECT a.result, a.detail FROM attempts a JOIN jobs j ON j.id = a.job_id
+    const recent = this.storage.all<{ result: string | null; detail: string | null; started_at: string }>(
+      `SELECT a.result, a.detail, a.started_at FROM attempts a JOIN jobs j ON j.id = a.job_id
        WHERE a.result IS NOT NULL AND a.started_at > ? AND ${PLATFORM_SQL} = ?
        ORDER BY a.id DESC LIMIT ?`,
       [since, platform, BROKEN_STREAK],
     );
-    const broken = recent.length === BROKEN_STREAK && recent.every((r) => BROKEN_ENDINGS.includes(r.result ?? ''));
+    const stuck = recent.length === BROKEN_STREAK && recent.every((r) => BROKEN_ENDINGS.includes(r.result ?? ''));
+    // A pause is never for ever: some time after the last stuck attempt, one new attempt is made. It either
+    // works (the site is back) or gets stuck too - and the platform pauses again, from then.
+    const retryAt = stuck ? new Date(Date.parse(recent[0].started_at) + BROKEN_RETRY_AFTER_MS).toISOString() : null;
+    const broken = stuck && retryAt! > new Date().toISOString();
     const status = broken ? 'broken' : resetAt && resetAt > lastSuccess ? 'careful' : 'ok';
-    return { platform, status, recent: broken ? recent.map((r) => r.detail ?? '').filter(Boolean) : [], ...(status === 'careful' ? { since: resetAt } : {}) };
+    return {
+      platform,
+      status,
+      recent: broken ? recent.map((r) => r.detail ?? '').filter(Boolean) : [],
+      ...(status === 'careful' ? { since: resetAt } : {}),
+      ...(broken ? { until: retryAt! } : {}),
+    };
   }
 
   all(): PlatformHealth[] {

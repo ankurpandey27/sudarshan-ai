@@ -55,4 +55,11 @@ export class SearchSettingsDto {
   @ArrayMaxSize(30)
   @IsString({ each: true })
   coreSkills?: string[];
+
+  // null: automatic.
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(30)
+  minExperience?: number | null;
 }

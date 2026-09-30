@@ -2,19 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Type } from 'class-transformer';
-import {
-  ArrayMaxSize,
-  IsArray,
-  IsBoolean,
-  IsNumber,
-  IsOptional,
-  IsString,
-  Max,
-  MaxLength,
-  Min,
-  ValidateIf,
-  ValidateNested,
-} from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsNumber, IsOptional, IsString, Max, MaxLength, Min, ValidateIf, ValidateNested } from 'class-validator';
 import { ProfileEducationDto } from './profile-education.dto';
 import { ProfileExperienceDto } from './profile-experience.dto';
 import { ProfileSkillDto } from './profile-skill.dto';
@@ -41,6 +29,7 @@ export class UpdateProfileDto {
   @IsOptional() @IsString() @MaxLength(5) currency?: string;
 
   @IsOptional() @IsBoolean() willingToRelocate?: boolean;
+  @IsOptional() @IsBoolean() cleanRecord?: boolean;
   @IsOptional() @IsBoolean() remotePreferred?: boolean;
   @IsOptional() @IsString() @MaxLength(200) workAuthorization?: string;
   @IsOptional() @IsBoolean() needsSponsorship?: boolean;

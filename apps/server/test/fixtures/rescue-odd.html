@@ -1,0 +1,41 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Careers - apply</title></head>
+<body>
+<!-- A careers site ordinary automation cannot finish (2026-09-30): its buttons say "Onwards" and
+     "Finalise", words Sudarshan does not know, next to a "Withdraw application" trap. -->
+<main id="app">
+  <h1>Your application</h1>
+  <form onsubmit="return false">
+    <label><input type="checkbox" id="terms" required> I accept the privacy terms</label>
+    <label>How did you hear about us?
+      <select id="source">
+        <option value="">Select...</option>
+        <option>Job board</option>
+        <option>A friend</option>
+      </select>
+    </label>
+    <p id="err" role="alert"></p>
+    <button type="button" id="withdraw">Withdraw application</button>
+    <button type="button" id="onwards">Onwards</button>
+  </form>
+</main>
+<script>
+  window.__withdrawn = false;
+  window.__sent = null;
+  document.getElementById('withdraw').addEventListener('click', () => (window.__withdrawn = true));
+  document.getElementById('onwards').addEventListener('click', () => {
+    if (!document.getElementById('terms').checked) {
+      document.getElementById('err').textContent = 'Please accept the privacy terms.';
+      return;
+    }
+    const source = document.getElementById('source').value;
+    document.getElementById('app').innerHTML = '<h1>Almost there</h1><p>Check everything and send it.</p><button type="button" id="finalise">Finalise</button>';
+    document.getElementById('finalise').addEventListener('click', () => {
+      window.__sent = { source };
+      document.getElementById('app').innerHTML = '<h1>Thank you for applying!</h1><p>We received your application.</p>';
+    });
+  });
+</script>
+</body>
+</html>

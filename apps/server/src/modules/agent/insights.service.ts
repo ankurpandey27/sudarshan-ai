@@ -142,7 +142,7 @@ export class InsightsService {
           id: `changed-${h.platform}`,
           severity: 'error',
           title: `${name} may have changed its pages - paused`,
-          detail: `The last few ${name} applications got stuck (latest: "${(h.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan stopped applying on ${name}.`,
+          detail: `The last few ${name} applications got stuck (latest: "${(h.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan stopped applying on ${name} - it tries one again by itself at ${clockTime(h.until)}.`,
           fix: `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again carefully": it resumes and stops before every Submit until one works.`,
           actions: [
             { label: 'Try again carefully', api: `/agent/platforms/${h.platform}/retry` },
@@ -171,6 +171,22 @@ export class InsightsService {
           actions: [{ label: 'Applications', to: '/applications' }],
         });
       }
+    }
+
+    // The rescue agent kept failing with this AI model: it stepped aside, and says so.
+    if (status.rescue.paused && this.settings.get().agent.rescue !== false) {
+      out.push({
+        id: 'rescue-paused',
+        version: `rescue paused ${status.rescue.model} ${status.rescue.tries}`,
+        severity: 'info',
+        title: `Rescues keep failing with ${status.rescue.model}`,
+        detail: `When the usual way gets stuck on a site, the AI takes over to move the application on. With this model it failed ${status.rescue.failedInARow} times in a row, so those jobs now come to you instead. Everything else works as usual.`,
+        fix: 'A larger AI model (Settings, AI model) usually does better. Or try the rescues again with this one.',
+        actions: [
+          { label: 'Try rescues again', api: '/agent/rescue/retry' },
+          { label: 'AI model', to: '/settings' },
+        ],
+      });
     }
 
     for (const b of status.blockedSources) {

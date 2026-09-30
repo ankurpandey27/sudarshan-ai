@@ -3,6 +3,7 @@
 
 import { Module } from '@nestjs/common';
 import { AnswersModule } from '../answers/answers.module';
+import { LearnersModule } from '../learners/learners.module';
 import { BrowserModule } from '../browser/browser.module';
 import { FormEngineModule } from '../form-engine/form-engine.module';
 import { JobsModule } from '../jobs/jobs.module';
@@ -16,7 +17,7 @@ import { ApplyService } from './apply.service';
 import { PlatformHealthModule } from '../platform-health/platform-health.module';
 
 @Module({
-  imports: [PlatformHealthModule, AnswersModule, BrowserModule, FormEngineModule, JobsModule, LearningModule, ProfileModule],
+  imports: [PlatformHealthModule, LearnersModule, AnswersModule, BrowserModule, FormEngineModule, JobsModule, LearningModule, ProfileModule],
   providers: [ApplyService, LinkedInApplyAdapter, NaukriApplyAdapter, IndeedApplyAdapter, WebApplyAdapter],
   exports: [ApplyService],
 })

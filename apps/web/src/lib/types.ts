@@ -63,6 +63,8 @@ export interface Attempt {
   memoryHits: number;
   durationMs: number | null;
   trace: string[];
+  /** The page at each step, for the replay. */
+  shots: { label: string; file: string; at: string }[];
 }
 
 export interface Paginated<T> {
@@ -107,6 +109,7 @@ export interface AgentStatus {
   /** The scoring run that finished in the last few seconds. */
   lastScoring: { at: string; scored: number; review: number; queued: number; skipped: number; total: number } | null;
   meaningModel: { state: 'off' | 'loading' | 'ready' | 'unavailable'; model: string; reason: string | null };
+  rescue: { model: string | null; tries: number; helped: number; failedInARow: number; paused: boolean };
   platformHealth: { platform: JobPlatform; status: 'ok' | 'broken' | 'careful' | 'cooling'; recent: string[]; until?: string }[];
 }
 
@@ -165,6 +168,7 @@ export interface Settings {
     excludeCompanies: string[];
     excludeTitleWords: string[];
     coreSkills: string[];
+    minExperience: number | null;
   };
   sources: Record<'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'links' | 'externalSites', { enabled: boolean; dailyLimit: number }>;
   agent: {
@@ -182,6 +186,7 @@ export interface Settings {
     tokenBudgetPerDay: number;
     pauseBeforeSubmit: boolean;
     pastAnswers: boolean;
+    rescue: boolean;
   };
 }
 
@@ -223,6 +228,7 @@ export interface Profile {
   expectedCtc: number | null;
   currency: string;
   willingToRelocate: boolean;
+  cleanRecord: boolean;
   remotePreferred: boolean;
   workAuthorization: string;
   needsSponsorship: boolean;
@@ -261,6 +267,8 @@ export interface PendingQuestion {
   fieldType: string;
   options: string[];
   suggestion: string | null;
+  questionEn: string | null;
+  optionsEn: string[] | null;
   jobIds: number[];
   jobs: { id: number; title: string; company: string }[];
 }
@@ -335,4 +343,17 @@ export interface AppliedSyncResult {
   marked: { id: number; title: string; company: string }[];
   alreadyApplied: number;
   notInSudarshan: number;
+}
+
+/** A small model trained on this computer from Sudarshan's daily work. */
+export interface LearnerStatus {
+  name: 'field' | 'question' | 'button' | 'outcome';
+  label: string;
+  mode: 'off' | 'learning' | 'checking' | 'on';
+  enabled: boolean;
+  examples: number;
+  needed: number;
+  metrics: { checked: number; right: number; accuracy: number | null; how: string } | null;
+  trainedAt: string | null;
+  note: string;
 }

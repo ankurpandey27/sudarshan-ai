@@ -27,6 +27,7 @@ import { WorkbookModule } from './modules/workbook/workbook.module';
 import { HealthModule } from './modules/health/health.module';
 import { TasteModule } from './modules/taste/taste.module';
 import { AppliedSyncModule } from './modules/applied-sync/applied-sync.module';
+import { LearnersModule } from './modules/learners/learners.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { AppliedSyncModule } from './modules/applied-sync/applied-sync.module';
     ScoringModule,
     ApplyModule,
     AppliedSyncModule,
+    LearnersModule,
     AgentModule,
     WorkbookModule,
     HealthModule,

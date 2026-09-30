@@ -7,6 +7,7 @@ import { Completion, CompletionRequest } from '../interfaces/completion.interfac
 import { LlmTransport } from '../interfaces/llm-transport.interface';
 import { estimateTokens } from '../utils/json-extract.util';
 import { RequestParams } from '../utils/request-params.util';
+import { openAiContent } from '../utils/image-content.util';
 
 // Known reasoning families; anything else is learned from the model's own errors.
 const isReasoningModel = (model: string): boolean => /^(o\d|gpt-5)/i.test(model.replace(/^openai\//, ''));
@@ -47,7 +48,7 @@ export class OpenAiCompatibleTransport implements LlmTransport {
     const reasoning = !this.params.allows('temperature');
     const body: Record<string, unknown> = {
       model: this.model,
-      messages: [...(req.system ? [{ role: 'system', content: req.system }] : []), { role: 'user', content: req.prompt }],
+      messages: [...(req.system ? [{ role: 'system', content: req.system }] : []), { role: 'user', content: openAiContent(req.prompt, req.images) }],
       [this.params.maxTokensField]: reasoning ? maxTokens + REASONING_HEADROOM : maxTokens,
     };
     if (this.params.allows('temperature')) body.temperature = 0;

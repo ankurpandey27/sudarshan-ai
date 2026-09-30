@@ -26,6 +26,11 @@ export interface SearchSettings {
    * Review instead. Empty: taken from your search keywords, title and headline.
    */
   coreSkills: string[];
+  /**
+   * Skip internships, trainee and fresher roles, and jobs asking for fewer years than this at most
+   * ("0-2 years" when this is 3). null: automatic - your experience minus a year, at most 3. 0: off.
+   */
+  minExperience: number | null;
 }
 
 export interface SourceSettings {
@@ -59,6 +64,8 @@ export interface AgentSettings {
   pauseBeforeSubmit: boolean;
   /** Show the AI your own answers to similar questions (found by a small model on this computer). */
   pastAnswers: boolean;
+  /** When the usual way gets stuck on a site, let the AI take several steps to move the application on. */
+  rescue: boolean;
 }
 
 export interface AppSettings {

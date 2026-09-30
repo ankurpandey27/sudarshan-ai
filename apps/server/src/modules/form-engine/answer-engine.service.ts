@@ -4,6 +4,10 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { AnswersService } from '../answers/answers.service';
 import { PastAnswersService } from '../answers/past-answers.service';
+import { isSensitive } from '../answers/utils/sensitive.util';
+import { FieldLearnerService } from '../learners/field-learner.service';
+import { QuestionLearnerService } from '../learners/question-learner.service';
+import { LearnerMode } from '../learners/enums/learner-mode.enum';
 import { AnswerSource } from '../answers/enums/answer-source.enum';
 import { LlmService } from '../llm/llm.service';
 import { LlmPurpose } from '../llm/enums/llm-purpose.enum';
@@ -14,16 +18,29 @@ import { FormField } from './interfaces/form-field.interface';
 import { LlmFieldAnswer, ResolveOptions, ResolveResult, UnresolvedField } from './interfaces/resolve-result.interface';
 import { ANSWER_SYSTEM_PROMPT, buildAnswerPrompt } from './utils/answer-prompt.util';
 import { needsAnswer, toInstruction } from './utils/field-value.util';
-import { answerFromProfile, namesACountry, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
+import { answerForKey, answerFromProfile, namesACountry, WORK_AUTH_QUESTION, workAuthorizationKnown } from './utils/profile-rules.util';
 import { OPTIONAL_LEFT_BLANK } from './constants/form-runner.constants';
 import { sameSubject } from './utils/subject.util';
 import { AGE_QUESTION, GENERIC_QUESTION, YEARS_QUESTION } from '../answers/constants/answers.constants';
 import { AnswerMatch } from '../answers/interfaces/answer.interface';
 import { ageOn, parseBirthDate } from '../answers/utils/birth-date.util';
 import { canonicalSkill, extractSkills } from '../discovery/utils/job-normalizer.util';
+import { NOT_A_RESUME, REPLACES_RESUME } from './constants/background.constants';
+import { HIGH_STAKES_QUESTION } from './constants/inference.constants';
 
 const RESUME_FIELD = /resume|cv\b|curriculum|bio ?data/i;
 const COVER_LETTER = /cover\s*letter|motivation letter/i;
+
+/**
+ * Whether an AI answer is used: a stated fact always; an inference only for a low-stakes question - a
+ * wrong guess about pay, dates, the right to work, a legal declaration or an ID number costs you, so
+ * those are asked when your profile does not say. Models that do not say which it is: their "confident".
+ */
+function accepted(a: LlmFieldAnswer, field: FormField): boolean {
+  if (a.basis === 'unknown') return false;
+  if (a.basis === 'inferred') return !HIGH_STAKES_QUESTION.test(field.label || field.placeholder);
+  return a.confident !== false;
+}
 
 // Order: profile rules, answer memory, one batched AI call, then the user.
 @Injectable()
@@ -35,6 +52,8 @@ export class AnswerEngineService {
     private readonly llm: LlmService,
     // The type must be the class alone: a union hides it from Nest's injector.
     @Optional() private readonly pastAnswers?: PastAnswersService,
+    @Optional() private readonly fieldLearner?: FieldLearnerService,
+    @Optional() private readonly questionLearner?: QuestionLearnerService,
   ) {}
 
   async resolve(fields: FormField[], ctx: AnswerContext, opts: ResolveOptions): Promise<ResolveResult> {
@@ -45,9 +64,18 @@ export class AnswerEngineService {
       stats: { fields: 0, profileHits: 0, memoryHits: 0, llmCalls: 0, llmAnswers: 0 },
     };
     const forLlm: FormField[] = [];
+    // Field learner checks waiting for this field's final answer.
+    const pendingChecks = new Map<string, { id: number; key: string }>();
     const hints = new Map<string, string>();
     // "Authorized to work in this country?" for a job abroad: which country is unknown, so it cannot be remembered.
     const unknownCountry = new Set<string>();
+    // No file field says "resume" or "CV" ("Attachments", "Drop files here"): the first one that is not
+    // for something else (a photo, a cover letter, certificates) gets the resume.
+    const files = fields.filter((f) => f.kind === FieldKind.FILE);
+    const resumeFallback = files.some((f) => RESUME_FIELD.test(`${f.label} ${f.name}`))
+      ? undefined
+      : // "Upload a different file" replaces a resume the site already has (Indeed's saved one): left alone.
+        files.find((f) => !NOT_A_RESUME.test(`${f.label} ${f.name}`) && !REPLACES_RESUME.test(f.label) && !/^image\//.test(f.accept ?? ''));
 
     for (const field of fields) {
       const forced = opts.force?.has(field.id) === true;
@@ -55,7 +83,7 @@ export class AnswerEngineService {
       if (!forced && !needsAnswer(field) && !consentBox) continue;
 
       if (field.kind === FieldKind.FILE) {
-        this.resolveFile(field, ctx, result);
+        this.resolveFile(field, ctx, result, resumeFallback === field);
         continue;
       }
 
@@ -67,6 +95,8 @@ export class AnswerEngineService {
       }
       if (fromProfile && !forced) {
         const ins = toInstruction(field, fromProfile.value);
+        // Every field a rule fills with one of your details teaches the field learner that wording.
+        if (ins && fromProfile.key && fromProfile.confident) this.fieldLearner?.observe(field.label || field.placeholder, fromProfile.key);
         if (ins) {
           // Leave non-consent checkboxes as they are.
           if (!(field.kind === FieldKind.CHECKBOX && ins.value === field.value)) {
@@ -76,7 +106,10 @@ export class AnswerEngineService {
           }
           continue;
         }
-        hints.set(field.id, `Candidate's answer: "${fromProfile.value}" - map it onto one of the options.`);
+        // The AI maps it onto the options - unless it identifies you, which the AI never sees.
+        if (!isSensitive(field.label || field.placeholder, fromProfile.value)) {
+          hints.set(field.id, `Candidate's answer: "${fromProfile.value}" - map it onto one of the options.`);
+        }
       }
       if (field.kind === FieldKind.CHECKBOX && !field.required && !forced) continue;
 
@@ -96,7 +129,21 @@ export class AnswerEngineService {
           result.stats.memoryHits++;
           continue;
         }
-        hints.set(field.id, `Candidate previously answered a similar question: "${remembered.answer}".`);
+        if (!isSensitive(remembered.question, remembered.answer)) {
+          hints.set(field.id, `Candidate previously answered a similar question: "${remembered.answer}".`);
+        }
+      }
+
+      // No rule and nothing saved: the field learner may recognise which of your details this is.
+      if (!forced && !authAbroad && !remembered) {
+        const learned = await this.recognise(field, ctx, pendingChecks);
+        if (learned) {
+          result.instructions.push(learned);
+          result.stats.fields++;
+          result.stats.profileHits++;
+          result.stats.learnedHits = (result.stats.learnedHits ?? 0) + 1;
+          continue;
+        }
       }
 
       // Optional fields are filled too when your profile has the answer - a complete application does
@@ -112,12 +159,17 @@ export class AnswerEngineService {
     const llmAnswers = useLlm ? await this.askLlm(forLlm, ctx, hints, result) : null;
     for (const field of forLlm) {
       const a = llmAnswers?.get(field.id);
+      // The AI's answer settles the field learner's quiet prediction for this field.
+      const check = pendingChecks.get(field.id);
+      if (check && a?.value?.trim() && a.confident !== false) this.fieldLearner?.finishCheck(check.id, ctx, field, check.key, a.value);
       const ins = a && a.value.trim() ? toInstruction(field, a.value) : null;
-      if (ins && a && a.confident !== false) {
+      if (ins && a && accepted(a, field)) {
         result.instructions.push(ins);
         result.stats.fields++;
         result.stats.llmAnswers++;
-        if (a.reusable && field.kind !== FieldKind.TEXTAREA) {
+        if (a.basis === 'inferred') result.stats.inferred = (result.stats.inferred ?? 0) + 1;
+        // Inferred answers are worked out again each time, never saved as your own.
+        if (a.reusable && a.basis !== 'inferred' && field.kind !== FieldKind.TEXTAREA) {
           this.answers.remember(field.label, a.value, AnswerSource.LLM, field.kind);
         }
         continue;
@@ -151,13 +203,36 @@ export class AnswerEngineService {
       // "Years of X": only past answers about X - another subject's years make the AI bolder, not righter
       // ("DevOps experience (years)" answered from "Automation experience", 2026-09-30).
       const question = (f.label || f.placeholder).trim();
-      const past = YEARS_QUESTION.test(question) ? found[i]?.filter((p) => sameSubject(question, p.question)) : found[i];
+      const past = (YEARS_QUESTION.test(question) ? found[i]?.filter((p) => sameSubject(question, p.question)) : found[i])
+        // The question learner, once proven, hides past answers it is sure are about something else.
+        ?.filter((p) => this.questionLearner?.keep(question, p.question, p.similarity) ?? true);
       if (!past?.length) return;
       const list = past.map((p) => `"${p.question}" -> "${p.answer}" (${p.similarity})`).join('; ');
       const before = hints.get(f.id);
       hints.set(f.id, `${before ? before + ' ' : ''}Candidate's own answers to similar questions: ${list}.`);
       result.stats.pastAnswerHints = (result.stats.pastAnswerHints ?? 0) + 1;
     });
+  }
+
+  /**
+   * The field learner, when it recognises which of your details a field asks for: switched on (proven),
+   * it fills the field with that detail's rule - units and format included; still checking itself, it
+   * only records its guess, to be marked right or wrong by the field's final answer.
+   */
+  private async recognise(field: FormField, ctx: AnswerContext, pending: Map<string, { id: number; key: string }>): Promise<FillInstruction | null> {
+    const learner = this.fieldLearner;
+    const label = (field.label || field.placeholder).trim();
+    if (!learner || !label || OPTIONAL_LEFT_BLANK.test(label) || field.kind === FieldKind.FILE) return null;
+    const mode = learner.mode();
+    if (mode !== LearnerMode.ON && mode !== LearnerMode.CHECKING) return null;
+    const vote = await learner.predict(label).catch(() => null);
+    if (!vote) return null;
+    if (mode === LearnerMode.CHECKING) {
+      pending.set(field.id, { id: learner.startCheck(label, vote.label), key: vote.label });
+      return null;
+    }
+    const answer = answerForKey(ctx, field, vote.label);
+    return answer ? toInstruction(field, answer.value) : null;
   }
 
   /** An optional field the AI may fill from your profile: a real question, not one only you can answer. */
@@ -206,7 +281,7 @@ export class AnswerEngineService {
     return found;
   }
 
-  private resolveFile(field: FormField, ctx: AnswerContext, result: ResolveResult): void {
+  private resolveFile(field: FormField, ctx: AnswerContext, result: ResolveResult, onlyUpload = false): void {
     const label = `${field.label} ${field.name} ${field.accept ?? ''}`;
     if (COVER_LETTER.test(label)) {
       if (field.required) result.blockers.push(`Cover letter upload required: "${field.label}"`);
@@ -217,7 +292,9 @@ export class AnswerEngineService {
       return;
     }
     // In practice the first file input is the resume, labelled or not.
-    if (RESUME_FIELD.test(label) || field.required || /pdf|doc/i.test(field.accept ?? '')) {
+    if (NOT_A_RESUME.test(field.label) || /^image\//.test(field.accept ?? '')) return;
+    // Optional or not: an application with the resume attached does better.
+    if (RESUME_FIELD.test(label) || field.required || /pdf|doc/i.test(field.accept ?? '') || onlyUpload) {
       const ins: FillInstruction = { id: field.id, kind: FieldKind.FILE, value: ctx.resumePath, optionIndexes: [], optionIds: [] };
       result.instructions.push(ins);
       result.stats.fields++;

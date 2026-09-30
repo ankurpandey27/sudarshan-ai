@@ -45,6 +45,11 @@ export interface CandidateProfile {
   expectedCtc: number | null;
   currency: string;
   willingToRelocate: boolean;
+  /**
+   * You declare a clean record: no criminal record, no pending legal action, never dismissed for
+   * misconduct. Only then are such questions answered for you (No / Yes by their wording).
+   */
+  cleanRecord: boolean;
   remotePreferred: boolean;
   workAuthorization: string;
   needsSponsorship: boolean;

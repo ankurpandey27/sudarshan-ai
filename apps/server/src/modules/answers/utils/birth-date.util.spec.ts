@@ -5,9 +5,9 @@ import { ageOn, parseBirthDate } from './birth-date.util';
 
 describe('parseBirthDate', () => {
   it('reads the ways people type a date of birth in India (day first)', () => {
-    for (const s of ['15/03/1995', '15-03-1995', '15.3.1995', '08-Aug-98', '15 March 1995', '1995-03-15']) {
+    for (const s of ['15/03/1995', '15-03-1995', '15.3.1995', '15-Mar-95', '15 March 1995', '1995-03-15']) {
       const d = parseBirthDate(s)!;
-      expect([d.getFullYear(), d.getMonth(), d.getDate()]).toEqual([1998, 7, 8]);
+      expect([d.getFullYear(), d.getMonth(), d.getDate()]).toEqual([1995, 2, 15]);
     }
   });
 
@@ -16,8 +16,8 @@ describe('parseBirthDate', () => {
   });
 
   it('counts whole years, before and after the birthday', () => {
-    const born = new Date(1998, 7, 8);
-    expect(ageOn(born, new Date(2026, 7, 7))).toBe(27);
-    expect(ageOn(born, new Date(2026, 7, 8))).toBe(28);
+    const born = new Date(1995, 2, 15);
+    expect(ageOn(born, new Date(2026, 2, 14))).toBe(30);
+    expect(ageOn(born, new Date(2026, 2, 15))).toBe(31);
   });
 });

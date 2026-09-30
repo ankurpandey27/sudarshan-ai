@@ -15,8 +15,12 @@ export interface ResolveStats {
   memoryHits: number;
   llmCalls: number;
   llmAnswers: number;
+  /** Of the AI answers, how many it worked out from your profile rather than read in it. */
+  inferred?: number;
   /** Questions the AI answered with your own past answers to similar questions in front of it. */
   pastAnswerHints?: number;
+  /** Fields filled because the field learner recognised which of your details they ask for. */
+  learnedHits?: number;
 }
 
 export interface ResolveResult {
@@ -38,4 +42,6 @@ export interface LlmFieldAnswer {
   value: string;
   confident?: boolean;
   reusable?: boolean;
+  /** "fact": stated in the profile; "inferred": a reasonable reading of it (low-stakes questions only); "unknown". */
+  basis?: 'fact' | 'inferred' | 'unknown';
 }

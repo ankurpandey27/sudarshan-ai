@@ -15,6 +15,6 @@ export interface PlatformHealth {
   recent: string[];
   /** When careful mode started, while careful. */
   since?: string;
-  /** cooling: the site is refusing applications for now; tried again after this time. */
+  /** cooling: the site is refusing applications for now; broken: paused. Tried again after this time. */
   until?: string;
 }

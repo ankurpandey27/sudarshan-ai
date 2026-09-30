@@ -72,6 +72,15 @@ export function learnRecorderInPage(): void {
   };
   document.addEventListener('change', onEdit, true);
   document.addEventListener('input', onEdit, true);
+  // Leaving or closing the page right after typing: send what is still waiting, not lose it.
+  const flush = () => {
+    if (timer === undefined) return;
+    clearTimeout(timer);
+    timer = undefined;
+    report({ type: 'edit' });
+  };
+  window.addEventListener('pagehide', flush, true);
+  document.addEventListener('visibilitychange', () => document.visibilityState === 'hidden' && flush(), true);
 
   document.addEventListener(
     'click',

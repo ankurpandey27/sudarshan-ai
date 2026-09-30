@@ -6,8 +6,8 @@ import { JobPlatform } from '../jobs/enums/job-platform.enum';
 import { PlatformHealthService } from './platform-health.service';
 
 describe('PlatformHealthService', () => {
-  // Simulated history happens a day ago, before any real "Try again" stamp.
-  let clock = Date.now() - 86_400_000;
+  // Simulated history happens two hours ago: before any real "Try again" stamp, within the 6-hour pause.
+  let clock = Date.now() - 2 * 3_600_000;
   const tick = () => new Date((clock += 60_000)).toISOString();
   let seq = 0;
 
@@ -91,5 +91,28 @@ describe('PlatformHealthService', () => {
     expect(health.state(JobPlatform.LINKEDIN).status).toBe('ok');
     // A pause that is already over: back to normal, not careful or broken.
     expect(health.coolDown(JobPlatform.NAUKRI, -1000, 'old').status).toBe('ok');
+  });
+
+  it('is never paused for ever: one new attempt 6 hours after the last stuck one (Naukri, 2026-09-30)', () => {
+    const storage = new StorageService(':memory:');
+    const stuckAt = (hoursAgo: number, n: number) => {
+      const at = new Date(Date.now() - hoursAgo * 3_600_000).toISOString();
+      storage.run(
+        `INSERT INTO jobs (source, external_id, url, title, status, discovered_at, updated_at) VALUES ('naukri', ?, 'https://www.naukri.com/x', 'Dev', 'manual', ?, ?)`,
+        [`n${n}`, at, at],
+      );
+      storage.run(`INSERT INTO attempts (job_id, started_at, result, detail) VALUES (?, ?, 'run:stuck', 'Naukri did not confirm the application')`, [n, at]);
+    };
+    // Three stuck a day ago (really: refusals before they were recognised) - paused since then until now.
+    stuckAt(25, 1);
+    stuckAt(24.9, 2);
+    stuckAt(24.8, 3);
+    const health = new PlatformHealthService(storage);
+    expect(health.state(JobPlatform.NAUKRI).status).toBe('ok');
+    // That one new try gets stuck too: paused again, for another 6 hours, and it says until when.
+    stuckAt(0, 4);
+    const again = health.state(JobPlatform.NAUKRI);
+    expect(again.status).toBe('broken');
+    expect(Date.parse(again.until!) - Date.now()).toBeGreaterThan(5.9 * 3_600_000);
   });
 });

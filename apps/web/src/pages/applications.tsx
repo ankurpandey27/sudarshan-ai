@@ -3,8 +3,8 @@
 
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, CheckCheck, Download, Link2, RotateCcw, Search } from 'lucide-react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Briefcase, CheckCheck, Download, Link2, Play, RotateCcw, Search } from 'lucide-react';
 import { api } from '../lib/api';
 import { cn } from '../lib/format';
 import { useJobs } from '../lib/queries';
@@ -65,6 +65,17 @@ export function Applications() {
       toast('ok', 'Counted as applied');
       refresh();
     },
+  });
+  // Tabs handed over to you that are still open: Sudarshan can carry on in them once you have unblocked them.
+  const { data: openTabs } = useQuery({ queryKey: ['open-tabs'], queryFn: () => api.get<number[]>('/agent/open-tabs'), refetchInterval: 10_000 });
+  const carryOn = useMutation({
+    mutationFn: (id: number) => api.post<{ status: string; detail: string }>(`/agent/continue/${id}`),
+    onSuccess: (r) => {
+      toast(r.status === 'applied' ? 'ok' : r.status === 'busy' ? 'error' : 'ok', r.detail);
+      refresh();
+      void qc.invalidateQueries({ queryKey: ['open-tabs'] });
+    },
+    onError: (e: Error) => toast('error', e.message),
   });
   const openInBrowser = useMutation({
     mutationFn: (url: string) => api.post('/browser/open', { url }),
@@ -175,7 +186,19 @@ export function Applications() {
               actions={
                 ['manual', 'failed', 'needs_input'].includes(j.status) ? (
                   <>
-                    {j.status === 'manual' && (
+                    {j.status === 'manual' && openTabs?.includes(j.id) && (
+                      <Button
+                        size="sm"
+                        variant="primary"
+                        icon={<Play className="size-3.5" />}
+                        loading={carryOn.isPending && carryOn.variables === j.id}
+                        title="You solved the captcha or logged in: Sudarshan carries on from where its tab is"
+                        onClick={() => carryOn.mutate(j.id)}
+                      >
+                        Continue
+                      </Button>
+                    )}
+                    {j.status === 'manual' && !openTabs?.includes(j.id) && (
                       <Button size="sm" variant="ghost" onClick={() => openInBrowser.mutate(j.applyUrl || j.url)}>
                         Open in agent browser
                       </Button>

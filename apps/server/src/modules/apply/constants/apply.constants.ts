@@ -93,3 +93,8 @@ export const EMBEDDED_ATS =
   /^https:\/\/([a-z0-9-]+\.)*(ashbyhq\.com|greenhouse\.io|lever\.co|workable\.com|smartrecruiters\.com|recruitee\.com|bamboohr\.com|breezy\.hr|jobvite\.com|teamtailor\.com|personio\.(de|com)|pinpointhq\.com|rippling-ats\.com|rippling\.com|homerun\.co|jazzhr\.com|applytojob\.com|zohorecruit\.(com|in|eu)|freshteam\.com|keka\.com|darwinbox\.in|comeet\.(co|com))\//i;
 /** How long a career page that looks like a login may take to add its embedded application. */
 export const EMBED_WAIT_MS = 6000;
+
+/** Step pictures kept per attempt, at most (small JPEGs, cleared with old screenshots). */
+export const MAX_SHOTS = 24;
+/** After you solve a captcha, Sudarshan carries on only once you have not touched the tab for this long. */
+export const CONTINUE_IDLE_MS = 15_000;

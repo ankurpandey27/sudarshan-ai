@@ -29,7 +29,7 @@ describe('moving jobs between Review, the queue and Skipped', () => {
       jobs.setStatus(jobId, status);
       return jobId;
     };
-    return { jobs, add, ctl: new JobsController(jobs) };
+    return { jobs, add, ctl: new JobsController(jobs, { getOrThrow: () => '' } as never) };
   };
 
   it('takes queued (and skipped) jobs back to review', () => {

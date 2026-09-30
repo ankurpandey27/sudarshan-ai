@@ -15,10 +15,7 @@ export function Questions() {
   const { data = [], isLoading } = useQuestions();
   return (
     <>
-      <PageTitle
-        title="Questions"
-        sub="Things only you can answer. Each answer is remembered forever and unblocks every job that asked it."
-      />
+      <PageTitle title="Questions" sub="Things only you can answer. Each answer is remembered forever and unblocks every job that asked it." />
       {!isLoading && data.length === 0 && (
         <Card>
           <Empty icon={<MessageCircleQuestion className="size-7" />} title="No questions right now">
@@ -65,21 +62,35 @@ function QuestionCard({ q }: { q: PendingQuestion }) {
   return (
     <Card className="p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
-        <p className="max-w-3xl font-display text-[22px] leading-snug">{q.question}</p>
+        <div className="max-w-3xl">
+          <p className="font-display text-[22px] leading-snug">{q.question}</p>
+          {q.questionEn && q.questionEn.trim().toLowerCase() !== q.question.trim().toLowerCase() && (
+            <p className="mt-0.5 text-[14px] text-ink-2">
+              <span className="font-semibold text-ink-3">In English: </span>
+              {q.questionEn}
+            </p>
+          )}
+        </div>
         <Badge tone="warn">
           blocking {q.jobIds.length} job{q.jobIds.length === 1 ? '' : 's'}
         </Badge>
       </div>
       <p className="mt-1 truncate text-[12.5px] text-ink-3">
-        Asked by {q.jobs.slice(0, 3).map((j) => `${j.title} @ ${j.company}`).join(', ')}
+        Asked by{' '}
+        {q.jobs
+          .slice(0, 3)
+          .map((j) => `${j.title} @ ${j.company}`)
+          .join(', ')}
         {q.jobs.length > 3 ? ` and ${q.jobs.length - 3} more` : ''}
       </p>
 
       <div className="mt-3">
         {q.options.length > 0 ? (
           <div className="flex flex-wrap gap-1.5">
-            {q.options.map((o) => {
+            {q.options.map((o, i) => {
               const on = multi ? picked.has(o) : value === o;
+              // The option as the site wrote it (that is what is sent), with its English beside it.
+              const en = q.optionsEn?.[i];
               return (
                 <button
                   key={o}
@@ -96,6 +107,7 @@ function QuestionCard({ q }: { q: PendingQuestion }) {
                   )}
                 >
                   {o}
+                  {en && en.trim().toLowerCase() !== o.trim().toLowerCase() && <span className="ml-1 text-ink-3">({en})</span>}
                 </button>
               );
             })}
@@ -103,7 +115,13 @@ function QuestionCard({ q }: { q: PendingQuestion }) {
         ) : q.fieldType === 'textarea' ? (
           <Textarea value={value} onChange={(e) => setValue(e.target.value)} placeholder="Your answer (used for this and similar questions)" rows={4} />
         ) : (
-          <Input type={q.fieldType === 'number' ? 'number' : 'text'} value={value} onChange={(e) => setValue(e.target.value)} placeholder="Your answer" className="max-w-md" />
+          <Input
+            type={q.fieldType === 'number' ? 'number' : 'text'}
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            placeholder="Your answer"
+            className="max-w-md"
+          />
         )}
         {q.suggestion && <p className="mt-1.5 text-[12px] text-ink-3">Pre-filled with the AI's suggestion - check it before saving.</p>}
       </div>

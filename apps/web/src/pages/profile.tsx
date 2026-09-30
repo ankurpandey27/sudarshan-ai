@@ -305,6 +305,12 @@ export function ProfilePage() {
             </Field>
             <Toggle checked={draft.willingToRelocate} onChange={(v) => set('willingToRelocate', v)} label="Willing to relocate" />
             <Toggle checked={draft.needsSponsorship} onChange={(v) => set('needsSponsorship', v)} label="Need visa sponsorship" />
+            <Toggle
+              checked={draft.cleanRecord}
+              onChange={(v) => set('cleanRecord', v)}
+              label="My record is clean"
+              hint="No criminal record, no pending legal action, never dismissed or blacklisted. Turn on only if true: forms asking about this - even optional ones - are then answered for you (No to 'any legal action against you?', Yes to 'consent to a background check')."
+            />
           </div>
         </Card>
       )}

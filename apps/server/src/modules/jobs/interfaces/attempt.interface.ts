@@ -18,6 +18,14 @@ export interface Attempt extends AttemptStats {
   durationMs: number | null;
   screenshot: string | null;
   trace: string[];
+  /** The page at each step (file names in the screenshots folder), oldest first. */
+  shots: AttemptShot[];
+}
+
+export interface AttemptShot {
+  label: string;
+  file: string;
+  at: string;
 }
 
 export interface AttemptRow {
@@ -34,4 +42,5 @@ export interface AttemptRow {
   duration_ms: number | null;
   screenshot: string | null;
   trace: string | null;
+  shots: string | null;
 }

@@ -9,7 +9,7 @@ export function subjectWords(question: string): Set<string> {
     question
       .toLowerCase()
       .replace(/\b([a-z]+)[\s.-]?js\b/g, '$1js')
-      .split(/[^a-z0-9+#À-￿]+/)
+      .split(/[^a-z0-9+#\u00c0-\uffff]+/)
       .filter((w) => w.length > 1 && !SUBJECT_FILLER.has(w)),
   );
 }

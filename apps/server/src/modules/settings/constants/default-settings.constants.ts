@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     excludeCompanies: [],
     excludeTitleWords: [],
     coreSkills: [],
+    minExperience: null,
   },
   sources: {
     // LinkedIn restricts accounts that apply too fast.
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     tokenBudgetPerDay: 300_000,
     pauseBeforeSubmit: false,
     pastAnswers: true,
+    rescue: true,
   },
 };
 

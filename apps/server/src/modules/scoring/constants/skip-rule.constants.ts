@@ -10,6 +10,7 @@ export const SKIP_RULE_TEXT: Record<SkipRule, string> = {
   [SkipRule.NOT_REMOTE]: 'not remote',
   [SkipRule.EXCLUDED_COMPANY]: 'company on your never-apply list',
   [SkipRule.EXCLUDED_TITLE]: 'title has a word you skip',
+  [SkipRule.BELOW_LEVEL]: 'internship, fresher or junior role',
   [SkipRule.DUPLICATE]: 'already applied',
   [SkipRule.LOW_SCORE]: 'low match score',
 };
@@ -21,6 +22,7 @@ export const SKIP_RULE_FIX: Record<SkipRule, string> = {
   [SkipRule.NOT_REMOTE]: 'Turn off "Remote only" in Settings to include on-site and hybrid jobs.',
   [SkipRule.EXCLUDED_COMPANY]: 'Edit "Never apply to these companies" in Settings.',
   [SkipRule.EXCLUDED_TITLE]: 'Edit "Skip titles containing" in Settings.',
+  [SkipRule.BELOW_LEVEL]: 'Change "Your experience level" in Settings -> What to search (0 turns this off).',
   [SkipRule.DUPLICATE]: 'Nothing to do - the agent never applies twice.',
   [SkipRule.LOW_SCORE]: 'Lower the review score in Settings, add an AI model for smarter scoring, or adjust your search keywords.',
 };

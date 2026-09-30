@@ -4,7 +4,7 @@
 const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
 
 /**
- * A date of birth as people type it in India: 15/03/1995 and 15-03-1995 (day first), 08-Aug-98,
+ * A date of birth as people type it in India: 15/03/1995 and 15-03-1995 (day first), 15-Mar-95,
  * 15 March 1995, or 1995-03-15. Null when it is not clearly a date.
  */
 export function parseBirthDate(text: string): Date | null {

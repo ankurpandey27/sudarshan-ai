@@ -76,4 +76,8 @@ export class AgentSettingsDto {
   @IsOptional()
   @IsBoolean()
   pastAnswers?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  rescue?: boolean;
 }

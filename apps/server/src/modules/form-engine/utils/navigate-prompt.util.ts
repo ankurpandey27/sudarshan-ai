@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { compressText } from '../../../common/utils/text.util';
+import { redactSensitive } from '../../answers/utils/sensitive.util';
 import { FormAction } from '../interfaces/form-field.interface';
 
 export const NAVIGATE_SYSTEM_PROMPT =
@@ -11,7 +12,7 @@ export function buildNavigatePrompt(goal: string, pageText: string, actions: For
   return `GOAL: ${goal}
 
 PAGE TEXT (excerpt):
-${compressText(pageText, 1500)}
+${compressText(redactSensitive(pageText), 1500)}
 
 CLICKABLE CONTROLS:
 ${JSON.stringify(actions.filter((a) => !a.disabled).map((a) => ({ id: a.id, text: a.text })))}
@@ -27,7 +28,7 @@ export const CONFIRM_SYSTEM_PROMPT =
 /** Asks whether the page (in any language) confirms that the application was sent. */
 export function buildConfirmPrompt(pageText: string): string {
   return `PAGE TEXT (excerpt):
-${compressText(pageText, 1500)}
+${compressText(redactSensitive(pageText), 1500)}
 
 Does this page confirm that the job application was submitted or received (e.g. "thank you for your application", in any language)?
 An error, a missing-field message, a login page or the same form again is not a confirmation.

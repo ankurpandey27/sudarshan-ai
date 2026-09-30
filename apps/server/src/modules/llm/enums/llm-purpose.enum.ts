@@ -6,5 +6,6 @@ export enum LlmPurpose {
   JOB_SCORE = 'job_score',
   FORM_ANSWER = 'form_answer',
   NAVIGATE = 'navigate',
+  TRANSLATE = 'translate',
   TEST = 'test',
 }

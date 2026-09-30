@@ -3,6 +3,7 @@
 
 import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, ServiceUnavailableException, ParseEnumPipe } from '@nestjs/common';
 import { ApplyResult } from '../apply/interfaces/apply-adapter.interface';
+import { ApplyService } from '../apply/apply.service';
 import { BrowserUnavailableError } from '../browser/errors/browser-unavailable.error';
 import { AgentService } from './agent.service';
 import { AgentStatus } from './interfaces/agent-status.interface';
@@ -12,6 +13,7 @@ import { InsightsService } from './insights.service';
 import { PlatformHealthService } from '../platform-health/platform-health.service';
 import { PlatformHealth } from '../platform-health/interfaces/platform-health.interface';
 import { JobPlatform } from '../jobs/enums/job-platform.enum';
+import { RescueService } from '../form-engine/rescue.service';
 
 @Controller('agent')
 export class AgentController {
@@ -19,6 +21,8 @@ export class AgentController {
     private readonly agent: AgentService,
     private readonly insights: InsightsService,
     private readonly health: PlatformHealthService,
+    private readonly rescue: RescueService,
+    private readonly apply: ApplyService,
   ) {}
 
   @Get('insights')
@@ -77,6 +81,27 @@ export class AgentController {
   }
 
   /** Resume a platform that was paused because its pages seemed to change; it stops before Submit until one works. */
+  /** Jobs whose tab is still open for you, so Sudarshan can carry on in them. */
+  @Get('open-tabs')
+  openTabs(): number[] {
+    return this.apply.openTabs();
+  }
+
+  /** You unblocked a job handed over to you (a captcha, a login): carry on from where its tab is. */
+  @Post('continue/:id')
+  @HttpCode(200)
+  continueJob(@Param('id', ParseIntPipe) id: number): Promise<ApplyResult> {
+    return this.agent.continueNow(id);
+  }
+
+  /** Rescues paused after failing again and again with this AI model: try them again. */
+  @Post('rescue/retry')
+  @HttpCode(200)
+  retryRescue(): { ok: true } {
+    this.rescue.resume();
+    return { ok: true };
+  }
+
   @Post('platforms/:platform/retry')
   @HttpCode(200)
   retryPlatform(@Param('platform', new ParseEnumPipe(JobPlatform)) platform: JobPlatform): PlatformHealth {

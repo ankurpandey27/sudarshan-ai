@@ -190,4 +190,61 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (key, model)
   );
   `,
+  // Learners: small models trained on this computer from what Sudarshan does every day.
+  `
+  CREATE TABLE learners (
+    name       TEXT PRIMARY KEY,
+    enabled    INTEGER NOT NULL DEFAULT 1,
+    state      TEXT,
+    trained_at TEXT
+  );
+  CREATE TABLE learner_examples (
+    learner  TEXT NOT NULL,
+    text     TEXT NOT NULL,
+    label    TEXT NOT NULL,
+    source   TEXT NOT NULL,
+    seen     INTEGER NOT NULL DEFAULT 1,
+    at       TEXT NOT NULL,
+    PRIMARY KEY (learner, text, label)
+  );
+  CREATE TABLE learner_checks (
+    id        INTEGER PRIMARY KEY AUTOINCREMENT,
+    learner   TEXT NOT NULL,
+    at        TEXT NOT NULL,
+    input     TEXT NOT NULL,
+    predicted TEXT NOT NULL,
+    actual    TEXT,
+    correct   INTEGER
+  );
+  CREATE INDEX idx_learner_checks ON learner_checks (learner, correct);
+  ALTER TABLE jobs ADD COLUMN success_chance REAL;
+  `,
+  // What each AI model turned out to accept (found by trying, never from a list), and how the rescue agent does with it.
+  `
+  CREATE TABLE llm_capabilities (
+    provider TEXT NOT NULL,
+    model    TEXT NOT NULL,
+    images   INTEGER,
+    at       TEXT NOT NULL,
+    PRIMARY KEY (provider, model)
+  );
+  CREATE TABLE rescue_runs (
+    id       INTEGER PRIMARY KEY AUTOINCREMENT,
+    at       TEXT NOT NULL,
+    provider TEXT NOT NULL,
+    model    TEXT NOT NULL,
+    domain   TEXT NOT NULL,
+    outcome  TEXT NOT NULL,
+    steps    INTEGER NOT NULL
+  );
+  `,
+  // A small picture of the page at each step of an application, for the replay in Applications.
+  `
+  ALTER TABLE attempts ADD COLUMN shots TEXT;
+  `,
+  // An English version of a question asked in another language, and of its options, for the Questions page.
+  `
+  ALTER TABLE pending_questions ADD COLUMN question_en TEXT;
+  ALTER TABLE pending_questions ADD COLUMN options_en TEXT;
+  `,
 ];

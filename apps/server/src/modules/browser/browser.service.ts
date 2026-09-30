@@ -149,6 +149,19 @@ export class BrowserService implements OnApplicationShutdown {
     }
   }
 
+  /** A small picture of the page for the step-by-step replay; its file name, or null. */
+  async stepShot(page: Page, name: string): Promise<string | null> {
+    try {
+      mkdirSync(this.screenshotsDir, { recursive: true });
+      const file = `${name.replace(/[^\w-]+/g, '_')}-${Date.now()}.jpg`;
+      await page.screenshot({ path: join(this.screenshotsDir, file) as `${string}.jpeg`, type: 'jpeg', quality: 45 });
+      return file;
+    } catch {
+      // A page mid-navigation has no picture; the replay just skips that step.
+      return null;
+    }
+  }
+
   async close(): Promise<void> {
     const b = this.browser;
     this.browser = null;

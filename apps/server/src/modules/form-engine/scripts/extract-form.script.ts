@@ -70,17 +70,42 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   const controlCount = (el: Element): number =>
     el.querySelectorAll('input:not([type=hidden]), select, textarea, [role=combobox], [contenteditable=true]').length;
 
-  // The question is the text of the nearest ancestor that contains only this control.
-  const containerText = (el: Element, ownCount: number, exclude: string[]): string => {
+  // Placeholder words a dropdown shows before a choice ("-- Year --", "Select an option"): never the question.
+  const PICK_PROMPT =
+    /^(--.*--|select( an?)?( option| one)?\.*|choose( an?)?( option| one)?\.*|please (select|choose)\.*|seleccione|selecione|kies|w[äa]hlen|choisir)$/i;
+  // The text around a control, split into what comes before it and after it. The control's own text
+  // (a dropdown's options), other controls and hidden text are left out.
+  const textAround = (node: Element, el: Element, exclude: string[]): { before: string; after: string } => {
+    const before: string[] = [];
+    const after: string[] = [];
+    const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
+    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
+      const parent = t.parentElement;
+      if (!parent || el.contains(t) || parent.closest('option, select, script, style, template, [hidden], [aria-hidden="true"]')) continue;
+      const s = clean(t.textContent);
+      if (!s || exclude.includes(s) || PICK_PROMPT.test(s) || !visible(parent)) continue;
+      (el.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_PRECEDING ? before : after).push(s);
+    }
+    return { before: clean(before.join(' ')), after: clean(after.join(' ')) };
+  };
+
+  // The question is the text of the nearest ancestor that contains only this control - what is written
+  // before it first. Text only after it ("Enter a number between 0 and 1000", "e.g. 5") is a hint or an
+  // example, used only when there is nothing else.
+  const containerParts = (el: Element, ownCount: number, exclude: string[]): { before: string; hint: string } => {
     let node: Element | null = el.parentElement;
+    let hint = '';
     for (let depth = 0; node && depth < 6 && node !== scope.parentElement; depth++, node = node.parentElement) {
       if (controlCount(node) > ownCount) break;
-      let t = textOf(node);
-      for (const x of exclude) if (x) t = t.split(x).join(' ');
-      t = clean(t);
-      if (t.length >= 2) return t.slice(0, 300);
+      const { before, after } = textAround(node, el, exclude);
+      if (before.length >= 2) return { before: before.slice(0, 300), hint };
+      if (!hint && after.length >= 2) hint = after.slice(0, 300);
     }
-    return '';
+    return { before: '', hint };
+  };
+  const containerText = (el: Element, ownCount: number, exclude: string[]): string => {
+    const { before, hint } = containerParts(el, ownCount, exclude);
+    return before || hint;
   };
 
   const labelFor = (el: Element, exclude: string[] = [], ownCount = 1): string => {
@@ -91,9 +116,13 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     if (labels.length) return labels.join(' ');
     const aria = clean(el.getAttribute('aria-label'));
     if (aria) return aria;
-    const fromContainer = containerText(el, ownCount, exclude);
-    if (fromContainer) return fromContainer;
-    return clean(input.placeholder || input.name || input.id || '').replace(/[_-]+/g, ' ');
+    const { before, hint } = containerParts(el, ownCount, exclude);
+    if (before) return before;
+    // A question written just above the control, in its own block (<p>Question*</p><div><input></div>).
+    const above = precedingText(el);
+    if (above) return above;
+    // Only a hint or example below it, or nothing: better than the field's name.
+    return hint || clean(input.placeholder || input.name || input.id || '').replace(/[_-]+/g, ' ');
   };
 
   const errorFor = (el: Element): string => {

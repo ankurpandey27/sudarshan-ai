@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { ElementHandle, Page } from 'puppeteer-core';
 import { jitter, sleep } from '../../common/utils/sleep.util';
 import { LlmService } from '../llm/llm.service';
@@ -29,6 +29,8 @@ import {
 import { needsAnswer } from './utils/field-value.util';
 import { PlaybookService } from './playbook.service';
 import { stepSignature } from './utils/step-signature.util';
+import { ButtonLearnerService } from '../learners/button-learner.service';
+import { RescueService } from './rescue.service';
 
 const ACTION_PRIORITY: Record<FormAction['kind'], number> = { submit: 4, review: 3, next: 2, apply: 1, dismiss: -1, other: 0 };
 
@@ -43,13 +45,25 @@ export class FormRunnerService {
     private readonly recipes: RecipesService,
     private readonly llm: LlmService,
     private readonly playbook: PlaybookService,
+    @Optional() private readonly buttonLearner?: ButtonLearnerService,
+    @Optional() private readonly rescue?: RescueService,
   ) {}
 
   snapshot(page: Page, scopeSelector: string | null): Promise<FormSnapshot> {
     return page.evaluate(extractFormInPage, scopeSelector);
   }
 
+  /**
+   * Fills and moves the application forward the usual way - rules, your answers, learned steps; when that
+   * gets stuck on a site it does not know, the rescue agent takes over from the same page.
+   */
   async run(page: Page, opts: RunFormOptions): Promise<FormRunOutcome> {
+    const first = await this.steps(page, opts);
+    if (first.status !== 'stuck' || opts.rescue === false || !opts.allowLlm || !this.rescue?.available()) return first;
+    return this.rescue.run(page, opts, this, first);
+  }
+
+  private async steps(page: Page, opts: RunFormOptions): Promise<FormRunOutcome> {
     // Buttons that moved the form on; the caller learns them only if the application is confirmed.
     const moves: LearnedMove[] = [];
     const out: FormRunOutcome = {
@@ -82,6 +96,7 @@ export class FormRunnerService {
     for (let step = 1; step <= maxSteps; step++) {
       out.steps = step;
       const snap = await this.snapshot(page, opts.scopeSelector);
+      await opts.onShot?.(page, `Step ${step}`);
 
       // A confirmation only counts after Sudarshan pressed something, and never on a page that is
       // still a form waiting to be sent (fields plus a Submit button, or an unsolved captcha) -
@@ -146,7 +161,7 @@ export class FormRunnerService {
       if (resolved.instructions.length) {
         opts.onStep(
           `Step ${step}: filled ${resolved.instructions.length} field(s)` +
-            ` (${resolved.stats.profileHits} profile, ${resolved.stats.memoryHits} memory, ${resolved.stats.llmAnswers} AI` +
+            ` (${resolved.stats.profileHits} profile, ${resolved.stats.memoryHits} memory, ${resolved.stats.llmAnswers} AI${resolved.stats.inferred ? ` (${resolved.stats.inferred} worked out from your profile)` : ''}` +
             (resolved.stats.pastAnswerHints ? `, the AI saw your answers to ${resolved.stats.pastAnswerHints} similar question(s)` : '') +
             ')',
         );
@@ -295,6 +310,14 @@ export class FormRunnerService {
     const ranked = usable.filter((a) => a.kind !== 'other').sort((a, b) => ACTION_PRIORITY[b.kind] - ACTION_PRIORITY[a.kind]);
     if (ranked.length) return ranked[0];
 
+    // Learned from every site so far: the button that moves on, in any wording or language - before asking the AI.
+    const fromLearner = await this.buttonLearner?.pick(usable).catch(() => null);
+    if (fromLearner) {
+      // Kept like the AI's picks: learned only if the application is then confirmed.
+      this.aiPicks.add(fromLearner.action);
+      return fromLearner.action;
+    }
+
     if (!opts.allowLlm || !this.llm.isAvailable() || usable.length === 0) return null;
     try {
       const pick = await this.llm.json<{ id?: string }>(buildNavigatePrompt('Submit the job application', snap.text, usable), {
@@ -347,7 +370,18 @@ export class FormRunnerService {
   }
 
   /** Whether the page confirms the application was sent, read by the AI (any language). */
-  private async confirmedByAi(page: Page, snapText: string): Promise<boolean> {
+  /**
+   * The site confirms the application: its own wording or address, a form that marks itself sent, or
+   * "thank you for your application" in any major language - never on a page that is still a form.
+   */
+  async isConfirmed(page: Page, snap: FormSnapshot, opts: RunFormOptions): Promise<boolean> {
+    if ((await page.$(SENT_FORM).catch(() => null)) !== null) return true;
+    const stillAForm = snap.captcha || (snap.fields.length > 0 && snap.actions.some((a) => a.kind === 'submit'));
+    if (stillAForm) return false;
+    return !!opts.successUrl?.test(snap.url) || this.confirms(opts.successPattern, snap.text) || this.confirms(opts.successPattern, await this.docText(page));
+  }
+
+  async confirmedByAi(page: Page, snapText: string): Promise<boolean> {
     if (!this.llm.isAvailable()) return false;
     try {
       const text = (await this.docText(page)) || snapText;

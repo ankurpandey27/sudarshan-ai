@@ -9,6 +9,7 @@ import { GeminiResponse, OpencodeProtocol } from '../interfaces/opencode.interfa
 import { estimateTokens } from '../utils/json-extract.util';
 import { isProtocolMismatch } from '../utils/llm-error.util';
 import { RequestParams } from '../utils/request-params.util';
+import { openAiContent } from '../utils/image-content.util';
 
 const TIMEOUT_MS = 90_000;
 const ALL_PROTOCOLS: OpencodeProtocol[] = ['chat', 'messages', 'responses', 'gemini'];
@@ -73,7 +74,7 @@ export class OpencodeTransport implements LlmTransport {
           `${base}/chat/completions`,
           {
             model: this.model,
-            messages: [{ role: 'user', content: prompt }],
+            messages: [{ role: 'user', content: openAiContent(prompt, req.images) }],
             [this.params.maxTokensField]: maxTokens,
             ...(this.params.allows('temperature') ? { temperature: 0 } : {}),
           },
@@ -86,18 +87,49 @@ export class OpencodeTransport implements LlmTransport {
       case 'messages': {
         const { data } = await axios.post(
           `${base}/messages`,
-          { model: this.model, max_tokens: maxTokens, messages: [{ role: 'user', content: prompt }] },
+          {
+            model: this.model,
+            max_tokens: maxTokens,
+            messages: [
+              {
+                role: 'user',
+                content: req.images?.length
+                  ? [
+                      ...req.images.map((i) => ({ type: 'image', source: { type: 'base64', media_type: i.mediaType, data: i.data } })),
+                      { type: 'text', text: prompt },
+                    ]
+                  : prompt,
+              },
+            ],
+          },
           { headers: this.headers({ 'anthropic-version': '2023-06-01' }), timeout: TIMEOUT_MS },
         );
         const blocks: { type?: string; text?: string }[] = Array.isArray(data.content) ? data.content : [];
-        text = blocks.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('');
+        text = blocks
+          .filter((b) => b.type === 'text')
+          .map((b) => b.text ?? '')
+          .join('');
         usage = { in: data.usage?.input_tokens, out: data.usage?.output_tokens };
         break;
       }
       case 'responses': {
         const { data } = await axios.post(
           `${base}/responses`,
-          { model: this.model, input: prompt, max_output_tokens: maxTokens },
+          {
+            model: this.model,
+            input: req.images?.length
+              ? [
+                  {
+                    role: 'user',
+                    content: [
+                      { type: 'input_text', text: prompt },
+                      ...req.images.map((i) => ({ type: 'input_image', image_url: `data:${i.mediaType};base64,${i.data}` })),
+                    ],
+                  },
+                ]
+              : prompt,
+            max_output_tokens: maxTokens,
+          },
           { headers: this.headers(), timeout: TIMEOUT_MS },
         );
         text =
@@ -115,7 +147,9 @@ export class OpencodeTransport implements LlmTransport {
         const { data } = await axios.post<GeminiResponse>(
           `${base}/models/${encodeURIComponent(this.model)}:generateContent`,
           {
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
+            contents: [
+              { role: 'user', parts: [{ text: prompt }, ...(req.images ?? []).map((i) => ({ inline_data: { mime_type: i.mediaType, data: i.data } }))] },
+            ],
             generationConfig: { maxOutputTokens: maxTokens, ...(this.params.allows('temperature') ? { temperature: 0 } : {}) },
           },
           { headers: this.headers(), timeout: TIMEOUT_MS },

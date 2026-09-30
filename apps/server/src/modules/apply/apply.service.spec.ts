@@ -61,7 +61,7 @@ const make = (first: PrepareResult, formRun?: FormRunOutcome) => {
   const storage = new StorageService(':memory:');
   const playbook = new PlaybookService(storage);
   const recipes = new RecipesService(storage);
-  const page = { close, url: () => (formRun ? `https://${SITE}/apply` : 'https://career.infosys.com/login') };
+  const page = { close, once: () => undefined, isClosed: () => false, url: () => (formRun ? `https://${SITE}/apply` : 'https://career.infosys.com/login') };
   const service = new ApplyService(
     { matches: () => true, prepare: async () => first } as never,
     { matches: () => false } as never,
@@ -74,7 +74,7 @@ const make = (first: PrepareResult, formRun?: FormRunOutcome) => {
     { run: async () => formRun } as never,
     recipes,
     playbook,
-    { startAttempt: () => 1, setStatus, finishAttempt: () => undefined, forgetAttempt } as never,
+    { startAttempt: () => 1, setStatus, finishAttempt: () => undefined, forgetAttempt, saveShots: () => undefined } as never,
     { clearForJob: () => undefined, add: () => undefined } as never,
     { yearsYouGave: () => null } as never,
     { get: () => ({}), resumePath: () => null, skillYears: () => null } as never,

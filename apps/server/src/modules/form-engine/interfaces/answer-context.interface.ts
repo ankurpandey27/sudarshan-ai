@@ -25,4 +25,6 @@ export interface RuleAnswer {
   value: string;
   /** false for a default rather than a fact from the profile. */
   confident: boolean;
+  /** Which of your details it is ("phone"), when a named rule gave it. */
+  key?: string;
 }

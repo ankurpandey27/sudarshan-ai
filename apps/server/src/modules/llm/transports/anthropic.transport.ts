@@ -37,7 +37,17 @@ export class AnthropicTransport implements LlmTransport {
       max_tokens: req.maxTokens + (supportsEffort ? THINKING_HEADROOM : 0),
       ...(req.system ? { system: req.system } : {}),
       ...(supportsEffort ? { output_config: { effort: 'low' as const } } : {}),
-      messages: [{ role: 'user', content: req.prompt }],
+      messages: [
+        {
+          role: 'user',
+          content: req.images?.length
+            ? [
+                ...req.images.map((i) => ({ type: 'image' as const, source: { type: 'base64' as const, media_type: i.mediaType, data: i.data } })),
+                { type: 'text' as const, text: req.prompt },
+              ]
+            : req.prompt,
+        },
+      ],
     });
     if (response.stop_reason === 'refusal') {
       throw new Error('Model declined this request');

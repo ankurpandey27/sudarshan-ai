@@ -37,7 +37,21 @@ export function indeedAppliedKeysInPage(): { keys: string[]; cards: number } {
   return { keys: [...keys], cards };
 }
 
-/** Indeed sent the page to its sign-in. */
-export function indeedSignInShownInPage(): boolean {
-  return /secure\.indeed\.com\/(auth|account)/i.test(location.href) || !!document.querySelector('input[type=password], form[action*="login"]');
+/**
+ * Where the My jobs page is: its list (or its empty list), Indeed's sign-in form actually on screen, or
+ * still on the way. Opening My jobs passes through Indeed's sign-in address even when you are logged in
+ * (that is how it checks your session), and its pages carry hidden login forms - neither means "signed out".
+ */
+export function indeedPageStateInPage(): 'list' | 'signin' | 'loading' {
+  const text = document.body?.innerText ?? '';
+  if (/\bapplied\b[^\n]{0,60}\bon indeed\b/i.test(text) || /no (applications|jobs) (yet|found)|you haven.t applied/i.test(text)) return 'list';
+  const shown = (el: Element) => {
+    const r = (el as HTMLElement).getBoundingClientRect();
+    const s = getComputedStyle(el);
+    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+  };
+  // A password box on screen, or an email box on Indeed's sign-in address. Hidden login forms do not count.
+  const password = Array.from(document.querySelectorAll('input[type=password]')).some(shown);
+  const email = Array.from(document.querySelectorAll('input[type=email], input[name*="email" i]')).some(shown);
+  return password || (email && /secure\.indeed\.com|\/(auth|account|login)/i.test(location.href)) ? 'signin' : 'loading';
 }

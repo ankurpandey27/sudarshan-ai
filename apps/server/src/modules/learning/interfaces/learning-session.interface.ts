@@ -4,6 +4,10 @@
 import { LearnedMove } from '../../form-engine/interfaces/learned-move.interface';
 
 export interface LearningSession {
+  /** Sudarshan is working in the tab itself (continuing after you): its own clicks are not learned as yours. */
+  paused?: boolean;
+  /** When you last typed or clicked in the tab. */
+  lastActivity?: number;
   /** Field values already present (filled by the site, the agent or earlier learning), keyed by question. */
   known: Map<string, string>;
   /** The button just clicked; it counts as a step once the form shows different questions. */

@@ -18,5 +18,6 @@ export function toAttempt(r: AttemptRow): Attempt {
     durationMs: r.duration_ms,
     screenshot: r.screenshot,
     trace: r.trace ? (JSON.parse(r.trace) as string[]) : [],
+    shots: r.shots ? (JSON.parse(r.shots) as Attempt['shots']) : [],
   };
 }

@@ -142,6 +142,7 @@ function JobDetail({ job }: { job: Job }) {
                 <summary className="cursor-pointer text-ink-2">
                   {a.outcome ?? 'running'} - {timeAgo(a.startedAt)} - {a.fields} fields, {a.llmCalls} AI
                 </summary>
+                {a.shots?.length > 0 && <Replay jobId={job.id} attemptId={a.id} shots={a.shots} />}
                 <pre className="mt-1 max-h-40 overflow-auto rounded bg-surface p-2 font-mono text-[11px] whitespace-pre-wrap">
                   {a.trace.join('\n') || a.detail}
                 </pre>
@@ -178,5 +179,22 @@ function TasteChip({ taste, reasons }: { taste: number; reasons: string[] }) {
     <span title={why.length ? why.join(' ') : 'How much this job looks like the ones you apply to.'}>
       <Badge tone={tone}>{pct}% your interest</Badge>
     </span>
+  );
+}
+
+/** The page at each step of an attempt: small pictures in order; click one to see it full size. */
+function Replay({ jobId, attemptId, shots }: { jobId: number; attemptId: number; shots: { label: string; file: string }[] }) {
+  return (
+    <div className="mt-1 flex gap-1.5 overflow-x-auto pb-1" aria-label="Step-by-step replay">
+      {shots.map((s) => {
+        const url = `/api/jobs/${jobId}/attempts/${attemptId}/shots/${encodeURIComponent(s.file)}`;
+        return (
+          <a key={s.file} href={url} target="_blank" rel="noreferrer" title={s.label} className="shrink-0 text-center">
+            <img src={url} alt={s.label} loading="lazy" className="h-16 w-28 rounded border border-line object-cover object-top" />
+            <span className="block w-28 truncate text-[10.5px] text-ink-3">{s.label}</span>
+          </a>
+        );
+      })}
+    </div>
   );
 }

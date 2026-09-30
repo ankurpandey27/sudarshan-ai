@@ -1,0 +1,32 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Question text</title></head>
+<body>
+<!-- Layouts where the question was read wrong (2026-09-29/30): the dropdown's own options, "Select an
+     option", or the hint below a field taken for the question. -->
+<form>
+  <div class="q">
+    <div>Year of graduation *</div>
+    <select id="year"><option>-- Year --</option><option>2018</option><option>2019</option><option>2020</option></select>
+  </div>
+  <div class="q">
+    <span>Do you have any health concerns? *</span>
+    <select id="health"><option>Select an option</option><option>No</option><option>Yes</option></select>
+  </div>
+  <div class="q">
+    <p>How many years of Kubernetes experience do you have?</p>
+    <input id="years" type="number">
+    <small>Enter a number between 0 and 1000</small>
+  </div>
+  <div class="q">
+    <p>Portfolio link</p>
+    <div class="wrap"><input id="url" type="url"></div>
+    <small>Example: https://github.com/yourname</small>
+  </div>
+  <div class="q">
+    <input id="onlyhint" type="text">
+    <small>Your current city</small>
+  </div>
+</form>
+</body>
+</html>
