@@ -41,6 +41,7 @@ export const configFactory = () => {
       browserProfile: join(dataDir, 'browser-profile'),
       screenshots: join(dataDir, 'screenshots'),
       logs: join(dataDir, 'logs'),
+      backups: join(dataDir, 'backups'),
       // The answer-matching model: in the project's models folder (filled by npm install), else the data folder.
       models: resolve(env('MODELS_DIR') ?? join(__dirname, '..', '..', '..', '..', 'models')),
       modelsFallback: join(dataDir, 'models'),

@@ -60,6 +60,8 @@ export class PlatformHealthService {
     const recent = this.storage.all<{ result: string | null; detail: string | null; started_at: string }>(
       `SELECT a.result, a.detail, a.started_at FROM attempts a JOIN jobs j ON j.id = a.job_id
        WHERE a.result IS NOT NULL AND a.started_at > ? AND ${PLATFORM_SQL} = ?
+         -- Stuck on the company's own site (reached from LinkedIn): that site's problem, not LinkedIn changing.
+         AND COALESCE(a.trace, '') NOT LIKE '%Company site:%'
        ORDER BY a.id DESC LIMIT ?`,
       [since, platform, BROKEN_STREAK],
     );

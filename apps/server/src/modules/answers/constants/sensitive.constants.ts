@@ -12,8 +12,8 @@ export const SENSITIVE_VALUE: RegExp[] = [
   // Aadhaar: 12 digits, maybe in groups of four.
   /\b\d{4}\s?\d{4}\s?\d{4}\b/,
   /[^\s@]+@[^\s@]+\.[a-z]{2,}/i,
-  // A phone number: 10 or more digits, maybe with a country code, spaces or dashes.
-  /(\+?\d[\d\s-]{8,}\d)/,
+  // A phone number: 10 or more digits, maybe with a country code, spaces or dashes - not a year range ("2018 - 2022").
+  /\+?(?:\d[\s-]?){9,}\d/,
   // A full date (of birth, for instance): 15/03/1995, 1995-03-15, 15 Mar 1995.
   /\b\d{1,2}[/.-]\d{1,2}[/.-](\d{2}|\d{4})\b|\b\d{4}-\d{2}-\d{2}\b|\b\d{1,2}\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+\d{4}\b/i,
 ];

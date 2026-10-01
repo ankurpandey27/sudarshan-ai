@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-/** How long to wait for someone to solve a captcha when the agent is not pausing before Submit. */
-export const CAPTCHA_WAIT_MS = 180_000;
+/** How long a captcha gets to clear by itself (Cloudflare-style checks) before it is handed to you. */
+export const CAPTCHA_WAIT_MS = 15_000;
 
 /** A resume file already attached on the page, e.g. "AnkurResume.pdf" on Indeed's resume step. */
 // A real file name - letters or digits right before the extension - not hint text like "(.pdf, .docx)".
@@ -131,3 +131,29 @@ export const SUBJECT_FILLER = new Set([
   'min',
   'plus',
 ]);
+
+/** The page moved on while it was being read (a new page replaced it). */
+export const NAVIGATED = /execution context was destroyed|cannot find context|detached frame|target closed|navigat/i;
+
+/** How long a Submit may take before it counts as "did nothing". */
+export const SEND_WAIT_MS = 25_000;
+
+/** After a press: at least this long, then until the page is quiet for SETTLE_QUIET_MS, at most SETTLE_MAX_MS. */
+export const SETTLE_MIN_MS = 500;
+export const SETTLE_QUIET_MS = 900;
+export const SETTLE_MAX_MS = 7000;
+
+/** A press that changed nothing yet gets this long to show its result before another button is tried. */
+export const NO_CHANGE_WAIT_MS = 5000;
+
+/** A step still loading (no fields, hardly any text) may take this long (Indeed smartapply, 2026-10-01). */
+export const SLOW_STEP_RENDER_WAIT_MS = 30_000;
+
+/** With Submit greyed out, a captcha may still be on its way (Indeed): looked for this long. */
+export const LATE_CAPTCHA_WAIT_MS = 12_000;
+
+/** Submits that land back on the same form before Sudarshan stops and asks you. */
+export const MAX_SAME_FORM_SENDS = 2;
+
+/** Searchable dropdowns opened per step to read their options, at most. */
+export const MAX_PROBED_COMBOBOXES = 20;

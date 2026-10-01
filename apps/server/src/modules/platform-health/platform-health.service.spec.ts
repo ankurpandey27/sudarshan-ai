@@ -115,4 +115,20 @@ describe('PlatformHealthService', () => {
     expect(again.status).toBe('broken');
     expect(Date.parse(again.until!) - Date.now()).toBeGreaterThan(5.9 * 3_600_000);
   });
+
+  it('never pauses LinkedIn for problems on company sites reached from it (2026-09-30)', () => {
+    const storage = new StorageService(':memory:');
+    for (let n = 1; n <= 4; n++) {
+      const at = new Date(Date.now() - (60 - n) * 60_000).toISOString();
+      storage.run(
+        `INSERT INTO jobs (source, external_id, url, title, status, discovered_at, updated_at) VALUES ('linkedin', ?, 'https://www.linkedin.com/jobs/view/1', 'Dev', 'failed', ?, ?)`,
+        [`l${n}`, at, at],
+      );
+      storage.run(
+        `INSERT INTO attempts (job_id, started_at, result, detail, trace) VALUES (?, ?, 'run:closed', 'The application dialog closed unexpectedly', ?)`,
+        [n, at, JSON.stringify(['12:00:00 Applying: Dev @ Acme', '12:00:20 Company site: www.acme.com'])],
+      );
+    }
+    expect(new PlatformHealthService(storage).state(JobPlatform.LINKEDIN).status).toBe('ok');
+  });
 });

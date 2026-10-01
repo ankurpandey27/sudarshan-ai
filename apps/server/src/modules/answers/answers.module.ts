@@ -8,11 +8,12 @@ import { AnswersService } from './answers.service';
 import { PendingQuestionsService } from './pending-questions.service';
 import { PastAnswersService } from './past-answers.service';
 import { EmbeddingsModule } from '../../common/embeddings/embeddings.module';
+import { TranslationService } from './translation.service';
 
 @Module({
   imports: [JobsModule, EmbeddingsModule],
   controllers: [AnswersController],
-  providers: [AnswersService, PendingQuestionsService, PastAnswersService],
-  exports: [AnswersService, PendingQuestionsService, PastAnswersService],
+  providers: [AnswersService, PendingQuestionsService, PastAnswersService, TranslationService],
+  exports: [AnswersService, PendingQuestionsService, PastAnswersService, TranslationService],
 })
 export class AnswersModule {}

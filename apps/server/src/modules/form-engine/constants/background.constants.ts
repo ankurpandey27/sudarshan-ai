@@ -20,3 +20,7 @@ export const NOT_A_RESUME =
 
 /** An upload offered instead of a resume the site already holds ("Upload a different file"). */
 export const REPLACES_RESUME = /\b(different|another|replace|change|new)\b/i;
+
+/** A question about your work - "experience in fraud detection", "sanctions screening skills" - not about your record. */
+export const ABOUT_WORK =
+  /\b(experience|experienced|skills?|knowledge|familiar|worked (on|with|in)|domain|projects?|tools?|systems?|detection|prevention|compliance (tools|software)|years of)\b/i;

@@ -44,6 +44,15 @@ export function toInstruction(field: FormField, raw: string): FillInstruction | 
     }
     case FieldKind.FILE:
       return value ? base : null;
+    case FieldKind.COMBOBOX: {
+      if (!value) return null;
+      // Options known (read by opening it): one of them, word for word, or nothing - text that is no option fills nothing.
+      if (field.options.length) {
+        const i = matchOption(value, field.options);
+        return i >= 0 ? { ...base, value: field.options[i] } : null;
+      }
+      return base;
+    }
     default: {
       if (!value) return null;
       const text = field.maxLength ? value.slice(0, field.maxLength) : value;

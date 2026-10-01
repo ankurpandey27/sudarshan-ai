@@ -7,6 +7,10 @@ export interface Answer {
   id: number;
   key: string;
   question: string;
+  /** The question in English, when it was asked in another language and has been translated. */
+  questionEn?: string | null;
+  /** The question is not in English (the page may translate it itself when no English is known yet). */
+  foreign?: boolean;
   answer: string;
   fieldType: string | null;
   source: AnswerSource;

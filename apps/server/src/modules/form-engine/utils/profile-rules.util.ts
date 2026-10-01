@@ -28,6 +28,20 @@ export function workAuthorizationKnown(c: AnswerContext): boolean {
   return !!c.profile.workAuthorization.trim() || jobInHomeCountry(c);
 }
 
+/**
+ * A right-to-work or sponsorship question can be answered from your profile: the job is where you live
+ * (or your profile states where you may work), and the question does not name another country.
+ */
+function rightToWorkKnown(c: AnswerContext, f: FormField, remoteToo = false): boolean {
+  // Sponsorship for a remote job ("Remote", "Anywhere"): your usual answer - you work from where you live.
+  const remote = remoteToo && /^\s*(remote|anywhere|worldwide|global|work from home|wfh)?\s*$/i.test(c.job.location);
+  if (!remote && !workAuthorizationKnown(c)) return false;
+  const label = f.label || f.placeholder;
+  if (!namesACountry(label)) return true;
+  const places = [c.profile.country, c.profile.state, c.profile.city, c.profile.workAuthorization].filter(Boolean).map((p) => p.toLowerCase());
+  return places.some((p) => label.toLowerCase().includes(p));
+}
+
 function jobInHomeCountry(c: AnswerContext): boolean {
   const where = c.job.location.toLowerCase();
   return [c.profile.country, c.profile.state, c.profile.city].some((place) => !!place && where.includes(place.toLowerCase()));
@@ -203,12 +217,14 @@ const RULES: ProfileRule[] = [
   {
     key: 'sponsorship',
     test: /sponsor/,
-    answer: (c) => fact(yes(c.profile.needsSponsorship)),
+    // Your answer holds where you live (or where your profile says you may work) - for a job abroad you are asked
+    // (Almedia, 2026-09-30: "No" for India was sent as "No, I am legally entitled to work in Germany").
+    answer: (c, f) => (rightToWorkKnown(c, f, true) ? fact(yes(c.profile.needsSponsorship)) : null),
   },
   {
     test: WORK_AUTH_QUESTION,
     // Only claimed when the profile states it, or the job is where you live; otherwise you are asked once.
-    answer: (c) => (workAuthorizationKnown(c) ? fact(yes(!c.profile.needsSponsorship)) : null),
+    answer: (c, f) => (rightToWorkKnown(c, f) ? fact(yes(!c.profile.needsSponsorship)) : null),
   },
   {
     test: /\b(comfortable|okay|ok|willing|able)\b.*\b(office|onsite|on-site|hybrid|in person|commute|work from office|wfo|remote)\b/,

@@ -19,6 +19,8 @@ export interface PendingQuestionGroup {
   questionEn: string | null;
   /** Its options in English, in the same order. */
   optionsEn: string[] | null;
+  /** Asked in another language. */
+  foreign: boolean;
   jobIds: number[];
   jobs: { id: number; title: string; company: string }[];
   firstAskedAt: string;

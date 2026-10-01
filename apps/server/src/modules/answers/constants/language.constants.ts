@@ -157,3 +157,12 @@ export const FOREIGN_WORDS = new Set([
   'quanti',
   'hai',
 ]);
+
+/** Texts translated in one AI call. */
+export const TRANSLATE_BATCH = 20;
+
+/** How long a "Needs your answer" alert waits for its English version. */
+export const TRANSLATE_WAIT_MS = 8000;
+
+/** A text the AI could not translate is tried again after this long. */
+export const TRANSLATE_RETRY_MS = 60 * 60_000;

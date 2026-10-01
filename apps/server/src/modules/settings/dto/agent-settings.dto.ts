@@ -80,4 +80,8 @@ export class AgentSettingsDto {
   @IsOptional()
   @IsBoolean()
   rescue?: boolean;
+
+  @IsOptional()
+  @IsBoolean()
+  carefulAfterPause?: boolean;
 }

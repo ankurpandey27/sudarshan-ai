@@ -66,6 +66,11 @@ export interface AgentSettings {
   pastAnswers: boolean;
   /** When the usual way gets stuck on a site, let the AI take several steps to move the application on. */
   rescue: boolean;
+  /**
+   * After a paused platform is tried again, stop before every Submit on that job board's own forms until
+   * one application goes through. Off: it simply resumes. Your choice (2026-09-30).
+   */
+  carefulAfterPause: boolean;
 }
 
 export interface AppSettings {

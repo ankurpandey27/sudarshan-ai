@@ -187,6 +187,7 @@ export interface Settings {
     pauseBeforeSubmit: boolean;
     pastAnswers: boolean;
     rescue: boolean;
+    carefulAfterPause: boolean;
   };
 }
 
@@ -254,6 +255,8 @@ export interface ProfileState {
 export interface Answer {
   id: number;
   question: string;
+  questionEn?: string | null;
+  foreign?: boolean;
   answer: string;
   fieldType: string | null;
   source: 'user' | 'excel' | 'llm';
@@ -269,6 +272,7 @@ export interface PendingQuestion {
   suggestion: string | null;
   questionEn: string | null;
   optionsEn: string[] | null;
+  foreign: boolean;
   jobIds: number[];
   jobs: { id: number; title: string; company: string }[];
 }

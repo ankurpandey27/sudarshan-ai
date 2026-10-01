@@ -23,6 +23,12 @@ describe('what never reaches the AI', () => {
     ['Years of Node.js experience', '5'],
   ])('shows ordinary answers: %s', (q, a) => expect(isSensitive(q, a)).toBe(false));
 
+  it('keeps year ranges and salaries, which are not phone numbers', () => {
+    expect(isSensitive('B.Tech, when?', '2016 - 2020')).toBe(false);
+    expect(isSensitive('Expected CTC', '18 - 22 LPA')).toBe(false);
+    expect(redactSensitive('Worked 2018 - 2022 at Acme')).toBe('Worked 2018 - 2022 at Acme');
+  });
+
   it('blanks identifiers in page text, keeps the rest', () => {
     expect(redactSensitive('Review: Priya, priya@example.com, 9876543210, PAN ABCDE1234F, notice 30 days')).toBe(
       'Review: Priya, [hidden], [hidden], PAN [hidden], notice 30 days',

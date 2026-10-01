@@ -10,6 +10,7 @@ import { useQuestions } from '../lib/queries';
 import type { PendingQuestion } from '../lib/types';
 import { Badge, Button, Card, Empty, Input, PageTitle, Textarea } from '../components/ui';
 import { useToast } from '../components/toast';
+import { useEnglish } from '../lib/english';
 
 export function Questions() {
   const { data = [], isLoading } = useQuestions();
@@ -57,6 +58,8 @@ function QuestionCard({ q }: { q: PendingQuestion }) {
     },
   });
   const multi = q.fieldType === 'checkbox-group';
+  // From your AI model; else the browser's own translator, so a question in another language is always readable.
+  const english = useEnglish(q.question, q.questionEn, q.foreign);
   const picked = new Set(value.split(' | ').filter(Boolean));
 
   return (
@@ -64,10 +67,10 @@ function QuestionCard({ q }: { q: PendingQuestion }) {
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="max-w-3xl">
           <p className="font-display text-[22px] leading-snug">{q.question}</p>
-          {q.questionEn && q.questionEn.trim().toLowerCase() !== q.question.trim().toLowerCase() && (
+          {english && (
             <p className="mt-0.5 text-[14px] text-ink-2">
               <span className="font-semibold text-ink-3">In English: </span>
-              {q.questionEn}
+              {english}
             </p>
           )}
         </div>

@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
-import { ScrollText, Search } from 'lucide-react';
+import { Download, ScrollText, Search } from 'lucide-react';
 import { api } from '../lib/api';
 import { clock, cn, levelColor, platformLabel, sourceLabel } from '../lib/format';
 import type { ActivityPage } from '../lib/types';
@@ -67,6 +67,7 @@ export function ActivityPage() {
   const days = first?.days ?? [];
   const filtered = !!(search || day || source || kind !== 'all');
   const total = days.reduce((n, d) => n + d.lines, 0);
+  const exportQuery = new URLSearchParams({ kind, ...(day ? { day } : {}), ...(source ? { source } : {}), ...(search ? { search } : {}) }).toString();
 
   // Group lines under a date heading when showing several days.
   let lastDay = '';
@@ -76,6 +77,17 @@ export function ActivityPage() {
       <PageTitle
         title="Flight log history"
         sub={`Everything Sudarshan did in the last ${first?.keepDays ?? 7} days - kept on this computer, older lines are cleared automatically.`}
+        actions={
+          // The lines shown, with the same day, kind, platform and search - all of them, not just this page.
+          <a
+            href={`/api/events/history/export.csv?${exportQuery}`}
+            download
+            title="The lines shown here (all pages), as a CSV file for Excel or Google Sheets"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-line-strong bg-surface px-3.5 text-sm font-medium hover:bg-surface-2"
+          >
+            <Download className="size-4" /> Export CSV
+          </a>
+        }
       />
 
       <div className="mb-3 flex flex-wrap gap-1.5" role="group" aria-label="Day">

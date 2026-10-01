@@ -8,6 +8,8 @@ export interface RescueAction {
   submits?: boolean;
   choose?: string;
   option?: string;
+  /** A file field that wants the resume: it gets yours (never anything else). */
+  upload?: string;
 }
 
 /** What the AI returns for one rescue step. */

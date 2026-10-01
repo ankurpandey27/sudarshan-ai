@@ -1,0 +1,61 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Greenhouse-style form</title>
+<style>.menu{border:1px solid #ccc}.menu div{padding:4px}.err{color:red}</style></head>
+<body>
+<!-- Sony on Greenhouse (2026-10-01): required "Select..." dropdowns whose options exist only while open,
+     worded "I don't wish to answer" - typing "Prefer not to say" finds "No options". Submit keeps the form
+     and its errors are plain text, not marked as field errors. -->
+<form onsubmit="return false">
+  <div class="field">
+    <label for="so">Sexual Orientation *</label>
+    <div class="wrap"><input id="so" role="combobox" aria-autocomplete="list" aria-required="true" placeholder="Select..." autocomplete="off"></div>
+  </div>
+  <div class="field">
+    <label for="vet">Are you a protected veteran? *</label>
+    <div class="wrap"><input id="vet" role="combobox" aria-autocomplete="list" aria-required="true" placeholder="Select..." autocomplete="off"></div>
+  </div>
+  <p class="err" id="msg"></p>
+  <button type="button" id="submit">Submit application</button>
+</form>
+<script>
+  const OPTIONS = {
+    so: ['Heterosexual', 'Gay or Lesbian', 'Bisexual', "I don't wish to answer"],
+    vet: ['I am a protected veteran', 'I am not a protected veteran', "I don't wish to answer"],
+  };
+  window.__submits = 0;
+  window.__chosen = {};
+  for (const id of Object.keys(OPTIONS)) {
+    const input = document.getElementById(id);
+    const show = () => {
+      document.querySelectorAll('.menu').forEach((m) => m.remove());
+      const q = input.value.toLowerCase();
+      const menu = document.createElement('div');
+      menu.className = 'menu';
+      menu.setAttribute('role', 'listbox');
+      const hits = OPTIONS[id].filter((o) => o.toLowerCase().includes(q));
+      if (!hits.length) menu.innerHTML = '<div>No options</div>';
+      for (const o of hits) {
+        const d = document.createElement('div');
+        d.setAttribute('role', 'option');
+        d.textContent = o;
+        d.addEventListener('mousedown', (e) => e.preventDefault());
+        d.addEventListener('click', () => { input.value = o; window.__chosen[id] = o; menu.remove(); });
+        menu.appendChild(d);
+      }
+      input.parentElement.appendChild(menu);
+    };
+    input.addEventListener('focus', show);
+    input.addEventListener('click', show);
+    input.addEventListener('input', () => { window.__chosen[id] = undefined; show(); });
+    input.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.menu').forEach((m) => m.remove()); });
+  }
+  document.getElementById('submit').addEventListener('click', () => {
+    window.__submits++;
+    const missing = Object.keys(OPTIONS).filter((id) => !window.__chosen[id]);
+    if (missing.length) { document.getElementById('msg').textContent = 'This field is required. (' + missing.length + ')' + ' '.repeat(window.__submits); return; }
+    document.body.innerHTML = '<h1>Thank you for applying!</h1>';
+  });
+</script>
+</body>
+</html>

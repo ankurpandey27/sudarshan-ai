@@ -1,0 +1,27 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Careers - Fullstack</title></head>
+<body>
+<!-- DataOrb (2026-09-30): after Submit, a thank-you pop-up opens over the page, while the job page's own
+     "Apply for the Role" button and the (emptied) form stay underneath. -->
+<main>
+  <h1>Software Engineer, Fullstack</h1>
+  <button type="button" id="again">Apply for the Role</button>
+  <form id="f" onsubmit="return false">
+    <label>Full name <input name="name" required></label>
+    <label>Email <input type="email" name="email" required></label>
+    <button type="button" id="submit">Submit Application</button>
+  </form>
+</main>
+<script>
+  window.__sent = 0;
+  window.__again = 0;
+  document.getElementById('again').addEventListener('click', () => window.__again++);
+  document.getElementById('submit').addEventListener('click', () => {
+    window.__sent++;
+    document.getElementById('f').reset();
+    document.body.insertAdjacentHTML('beforeend', '<div role="dialog" style="position:fixed;inset:20%;background:#222;color:#fff"><p>Your application has been received. Our team will review your profile.</p><a href="#">Explore More Opportunities</a></div>');
+  });
+</script>
+</body>
+</html>

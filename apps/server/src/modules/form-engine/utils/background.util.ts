@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { BACKGROUND_QUESTION, CLEAN_STATEMENT, CONSENT, NOTHING_TO_DECLARE } from '../constants/background.constants';
+import { ABOUT_WORK, BACKGROUND_QUESTION, CLEAN_STATEMENT, CONSENT, NOTHING_TO_DECLARE } from '../constants/background.constants';
 import { FieldKind } from '../enums/field-kind.enum';
 
 /**
@@ -12,7 +12,8 @@ import { FieldKind } from '../enums/field-kind.enum';
  */
 export function cleanRecordAnswer(question: string, kind: FieldKind): string | null {
   const q = question.toLowerCase();
-  if (!BACKGROUND_QUESTION.test(q)) return null;
+  // Only a question about your record - never one about your work that mentions such a word ("fraud detection").
+  if (!BACKGROUND_QUESTION.test(q) || ABOUT_WORK.test(q)) return null;
   if (kind === FieldKind.TEXT || kind === FieldKind.TEXTAREA) return NOTHING_TO_DECLARE;
   if (CONSENT.test(q)) return 'Yes';
   // A statement to tick ("I have no pending cases") or a question that already says "no" ("Are you free of ...").

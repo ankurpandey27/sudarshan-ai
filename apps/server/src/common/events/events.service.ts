@@ -5,6 +5,7 @@ import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Observable, Subject } from 'rxjs';
 import { SQLInputValue } from 'node:sqlite';
 import { StorageService } from '../storage/storage.service';
+import { toCsv } from '../utils/csv.util';
 import { ACTIVITY_KEEP_DAYS, ACTIVITY_MAX_ROWS, ACTIVITY_PRUNE_EVERY_MS, EVENT_HISTORY, LOGGED_EVENT_TYPES } from './constants/events.constants';
 import { ActivityQueryDto } from './dto/activity-query.dto';
 import { AgentEventType } from './enums/agent-event-type.enum';
@@ -57,23 +58,7 @@ export class EventsService {
   activity(q: ActivityQueryDto): ActivityPage {
     const empty: ActivityPage = { items: [], hasMore: false, total: 0, days: [], keepDays: ACTIVITY_KEEP_DAYS };
     if (!this.storage) return empty;
-    const where: string[] = [];
-    const params: SQLInputValue[] = [];
-    if (q.day) {
-      const [y, m, d] = q.day.split('-').map(Number);
-      where.push('at >= ? AND at < ?');
-      params.push(new Date(y, m - 1, d).toISOString(), new Date(y, m - 1, d + 1).toISOString());
-    }
-    if (q.kind === 'apply') where.push(`(job_id IS NOT NULL OR type = '${AgentEventType.APPLY_STEP}')`);
-    if (q.kind === 'problems') where.push(`level IN ('warn', 'error')`);
-    if (q.search?.trim()) {
-      where.push('message LIKE ?');
-      params.push(`%${q.search.trim()}%`);
-    }
-    if (q.source) {
-      where.push('source = ?');
-      params.push(q.source);
-    }
+    const { where, params } = this.filters(q);
     // Everything matching the filters, before paging.
     const filtered = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const total = Number(this.storage.get<{ n: number }>(`SELECT COUNT(*) n FROM activity ${filtered}`, params)?.n ?? 0);
@@ -94,6 +79,51 @@ export class EventsService {
       days: this.days(),
       keepDays: ACTIVITY_KEEP_DAYS,
     };
+  }
+
+  /** The flight log as a CSV file: every line the page shows with the same filters, newest first. */
+  exportCsv(q: ActivityQueryDto): string {
+    const { where, params } = this.filters(q);
+    const rows = this.storage
+      ? this.storage.all<ActivityRow>(`SELECT * FROM activity ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY id DESC`, params)
+      : [];
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return toCsv(
+      ['Date', 'Time', 'Level', 'Platform', 'Job', 'Message'],
+      rows.map((r) => {
+        const at = new Date(r.at);
+        return [
+          `${at.getFullYear()}-${pad(at.getMonth() + 1)}-${pad(at.getDate())}`,
+          `${pad(at.getHours())}:${pad(at.getMinutes())}:${pad(at.getSeconds())}`,
+          r.level,
+          r.source ?? '',
+          r.job_id ?? '',
+          r.message,
+        ];
+      }),
+    );
+  }
+
+  /** The page's filters as SQL: a day, a kind (applications, problems), a platform and words to find. */
+  private filters(q: ActivityQueryDto): { where: string[]; params: SQLInputValue[] } {
+    const where: string[] = [];
+    const params: SQLInputValue[] = [];
+    if (q.day) {
+      const [y, m, d] = q.day.split('-').map(Number);
+      where.push('at >= ? AND at < ?');
+      params.push(new Date(y, m - 1, d).toISOString(), new Date(y, m - 1, d + 1).toISOString());
+    }
+    if (q.kind === 'apply') where.push(`(job_id IS NOT NULL OR type = '${AgentEventType.APPLY_STEP}')`);
+    if (q.kind === 'problems') where.push(`level IN ('warn', 'error')`);
+    if (q.search?.trim()) {
+      where.push('message LIKE ?');
+      params.push(`%${q.search.trim()}%`);
+    }
+    if (q.source) {
+      where.push('source = ?');
+      params.push(q.source);
+    }
+    return { where, params };
   }
 
   private days(): ActivityDay[] {

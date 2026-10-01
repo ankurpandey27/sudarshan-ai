@@ -12,8 +12,9 @@ import { AnswerSource } from './enums/answer-source.enum';
 import { PendingQuestionGroup, PendingQuestionInput, PendingQuestionRow } from './interfaces/pending-question.interface';
 import { questionKey } from './utils/question-key.util';
 import { looksNonEnglish } from './utils/language.util';
-import { LlmPurpose } from '../llm/enums/llm-purpose.enum';
-import { LlmService } from '../llm/llm.service';
+import { sleep } from '../../common/utils/sleep.util';
+import { TRANSLATE_WAIT_MS } from './constants/language.constants';
+import { TranslationService } from './translation.service';
 
 @Injectable()
 export class PendingQuestionsService {
@@ -25,7 +26,7 @@ export class PendingQuestionsService {
     private readonly answers: AnswersService,
     private readonly jobs: JobsService,
     private readonly events: EventsService,
-    @Optional() private readonly llm?: LlmService,
+    @Optional() private readonly translation?: TranslationService,
   ) {}
 
   add(input: PendingQuestionInput): void {
@@ -37,47 +38,44 @@ export class PendingQuestionsService {
        ON CONFLICT(key, job_id) DO UPDATE SET status = 'open', options = excluded.options, suggestion = excluded.suggestion`,
       [key, input.jobId, input.question.slice(0, 500), input.fieldType, JSON.stringify(input.options.slice(0, 50)), input.suggestion, new Date().toISOString()],
     );
+    void this.announce(key, input);
+  }
+
+  /** "Needs your answer" - with the English next to a question in another language (waits a few seconds for it). */
+  private async announce(key: string, input: PendingQuestionInput): Promise<void> {
+    const english = await Promise.race([this.translate(key), sleep(TRANSLATE_WAIT_MS).then(() => null)]).catch(() => null);
     this.events.emit({
       type: AgentEventType.QUESTION_PENDING,
       level: 'warn',
       jobId: input.jobId,
-      message: `Needs your answer: "${input.question.slice(0, 120)}"`,
+      message: `Needs your answer: "${input.question.slice(0, 120)}"${english ? ` - in English: "${english.slice(0, 120)}"` : ''}`,
     });
-    void this.translate(key);
   }
 
   /**
    * Puts an English version next to a question asked in another language (and its options), so you
-   * know what you are answering. Once per question, in the background; without an AI it just stays as it is.
+   * know what you are answering. Through the shared translation store: each text is translated once, ever.
    */
-  async translate(key: string): Promise<void> {
+  async translate(key: string): Promise<string | null> {
     const row = this.storage.get<{ question: string; options: string; question_en: string | null }>(
       'SELECT question, options, question_en FROM pending_questions WHERE key = ? LIMIT 1',
       [key],
     );
-    if (!row || row.question_en || !this.llm?.isAvailable()) return;
+    if (!row) return null;
+    if (row.question_en) return row.question_en;
     const options = JSON.parse(row.options) as string[];
-    if (!looksNonEnglish([row.question, ...options].join(' '))) return;
-    if (this.translating.has(key)) return;
+    if (!this.translation || !looksNonEnglish([row.question, ...options].join(' ')) || this.translating.has(key)) return null;
     this.translating.add(key);
     try {
-      const res = await this.llm.json<{ question?: string; options?: string[] }>(
-        `Translate this job application question and its options into plain English. Keep the meaning exact; keep numbers and names.
-Return JSON: {"question":"<English>","options":["<English of each option, same order>"]}
-
-${JSON.stringify({ question: row.question, options })}`,
-        { purpose: LlmPurpose.TRANSLATE, maxTokens: 300 + options.length * 30 },
-      );
-      const en = String(res?.question ?? '').trim();
-      if (!en) return;
-      const optionsEn = Array.isArray(res.options) && res.options.length === options.length ? res.options.map((o) => String(o)) : null;
+      const english = await this.translation.translate([row.question, ...options.filter((o) => o.trim())], true);
+      const en = english.get(row.question) ?? null;
+      if (!en) return null;
       this.storage.run('UPDATE pending_questions SET question_en = ?, options_en = ? WHERE key = ?', [
         en.slice(0, 500),
-        optionsEn ? JSON.stringify(optionsEn) : null,
+        JSON.stringify(options.map((o) => english.get(o) ?? o)),
         key,
       ]);
-    } catch {
-      // No translation this time: the question still shows as it was asked.
+      return en;
     } finally {
       this.translating.delete(key);
     }
@@ -97,10 +95,11 @@ ${JSON.stringify({ question: row.question, options })}`,
           key: r.key,
           question: r.question,
           fieldType: r.field_type,
-          options: JSON.parse(r.options) as string[],
+          options: usableOptions(JSON.parse(r.options) as string[]),
           suggestion: r.suggestion,
           questionEn: r.question_en,
           optionsEn: r.options_en ? (JSON.parse(r.options_en) as string[]) : null,
+          foreign: !!r.question_en || looksNonEnglish(`${r.question} ${r.options}`),
           jobIds: [],
           jobs: [],
           firstAskedAt: r.created_at,
@@ -149,4 +148,12 @@ ${JSON.stringify({ question: row.question, options })}`,
   private jobIdsFor(key: string): number[] {
     return this.storage.all<{ job_id: number }>("SELECT job_id FROM pending_questions WHERE key = ? AND status = 'open'", [key]).map((r) => r.job_id);
   }
+}
+
+/**
+ * Options you can actually choose between. Ones that all read the same (a page read wrong, 2026-09-30:
+ * every option showed the question) are dropped, so you get a text box and can type the answer.
+ */
+function usableOptions(options: string[]): string[] {
+  return new Set(options).size < options.length ? [] : options;
 }

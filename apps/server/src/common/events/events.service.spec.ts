@@ -67,4 +67,25 @@ describe('EventsService flight log', () => {
     expect(naukri.total).toBe(5);
     expect(naukri.items.every((e) => e.source === 'naukri')).toBe(true);
   });
+
+  it('exports the lines shown, with the same filters, as a spreadsheet-safe CSV (2026-09-30)', () => {
+    const events = new EventsService(new StorageService(':memory:'));
+    events.emit({ type: AgentEventType.LOG, level: 'success', message: 'Applied to Backend, Node @ Acme', jobId: 7, source: 'linkedin' });
+    events.emit({ type: AgentEventType.LOG, level: 'error', message: '=Indeed search failed', source: 'indeed' });
+    events.emit({ type: AgentEventType.LOG, level: 'info', message: 'Agent started' });
+    const lines = (csv: string) =>
+      csv
+        .replace(/^\uFEFF/, '')
+        .trim()
+        .split(/\r\n/);
+    const all = events.exportCsv({});
+    expect(lines(all)[0]).toBe('Date,Time,Level,Platform,Job,Message');
+    expect(lines(all)).toHaveLength(4);
+    // A comma stays in its cell; a line starting with "=" never runs as a formula.
+    expect(all).toContain(',success,linkedin,7,"Applied to Backend, Node @ Acme"');
+    expect(all).toContain(",error,indeed,,'=Indeed search failed");
+    expect(lines(events.exportCsv({ kind: 'problems' }))).toHaveLength(2);
+    expect(events.exportCsv({ search: 'Acme' })).toContain('Acme');
+    expect(events.exportCsv({ search: 'Acme' })).not.toContain('Agent started');
+  });
 });

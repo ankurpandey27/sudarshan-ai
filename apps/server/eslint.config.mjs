@@ -14,7 +14,8 @@ export default tseslint.config(
     languageOptions: {
       globals: { ...globals.node, ...globals.jest },
       parserOptions: {
-        projectService: { allowDefaultProject: ['test/*.ts'] },
+        // Browser tests live outside src; there are more of them than the default cap of 8.
+        projectService: { allowDefaultProject: ['test/*.ts'], maximumDefaultProjectFileMatchCount_THIS_WILL_SLOW_DOWN_LINTING: 40 },
         tsconfigRootDir: import.meta.dirname,
       },
     },

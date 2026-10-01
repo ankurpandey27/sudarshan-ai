@@ -14,7 +14,12 @@ export function looksNonEnglish(text: string): boolean {
   // Letters beyond Latin, e.g. Devanagari or Cyrillic.
   if (/[^\p{Script=Latin}\p{Script=Common}\p{M}]/u.test(t)) return true;
   if (/[À-ÖØ-öø-ɏ]/.test(t)) return true;
-  const words = t.toLowerCase().match(/[a-z]+/g) ?? [];
+  // "address(es)", "year(s)": English plural endings, not the Spanish "es".
+  const words =
+    t
+      .toLowerCase()
+      .replace(/\((e?s)\)/g, '')
+      .match(/[a-z]+/g) ?? [];
   const foreign = words.filter((w) => FOREIGN_WORDS.has(w)).length;
   const english = words.filter((w) => ENGLISH_WORDS.has(w)).length;
   return foreign > 0 && foreign > english;

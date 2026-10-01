@@ -15,6 +15,9 @@ export function isPlaceholderOption(option: string): boolean {
 
 const YES = /^(yes|y|true|1|agree|i agree|accept|i accept|ok|sure|of course|absolutely)$/;
 const NO = /^(no|n|nope|nah|false|0|disagree|decline|i decline|not)$/;
+// Choosing not to answer, however a form words it.
+const DECLINE =
+  /prefer not|rather not|decline|do not wish|don t wish|not wish to|choose not|not to (say|answer|disclose|self identify)|not disclos|no answer|wish not/;
 
 // Handles yes/no synonyms, numbers against ranges ("3-5 years", "5+", "Less than 1") and partial matches. -1 if nothing fits.
 export function matchOption(value: string, options: string[]): number {
@@ -25,6 +28,12 @@ export function matchOption(value: string, options: string[]): number {
 
   const exact = candidates.find((c) => c.o === v);
   if (exact) return exact.i;
+
+  // "Prefer not to say" in the site's own words: "I don't wish to answer", "Decline to self-identify" (Greenhouse, 2026-10-01).
+  if (DECLINE.test(v)) {
+    const hit = candidates.find((c) => DECLINE.test(c.o));
+    if (hit) return hit.i;
+  }
 
   if (YES.test(v) || NO.test(v)) {
     const want = YES.test(v);

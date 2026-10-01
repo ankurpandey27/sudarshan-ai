@@ -23,6 +23,9 @@ describe('questions about your record, for a clean candidate (2026-09-30)', () =
   });
 
   it('leaves other questions alone', () => {
+    expect(cleanRecordAnswer('Do you have experience in fraud detection?', FieldKind.RADIO)).toBeNull();
+    expect(cleanRecordAnswer('Have you worked with sanctions screening systems?', FieldKind.RADIO)).toBeNull();
+    expect(cleanRecordAnswer('Years of experience with background check APIs', FieldKind.NUMBER)).toBeNull();
     expect(cleanRecordAnswer('Notice period', FieldKind.TEXT)).toBeNull();
     expect(cleanRecordAnswer('Are you legally authorized to work in India?', FieldKind.RADIO)).toBeNull();
   });

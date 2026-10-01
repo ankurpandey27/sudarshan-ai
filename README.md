@@ -46,13 +46,14 @@ The main page is called **Lakshya** (लक्ष्य, "the target") - the aim
 7. [Daily use](#daily-use)
 8. [When something goes wrong](#when-something-goes-wrong)
 9. [Safety and privacy](#safety-and-privacy)
-10. [Configuration](#configuration)
-11. [Updating and removing](#updating-and-removing)
-12. [For developers](#for-developers)
-13. [How Sudarshan learns](#how-sudarshan-learns)
-14. [What Sudarshan can't do on its own](#what-sudarshan-cant-do-on-its-own)
-15. [Status and known gaps](#status-and-known-gaps)
-16. [Contributing](#contributing)
+10. [Backups: keeping your data safe](#backups-keeping-your-data-safe)
+11. [Configuration](#configuration)
+12. [Updating and removing](#updating-and-removing)
+13. [For developers](#for-developers)
+14. [How Sudarshan learns](#how-sudarshan-learns)
+15. [What Sudarshan can't do on its own](#what-sudarshan-cant-do-on-its-own)
+16. [Status and known gaps](#status-and-known-gaps)
+17. [Contributing](#contributing)
 
 ---
 
@@ -291,7 +292,7 @@ Each failed application also keeps a **screenshot** and a **step-by-step trace**
 
 **What the AI never sees.** Anything that identifies you - your phone number, email, address, date of birth, PAN, Aadhaar, passport or bank details - is never sent to the AI model: not in your past answers, not in hints, and not in page text (it is replaced by "[hidden]"). Those fields are filled from your profile and your own saved answers only.
 
-- **Everything stays on your computer**, in `~/.sudarshan` (`%USERPROFILE%\.sudarshan` on Windows): the database, your resume, the agent's browser profile, logs and screenshots of failed attempts.
+- **Everything stays on your computer**, in your data folder (see [Where your data is](#where-your-data-is)): the database, your resume, the agent's browser profile, logs, screenshots and daily backups.
 - **API keys are encrypted** (AES-256-GCM) with a key generated on your machine, and never sent back to the page.
 - **No passwords stored** - you log in to job sites in the agent's own browser window.
 - **Local only** - the server listens on `127.0.0.1` and rejects requests from other websites.
@@ -300,6 +301,72 @@ Each failed application also keeps a **screenshot** and a **step-by-step trace**
 **Indeed is off by default.** Indeed restricts automation more than any other site here and often shows a security check ("Just a moment..."). Sudarshan waits for it to clear, goes slowly (12-18 s between pages, 15 applications a day by default), and hands the check to you if it stays. Turn it on under **Apply on** and log in to Indeed in the agent browser - logged out, Indeed shows only the first page of results and no application form. Indeed's review page is protected by Google's invisible reCAPTCHA ("This site is protected by reCAPTCHA"), which usually needs nothing from you: Sudarshan presses Submit itself. Only when Indeed shows a real captcha to solve does it hand the application to you.
 
 **Protect your accounts.** LinkedIn does not allow automated applications and restricts accounts that apply too fast. Defaults are deliberately conservative: **25 LinkedIn / 40 Naukri applications per day**, random 40-110 s gaps, a real visible browser, and captchas always handed to you. Raise limits at your own risk; you are responsible for how you use this tool.
+
+---
+
+## Backups: keeping your data safe
+
+Everything Sudarshan knows about you - your saved answers, the steps it has learned for each site, every job and application, and what its learners have learned - is in **one file**, `agent.db`. Sudarshan copies that file for you once a day, so a damaged file never costs you more than a day.
+
+### Where your data is
+
+Your data folder is in your home folder:
+
+| Your computer | Data folder |
+| --- | --- |
+| Windows | `C:\Users\<your name>\.sudarshan` |
+| macOS | `/Users/<your name>/.sudarshan` |
+| Linux | `/home/<your name>/.sudarshan` |
+
+If you used Sudarshan before it was renamed, the folder is called `.job-apply-agent` instead (for example `C:\Users\<your name>\.job-apply-agent`). Sudarshan keeps using it; nothing needs moving. If you set `SUDARSHAN_DATA_DIR`, the data folder is wherever that points.
+
+Inside it:
+
+| What | Where | What it holds |
+| --- | --- | --- |
+| Your database | `agent.db` (with `agent.db-wal` and `agent.db-shm` next to it) | Profile, answers, jobs, applications, learned steps, learners |
+| Backups | `backups\agent-YYYY-MM-DD.db` | One full copy per day, the last 7 kept |
+| Encryption key | `secret.key` | Unlocks your saved AI keys - keep it with your data |
+| Browser profile | `browser-profile` | The agent's own logins to job sites |
+| Your resume | `uploads` | The resume file you uploaded |
+| Screenshots, logs | `screenshots`, `logs` | Cleared automatically after 30 days |
+
+**Opening the folder on Windows:** names starting with a dot are often hidden when you browse. Instead, click the address bar of File Explorer, paste `%USERPROFILE%\.sudarshan` (or `%USERPROFILE%\.job-apply-agent`) and press **Enter**.
+
+**On macOS:** in Finder press **Cmd + Shift + G**, type `~/.sudarshan` and press **Return**.
+
+### How the daily backup works
+
+1. Once a day, while Sudarshan is running, it writes a complete copy of your database to the `backups` folder, named by the date: `agent-2026-10-01.db`.
+2. The copy is made safely while Sudarshan keeps working - you never need to stop it.
+3. The last **7** copies are kept; older ones are deleted by themselves.
+4. The flight log says when it happened: *"Backed up your data to ..."*.
+
+You do not need to do anything for this to happen.
+
+### Restoring a backup
+
+Use this only if your data is damaged or you want to go back to an earlier day. It replaces your current data with the copy you choose.
+
+1. **Stop Sudarshan.** In the window where it runs, press **Ctrl + C** (on macOS too) and wait until it has stopped.
+2. **Open your data folder** (see [Where your data is](#where-your-data-is)).
+3. **Keep the current file, just in case.** Rename `agent.db` to `agent-damaged.db`.
+4. **Delete** `agent.db-wal` and `agent.db-shm` if they are there. They belong to the old file and must not be mixed with the backup.
+5. **Choose a backup.** Open the `backups` folder and copy the file of the day you want, for example `agent-2026-10-01.db`.
+6. **Paste it** into the data folder (one level up from `backups`) and **rename it** to `agent.db`.
+7. **Start Sudarshan** again with `npm start`.
+
+Everything is now as it was on that day. Applications Sudarshan sent after that day are no longer listed in it - they were still sent; only its record of them is older. When all is well, you can delete `agent-damaged.db`.
+
+### Keeping a copy somewhere else
+
+The daily backups are on the same disk as your data: they protect you from a damaged file, not from a broken disk or a lost laptop. For that, copy the backups now and then to another place:
+
+1. Open your data folder.
+2. Copy the `backups` folder **and** `secret.key` (without the key, your saved AI keys cannot be read back - you would only need to enter them again).
+3. Paste them into a cloud folder (OneDrive, Google Drive, Dropbox) or a USB drive.
+
+These files hold your personal details and answers: keep them somewhere private, and never share or upload them publicly.
 
 ---
 
@@ -333,7 +400,7 @@ Your data is not in the project folder, so updating never touches it.
 **Remove Sudarshan completely:**
 
 1. Stop it (`Ctrl + C`) and delete the `sudarshan-ai` folder.
-2. Delete your data folder: `~/.sudarshan` (`%USERPROFILE%.sudarshan` on Windows). This erases your profile, resume copy, answers, encrypted keys and the agent's logged-in browser profile.
+2. Delete your data folder: `~/.sudarshan` (`%USERPROFILE%\.sudarshan` on Windows, or `.job-apply-agent` from before the rename). This erases your profile, resume copy, answers, encrypted keys and the agent's logged-in browser profile.
 
 ---
 

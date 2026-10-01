@@ -108,6 +108,18 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     return before || hint;
   };
 
+  /**
+   * A group's question written inside the smallest box that holds all its options, before the first
+   * one - only when that box holds nothing but this group (never an earlier question of the form).
+   */
+  const questionInside = (members: Element[], options: string[]): string => {
+    let box: Element | null = members[0].parentElement;
+    while (box && box !== scope && !members.every((m) => box!.contains(m))) box = box.parentElement;
+    if (!box || controlCount(box) > members.length) return '';
+    const text = textAround(box, members[0], options).before;
+    return text.length >= 2 ? text.slice(0, 300) : '';
+  };
+
   const labelFor = (el: Element, exclude: string[] = [], ownCount = 1): string => {
     const input = el as HTMLInputElement;
     const labelled = byIdText(el.getAttribute('aria-labelledby'));
@@ -117,6 +129,12 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     const aria = clean(el.getAttribute('aria-label'));
     if (aria) return aria;
     const { before, hint } = containerParts(el, ownCount, exclude);
+    // A radio button or checkbox is labelled by the words after it ("Yes", "I agree ..."); the question
+    // above its group belongs to the group, never to each option (CRUXO, Capgemini, 2026-09-30).
+    const t = (input.type || '').toLowerCase();
+    if (el.tagName === 'INPUT' && (t === 'radio' || t === 'checkbox')) {
+      return hint || before || clean(input.value && input.value !== 'on' ? input.value : input.name || input.id || '').replace(/[_-]+/g, ' ');
+    }
     if (before) return before;
     // A question written just above the control, in its own block (<p>Question*</p><div><input></div>).
     const above = precedingText(el);
@@ -198,18 +216,25 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
           : Array.from(container.querySelectorAll('input[type=radio]'))
       ) as HTMLInputElement[];
       const optionIds = radios.map((r) => tag(r, 'data-jaa-opt', 'o'));
-      const options = radios.map((r) => labelFor(r) || r.value);
+      let options = radios.map((r) => labelFor(r) || r.value);
+      // Options that all read the same cannot be told apart (or answered): each one's own value instead.
+      if (options.length > 1 && new Set(options).size < options.length) {
+        const values = radios.map((r) => clean(r.value) || clean(r.getAttribute('aria-label')));
+        if (new Set(values).size === values.length && values.every(Boolean)) options = values;
+      }
       const groupEl = el.closest('fieldset, [role=radiogroup]') ?? container;
       const legend = groupEl.querySelector('legend');
       // Some sites put the question in every option's aria-label (LinkedIn, 2026).
       const optionAria = Array.from(new Set(radios.map((r) => clean(r.closest('[role=radio]')?.getAttribute('aria-label')))));
       const sharedAria = optionAria.length === 1 && optionAria[0] && !options.includes(optionAria[0]) ? optionAria[0] : '';
       const before = precedingText(groupEl);
+      const inside = questionInside(radios, options);
       const label =
         textOf(legend) ||
         byIdText(groupEl.getAttribute('aria-labelledby')) ||
         clean(groupEl.getAttribute('aria-label')) ||
         sharedAria ||
+        inside ||
         clean(before) ||
         containerText(groupEl, radios.length, options) ||
         input.name;
@@ -278,7 +303,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
         seenGroups.add(key);
         const optionIds = peers.map((p) => tag(p, 'data-jaa-opt', 'o'));
         const options = peers.map((p) => labelFor(p) || p.value);
-        const label = textOf(groupEl.querySelector('legend')) || containerText(groupEl, peers.length, options) || input.name;
+        const label = textOf(groupEl.querySelector('legend')) || questionInside(peers, options) || containerText(groupEl, peers.length, options) || input.name;
         fields.push({
           id: groupEl.getAttribute('data-jaa-id')!,
           kind: 'checkbox-group' as FieldKind,

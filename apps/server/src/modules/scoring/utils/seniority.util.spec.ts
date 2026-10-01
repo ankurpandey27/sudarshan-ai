@@ -54,6 +54,12 @@ describe('experience level (2026-09-30)', () => {
     expect(belowLevel(job('Node.js Intern'), 0)).toBeNull();
   });
 
+  it('reads "JR-10234" as a job code, not as junior (Workday)', () => {
+    expect(belowLevel(job('Backend Engineer (JR-10234)'), 3)).toBeNull();
+    expect(belowLevel(job('Backend Engineer JR 10234'), 3)).toBeNull();
+    expect(belowLevel(job('Jr. Backend Engineer'), 3)).not.toBeNull();
+  });
+
   it('is not fooled by salaries or dates', () => {
     expect(yearsAsked('Developer', '', 'CTC 12-18 LPA, joining in 2026. Office 10 to 6.')).toBeNull();
   });

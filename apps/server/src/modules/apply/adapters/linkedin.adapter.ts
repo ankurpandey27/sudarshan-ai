@@ -13,7 +13,8 @@ import { CLOSED_TEXT, COMPANY_SITE_WAIT_MS, LINKEDIN_APPLIED, NEW_TAB_WAIT_MS, L
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
-import { companySiteOf } from '../utils/offsite-url.util';
+import { companySiteOf, onJobBoard, redirectTarget } from '../utils/offsite-url.util';
+import { continueLinkedinInterstitialInPage, linkedinCompanyApplyUrlInPage } from '../scripts/linkedin-apply-url.script';
 
 @Injectable()
 export class LinkedInApplyAdapter implements ApplyAdapter {
@@ -54,9 +55,18 @@ export class LinkedInApplyAdapter implements ApplyAdapter {
       if (LINKEDIN_APPLIED.test(text)) return result(PrepareStatus.ALREADY_APPLIED);
       const external = buttons.find((a) => /^apply\b/i.test(a.text));
       if (!external) return result(PrepareStatus.NO_APPLY_BUTTON);
-      const tab = await clickCatchingNewTab(page, () => this.runner.click(page, external.id), NEW_TAB_WAIT_MS);
+      // Kept before pressing: LinkedIn may re-draw the page afterwards.
+      const known = await page.evaluate(linkedinCompanyApplyUrlInPage).catch(() => null);
+      const tabsBefore = new Set(await page.browser().pages());
+      let tab = await clickCatchingNewTab(page, () => this.runner.click(page, external.id), NEW_TAB_WAIT_MS);
+      // LinkedIn's own "Continue" pop-up stood in between: press it, and catch the tab it opens.
+      if (!tab && onJobBoard(page.url()) && (await page.evaluate(continueLinkedinInterstitialInPage).catch(() => null))) {
+        tab = await clickCatchingNewTab(page, async () => undefined, NEW_TAB_WAIT_MS);
+      }
+      // The company tab opened, just later than the wait: find it among the open tabs.
+      if (!tab) tab = (await page.browser().pages()).find((p) => !tabsBefore.has(p) && p !== page && !p.isClosed()) ?? null;
       // The company's address, once LinkedIn's own redirect is out of the way - never a linkedin.com page.
-      const url = await companySiteOf(tab ?? page, COMPANY_SITE_WAIT_MS);
+      const url = (await companySiteOf(tab ?? page, COMPANY_SITE_WAIT_MS)) ?? companyUrl(known);
       await tab?.close().catch(() => undefined);
       if (!url) return result(PrepareStatus.NO_APPLY_BUTTON, { detail: "LinkedIn's Apply did not open the company's site - apply by hand from the job page" });
       return result(PrepareStatus.EXTERNAL, { externalUrl: url });
@@ -83,4 +93,11 @@ export class LinkedInApplyAdapter implements ApplyAdapter {
       })
       .catch(() => undefined);
   }
+}
+
+/** A company address LinkedIn gave in its page: used as it is, or unwrapped from LinkedIn's redirect. */
+function companyUrl(found: string | null): string | null {
+  if (!found) return null;
+  if (!onJobBoard(found)) return found;
+  return redirectTarget(found);
 }

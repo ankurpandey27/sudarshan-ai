@@ -71,7 +71,12 @@ describe('answerFromProfile', () => {
   });
 
   it('answers sponsorship, and work authorization only where it is known', () => {
-    expect(ask('Will you now or in the future require sponsorship?', FieldKind.RADIO)).toBe('No');
+    const sponsor = (location: string) =>
+      answerFromProfile({ ...ctx, job: { ...ctx.job, location } }, field('Will you now or in the future require sponsorship?', FieldKind.RADIO))?.value;
+    // Where you live, or a remote job: your answer. A job in another country: you are asked (Almedia, 2026-09-30).
+    expect(sponsor(`Noida, ${ctx.profile.country}`)).toBe('No');
+    expect(sponsor('Remote')).toBe('No');
+    expect(sponsor('Berlin, Germany')).toBeUndefined();
     const at = (location: string, workAuthorization = '') =>
       answerFromProfile(
         { ...ctx, profile: { ...ctx.profile, workAuthorization }, job: { ...ctx.job, location } },

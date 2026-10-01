@@ -47,6 +47,8 @@ export const BROWSER_ARGS = [
   '--test-type',
   '--no-first-run',
   '--no-default-browser-check',
+  // QUIC (HTTP/3) fails on some networks with ERR_QUIC_PROTOCOL_ERROR; plain HTTPS works everywhere.
+  '--disable-quic',
   '--disable-features=Translate,OptimizationHints,MediaRouter',
   '--password-store=basic',
   '--window-size=1366,900',

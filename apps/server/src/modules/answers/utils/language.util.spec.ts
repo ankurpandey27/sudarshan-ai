@@ -8,6 +8,7 @@ import { JobSource } from '../../jobs/enums/job-source.enum';
 import { LlmService } from '../../llm/llm.service';
 import { AnswersService } from '../answers.service';
 import { PendingQuestionsService } from '../pending-questions.service';
+import { TranslationService } from '../translation.service';
 import { looksNonEnglish } from './language.util';
 
 describe('questions in another language (2026-09-30)', () => {
@@ -19,7 +20,7 @@ describe('questions in another language (2026-09-30)', () => {
     'आपका अनुभव कितने साल का है?',
   ])('knows "%s" is not English', (q) => expect(looksNonEnglish(q)).toBe(true));
 
-  it.each(['How many years of Node.js experience do you have?', 'Notice period', 'URL', 'Phone Device Type', 'Expected CTC (LPA)'])(
+  it.each(['How many years of Node.js experience do you have?', 'Notice period', 'URL', 'Phone Device Type', 'Expected CTC (LPA)', 'Email address(es)'])(
     'knows "%s" is English',
     (q) => expect(looksNonEnglish(q)).toBe(false),
   );
@@ -44,12 +45,19 @@ describe('questions in another language (2026-09-30)', () => {
     let calls = 0;
     const llm = {
       isAvailable: () => true,
-      json: async () => {
+      json: async (prompt: string) => {
         calls++;
-        return { question: 'How proficient are you in Dutch?', options: ['None', 'Conversational', 'Professional', 'Native or bilingual'] };
+        const dutch: Record<string, string> = {
+          'Hoe vaardig bent u in het Nederlands?': 'How proficient are you in Dutch?',
+          Niet: 'None',
+          Conversatie: 'Conversational',
+          Beroepsmatig: 'Professional',
+          'Moedertaal of tweetalig': 'Native or bilingual',
+        };
+        return { english: (JSON.parse(prompt.slice(prompt.lastIndexOf('['))) as string[]).map((t) => dutch[t]) };
       },
     } as unknown as LlmService;
-    const svc = new PendingQuestionsService(storage, new AnswersService(storage), jobs, events, llm);
+    const svc = new PendingQuestionsService(storage, new AnswersService(storage), jobs, events, new TranslationService(storage, llm));
     svc.add({
       jobId,
       question: 'Hoe vaardig bent u in het Nederlands?',
@@ -65,6 +73,36 @@ describe('questions in another language (2026-09-30)', () => {
     expect(q.options[0]).toBe('Niet');
     svc.open();
     await new Promise((r) => setTimeout(r, 20));
+    expect(calls).toBe(1);
+  });
+
+  it('translates each text once, ever, and never English ones', async () => {
+    const storage = new StorageService(':memory:');
+    const seen: string[][] = [];
+    const llm = {
+      isAvailable: () => true,
+      json: async (prompt: string) => {
+        const batch = JSON.parse(prompt.slice(prompt.lastIndexOf('['))) as string[];
+        seen.push(batch);
+        return { english: batch.map((t) => `EN(${t})`) };
+      },
+    } as unknown as LlmService;
+    const tr = new TranslationService(storage, llm);
+    const texts = ['Você fala inglês?', 'Notice period', 'Teléfono móvil'];
+    const first = await tr.translate(texts);
+    expect(first.get('Você fala inglês?')).toBe('EN(Você fala inglês?)');
+    expect(first.has('Notice period')).toBe(false);
+    await tr.translate(texts);
+    expect(seen).toEqual([['Você fala inglês?', 'Teléfono móvil']]);
+  });
+
+  it('does not ask the AI again and again for a text it could not translate', async () => {
+    let calls = 0;
+    const llm = { isAvailable: () => true, json: async () => (calls++, { english: [] }) } as unknown as LlmService;
+    const tr = new TranslationService(new StorageService(':memory:'), llm);
+    await tr.translate(['Onde você mora atualmente?']);
+    await tr.translate(['Onde você mora atualmente?']);
+    await tr.translate(['Onde você mora atualmente?']);
     expect(calls).toBe(1);
   });
 });

@@ -11,6 +11,8 @@ import { LlmService } from '../llm/llm.service';
 import { isContextTooLong } from '../llm/utils/llm-error.util';
 import { AnswerEngineService } from './answer-engine.service';
 import { NEVER_ADVANCE } from './constants/form-runner.constants';
+import { HIGH_STAKES_QUESTION } from './constants/inference.constants';
+import { NOT_A_RESUME } from './constants/background.constants';
 import { RESCUE_MAX_ACTIONS, RESCUE_MAX_IDLE, RESCUE_MAX_STEPS, RESCUE_PAUSE_AFTER, RESCUE_SIZES } from './constants/rescue.constants';
 import { FieldKind } from './enums/field-kind.enum';
 import { FillInstruction } from './interfaces/fill-instruction.interface';
@@ -32,6 +34,9 @@ export interface RescueHands {
   confirmedByAi(page: Page, text: string): Promise<boolean>;
 }
 
+// The AI says the application went through already.
+const ALREADY_SENT =
+  /already (been )?(submitted|sent|applied)|application (was |has been )?(submitted|received|sent)|thank you for (applying|your application)/i;
 const SUBMIT_WORDS = /\b(submit|send|apply|finish|complete|finali[sz]e|confirm)\b|absenden|envoyer|enviar|verzenden|versturen|invia|отправить|提交|送信|제출/i;
 const shape = (s: FormSnapshot) => `${s.url.split('?')[0]}|${s.fields.map((f) => `${f.label}=${f.value}`).join('#')}|${s.actions.map((a) => a.text).join('#')}`;
 
@@ -69,10 +74,12 @@ export class RescueService {
     ]);
     let inARow = 0;
     for (const r of rows) {
+      // An application that turned out to be sent already says nothing about this model.
+      if (r.outcome === 'nothing to do') continue;
       if (r.outcome !== 'failed') break;
       inARow++;
     }
-    const tries = rows.filter((r) => r.outcome !== 'reset').length;
+    const tries = rows.filter((r) => r.outcome !== 'reset' && r.outcome !== 'nothing to do').length;
     const helped = rows.filter((r) => r.outcome === 'applied' || r.outcome === 'progressed').length;
     return { model: `${m.provider} / ${m.model}`, tries, helped, failedInARow: inARow, paused: inARow >= RESCUE_PAUSE_AFTER };
   }
@@ -91,7 +98,8 @@ export class RescueService {
     let pressed = (before.moves?.length ?? 0) > 0;
     let steps = 0;
     const done = (o: FormRunOutcome, outcome: 'applied' | 'progressed' | 'failed') => {
-      this.record(outcome, opts.domain, steps);
+      // Confirmed before the AI took a single step: not the rescue's doing, so not counted for or against it.
+      this.record(steps === 0 && outcome !== 'failed' ? 'nothing to do' : outcome, opts.domain, steps);
       return o;
     };
     opts.onStep(`Rescue: the usual way got stuck (${before.detail}) - the AI takes a look`);
@@ -124,6 +132,11 @@ export class RescueService {
       if (!plan) return done({ ...out, status: 'stuck', detail: `${before.detail} - the AI could not help either` }, 'failed');
       if (plan.done && pressed) return done({ ...out, status: 'applied', detail: 'Application submitted (rescued)' }, 'applied');
       if (plan.stuck || !plan.actions?.length) {
+        // "Already submitted": checked on the page itself before it counts (GoKwik, 2026-09-30).
+        if (ALREADY_SENT.test(plan.why ?? '') && (await hands.confirmedByAi(page, snap.text))) {
+          out.llmCalls++;
+          return done({ ...out, status: 'applied', detail: 'Application submitted' }, 'applied');
+        }
         return done({ ...out, status: 'stuck', detail: `${before.detail} - the AI found no way on${plan.why ? ` (${plan.why})` : ''}` }, 'failed');
       }
 
@@ -151,10 +164,33 @@ export class RescueService {
           });
           did.push(`pressed "${target.text}"`);
           await sleep(400);
+        } else if (a.upload) {
+          const field = snap.fields.find((f) => f.id === a.upload && f.kind === FieldKind.FILE);
+          // The resume only, and only into a field that is not for something else (a photo, a certificate).
+          if (!field || !opts.ctx.resumePath || NOT_A_RESUME.test(`${field.label} ${field.name}`)) {
+            did.push(`skipped upload ${a.upload}`);
+            continue;
+          }
+          await hands.fill(page, [{ id: field.id, kind: FieldKind.FILE, value: opts.ctx.resumePath, optionIndexes: [], optionIds: [] }]);
+          did.push(`attached your resume to "${field.label || 'the upload'}"`);
         } else if (a.choose && a.option) {
           const field = snap.fields.find((f) => f.id === a.choose);
+          const question = field ? field.label || field.placeholder : '';
+          // Visa, work permit, salary, notice, dates, relocation, legal: your answer only - the question comes to you
+          // with the AI's pick as a suggestion (Almedia, 2026-09-30: it chose "legally entitled to work in Germany").
+          if (field && HIGH_STAKES_QUESTION.test(question)) {
+            return done(
+              {
+                ...out,
+                status: 'needs_input',
+                unresolved: [{ field, suggestion: null }],
+                detail: `"${question.slice(0, 80)}" needs your answer`,
+              },
+              'progressed',
+            );
+          }
           // Only options for questions about the application - never anything that identifies you.
-          if (!field || !field.options.length || isSensitive(field.label || field.placeholder)) {
+          if (!field || !field.options.length || isSensitive(question)) {
             did.push(`skipped field ${a.choose}`);
             continue;
           }

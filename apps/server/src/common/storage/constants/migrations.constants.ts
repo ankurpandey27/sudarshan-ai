@@ -247,4 +247,12 @@ export const MIGRATIONS: string[] = [
   ALTER TABLE pending_questions ADD COLUMN question_en TEXT;
   ALTER TABLE pending_questions ADD COLUMN options_en TEXT;
   `,
+  // English versions of anything asked in another language, translated once and kept.
+  `
+  CREATE TABLE translations (
+    source  TEXT PRIMARY KEY,
+    english TEXT NOT NULL,
+    at      TEXT NOT NULL
+  );
+  `,
 ];

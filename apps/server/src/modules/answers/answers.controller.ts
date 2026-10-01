@@ -13,17 +13,25 @@ import { CreateAnswerDto } from './dto/create-answer.dto';
 import { ListAnswersQueryDto } from './dto/list-answers-query.dto';
 import { SkipQuestionDto } from './dto/skip-question.dto';
 import { UpdateAnswerDto } from './dto/update-answer.dto';
+import { TranslationService } from './translation.service';
+import { looksNonEnglish } from './utils/language.util';
 
 @Controller()
 export class AnswersController {
   constructor(
+    private readonly translation: TranslationService,
     private readonly answers: AnswersService,
     private readonly pending: PendingQuestionsService,
   ) {}
 
   @Get('answers')
   list(@Query() q: ListAnswersQueryDto): Answer[] {
-    return this.answers.list(q.search);
+    const list = this.answers.list(q.search);
+    const questions = list.map((a) => a.question);
+    const english = this.translation.known(questions);
+    // Saved questions in other languages get their English in the background; the next look shows it.
+    void this.translation.translate(questions);
+    return list.map((a) => ({ ...a, questionEn: english.get(a.question) ?? null, foreign: looksNonEnglish(a.question) }));
   }
 
   /** Downloads your answer memory as a CSV file. */

@@ -13,6 +13,7 @@ import { useAnswers } from '../lib/queries';
 import type { Answer } from '../lib/types';
 import { Badge, Button, Card, Empty, Input, PageTitle, Textarea } from '../components/ui';
 import { useToast } from '../components/toast';
+import { useEnglish } from '../lib/english';
 
 const sourceTone = { user: 'good', excel: 'info', llm: 'accent' } as const;
 const sourceText = { user: 'you', excel: 'excel', llm: 'AI' } as const;
@@ -162,10 +163,17 @@ function AnswerRow({ a }: { a: Answer }) {
     onSuccess: () => void qc.invalidateQueries({ queryKey: ['answers'] }),
   });
   const dirty = value !== a.answer;
+  const english = useEnglish(a.question, a.questionEn, a.foreign);
   return (
     <li className="grid gap-2 border-b border-line px-4 py-3 last:border-b-0 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] md:items-start">
       <div>
         <p className="text-[13.5px] font-medium">{a.question}</p>
+        {english && (
+          <p className="text-[12.5px] text-ink-2">
+            <span className="font-semibold text-ink-3">In English: </span>
+            {english}
+          </p>
+        )}
         <p className="mt-1 flex flex-wrap items-center gap-1.5 text-[12px] text-ink-3">
           <Badge tone={sourceTone[a.source]}>from {sourceText[a.source]}</Badge>
           used {a.uses}x - {timeAgo(a.updatedAt)}

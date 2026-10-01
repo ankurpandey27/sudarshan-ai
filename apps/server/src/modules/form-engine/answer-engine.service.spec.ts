@@ -91,4 +91,17 @@ describe('AnswerEngineService', () => {
     const out = await engine.resolve([{ ...field('Email', []), kind: FieldKind.TEXT }], ctx, { allowLlm: false });
     expect(out.instructions.map((i) => i.value)).toEqual(['first@example.com']);
   });
+
+  it('answers sponsorship only for where you live - a question naming another country comes to you (Almedia, 2026-09-30)', async () => {
+    const { engine } = make();
+    const home = await engine.resolve([field('Will you require visa sponsorship?')], at('Noida, India'), { allowLlm: false });
+    expect(home.instructions).toHaveLength(1);
+    const abroad = await engine.resolve([field('Will you require visa sponsorship to be legally employed in Germany?')], at('Noida, India'), {
+      allowLlm: false,
+    });
+    expect(abroad.instructions).toHaveLength(0);
+    expect(abroad.unresolved).toHaveLength(1);
+    const job = await engine.resolve([field('Will you require visa sponsorship?')], at('Berlin, Germany'), { allowLlm: false });
+    expect(job.instructions).toHaveLength(0);
+  });
 });

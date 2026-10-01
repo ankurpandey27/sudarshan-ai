@@ -15,7 +15,7 @@ import { FormRunOutcome, RunFormOptions } from './interfaces/form-run.interface'
 import { LearnedMove } from './interfaces/learned-move.interface';
 import { extractFormInPage } from './scripts/extract-form.script';
 import { fillFieldsInPage } from './scripts/fill-fields.script';
-import { documentTextInPage, pickTypeaheadOptionInPage } from './scripts/page-helpers.script';
+import { documentTextInPage, pageQuietInPage, pickTypeaheadOptionInPage, visibleOptionsInPage } from './scripts/page-helpers.script';
 import { CONFIRM_SYSTEM_PROMPT, NAVIGATE_SYSTEM_PROMPT, buildConfirmPrompt, buildNavigatePrompt } from './utils/navigate-prompt.util';
 import {
   CAPTCHA_WAIT_MS,
@@ -25,12 +25,23 @@ import {
   SENT_FORM,
   CONFIRMED_WORLDWIDE,
   STEP_RENDER_WAIT_MS,
+  SLOW_STEP_RENDER_WAIT_MS,
+  LATE_CAPTCHA_WAIT_MS,
+  MAX_SAME_FORM_SENDS,
+  MAX_PROBED_COMBOBOXES,
+  NAVIGATED,
+  SEND_WAIT_MS,
+  NO_CHANGE_WAIT_MS,
+  SETTLE_MAX_MS,
+  SETTLE_MIN_MS,
+  SETTLE_QUIET_MS,
 } from './constants/form-runner.constants';
 import { needsAnswer } from './utils/field-value.util';
 import { PlaybookService } from './playbook.service';
 import { stepSignature } from './utils/step-signature.util';
 import { ButtonLearnerService } from '../learners/button-learner.service';
 import { RescueService } from './rescue.service';
+import { dismissCookieBannerInPage } from './scripts/cookie-banner.script';
 
 const ACTION_PRIORITY: Record<FormAction['kind'], number> = { submit: 4, review: 3, next: 2, apply: 1, dismiss: -1, other: 0 };
 
@@ -49,8 +60,49 @@ export class FormRunnerService {
     @Optional() private readonly rescue?: RescueService,
   ) {}
 
-  snapshot(page: Page, scopeSelector: string | null): Promise<FormSnapshot> {
-    return page.evaluate(extractFormInPage, scopeSelector);
+  /**
+   * The form as it is now. A page that moves on while it is being read (a Submit answered by a new page)
+   * is read again once the new page is there, instead of failing the whole application.
+   */
+  /**
+   * The options of searchable dropdowns that show them only when opened (Greenhouse's "Select..."): each is
+   * opened, read and closed. Ones that wait for typing (a city search) show none and stay as they are.
+   */
+  private async readComboboxOptions(page: Page, snap: FormSnapshot): Promise<void> {
+    const closed = snap.fields.filter((f) => f.kind === FieldKind.COMBOBOX && f.options.length === 0 && needsAnswer(f)).slice(0, MAX_PROBED_COMBOBOXES);
+    for (const f of closed) {
+      try {
+        await page.click(`[data-jaa-id="${f.id}"]`);
+        await sleep(450);
+        const options = await page.evaluate(visibleOptionsInPage);
+        await page.keyboard.press('Escape');
+        if (options.length) {
+          f.options = options;
+          f.optionIds = [];
+        }
+      } catch {
+        // Not clickable right now: answered as before.
+      }
+    }
+  }
+
+  /** Closes a cookie banner that covers the page ("necessary only" or "reject" when offered), once it shows. */
+  async clearCookieBanner(page: Page): Promise<string | null> {
+    const pressed = await page.evaluate(dismissCookieBannerInPage).catch(() => null);
+    if (pressed) await sleep(600);
+    return pressed;
+  }
+
+  async snapshot(page: Page, scopeSelector: string | null): Promise<FormSnapshot> {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await page.evaluate(extractFormInPage, scopeSelector);
+      } catch (err) {
+        if (attempt >= 3 || !NAVIGATED.test((err as Error).message)) throw err;
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => undefined);
+        await sleep(800);
+      }
+    }
   }
 
   /**
@@ -92,9 +144,15 @@ export class FormRunnerService {
     const waitedOn = new Set<string>();
     // The last button pressed sent the form: a page that is not a form any more may be its confirmation.
     let justSent = false;
+    // The page's text just before the last press that sent the form: a confirmation that was not there then is new.
+    let beforeSend = '';
+    // Submits that came back to the same form: twice is a loop (Sony on Greenhouse, 2026-10-01: four rounds of the same fill).
+    let sentSameForm = 0;
 
     for (let step = 1; step <= maxSteps; step++) {
       out.steps = step;
+      const cookies = await this.clearCookieBanner(page);
+      if (cookies) opts.onStep(`Step ${step}: closed the cookie banner ("${cookies}")`);
       const snap = await this.snapshot(page, opts.scopeSelector);
       await opts.onShot?.(page, `Step ${step}`);
 
@@ -105,8 +163,12 @@ export class FormRunnerService {
       const confirmedAt = !!opts.successUrl?.test(snap.url);
       // A form that marks itself sent (WordPress Contact Form 7) stays on the page, emptied - it still counts.
       const sentForm = pressed > 0 && (await page.$(SENT_FORM).catch(() => null)) !== null;
+      // "Your application has been received" appearing right after Submit counts even when the old form is still on the
+      // page behind it (DataOrb, 2026-09-30: its job form stayed under the thank-you pop-up, and "Apply" was pressed again).
+      const newlyConfirmed = justSent && this.confirms(opts.successPattern, snap.text) && !this.confirms(opts.successPattern, beforeSend);
       if (
         sentForm ||
+        newlyConfirmed ||
         (pressed > 0 &&
           !stillAForm &&
           (confirmedAt || this.confirms(opts.successPattern, snap.text) || this.confirms(opts.successPattern, await this.docText(page))))
@@ -143,6 +205,8 @@ export class FormRunnerService {
         }
       }
 
+      // Searchable dropdowns show their options only when opened: read them first, so an answer becomes one of them.
+      await this.readComboboxOptions(page, snap);
       const fillable = snap.fields.filter((f) => f.kind !== FieldKind.FILE || needsUpload(f));
       const resolved = await this.answers.resolve(fillable, opts.ctx, { allowLlm: opts.allowLlm, force });
       out.fields += resolved.stats.fields;
@@ -174,7 +238,9 @@ export class FormRunnerService {
         if (opts.pauseBeforeSubmit) {
           return { ...out, status: 'ready_to_submit', detail: 'Filled - type the captcha and press Submit' };
         }
-        opts.onStep('Captcha shown - solve it in the agent browser window, I will wait 3 minutes');
+        // A few seconds for checks that pass by themselves (Cloudflare); a real captcha is handed over at once, the tab
+        // kept open - Sudarshan carries on by itself once you have solved it - instead of sitting idle for minutes.
+        opts.onStep('Captcha shown - handing it to you (solve it any time; Sudarshan finishes the application after)');
         if (!(await this.waitForCaptcha(page, opts.scopeSelector))) {
           return { ...out, status: 'captcha', detail: 'Filled - only the captcha is left; solve it and press Submit in the open tab' };
         }
@@ -186,8 +252,13 @@ export class FormRunnerService {
       if (!action) {
         // Submit greyed out until something is done - usually a captcha that loads late (Indeed's review page).
         if (snap.actions.some((a) => a.disabled && (a.kind === 'submit' || a.kind === 'apply'))) {
-          await sleep(3000);
-          const again = await this.snapshot(page, opts.scopeSelector).catch(() => snap);
+          // Indeed's reCAPTCHA can take 10 seconds to appear; until then it is not "stuck" (which would count towards
+          // "the site may have changed" and pause the platform - Indeed, 2026-09-29).
+          let again = snap;
+          for (const until = Date.now() + LATE_CAPTCHA_WAIT_MS; Date.now() < until && !again.captcha;) {
+            await sleep(2000);
+            again = await this.snapshot(page, opts.scopeSelector).catch(() => again);
+          }
           if (again.captcha) return { ...out, status: 'captcha', detail: 'Filled - only the captcha is left; solve it and press Submit in the open tab' };
           // Not a captcha: say which answers the site is still waiting for, if it shows them.
           const missing = again.fields.filter((f) => f.required && needsAnswer(f)).map((f) => f.label || f.placeholder);
@@ -218,13 +289,38 @@ export class FormRunnerService {
       await this.click(page, action.id);
       pressed++;
       justSent = sends;
+      if (sends) beforeSend = snap.text;
       await this.settle(page);
 
-      const after = await this.snapshot(page, opts.scopeSelector);
+      let after = await this.snapshot(page, opts.scopeSelector);
+      // A Submit can take a while (uploads, checks, a slow server): give it time before calling it "did nothing".
+      // Nothing changed yet: a Submit may take a while (uploads, checks, a slow server), and a "Next" whose answer is
+      // slow gets a few seconds too - before either counts as "did nothing" and another button is tried.
+      if (stepShape(after) === stepShape(snap) && after.text === snap.text) {
+        after = await this.waitForChange(page, opts.scopeSelector, snap, after, sends ? SEND_WAIT_MS : NO_CHANGE_WAIT_MS);
+      }
       const errored = after.fields.filter((f) => f.error);
       // Same step = same fields and address, ignoring error messages: new errors are not progress.
       const sameStep = stepShape(after) === stepShape(snap);
       const moved = !sameStep || (!errored.length && after.text !== snap.text);
+      // Submit pressed and the same form is back (its errors may not be recognised as such): never a third round.
+      if (sends && sameStep && !this.confirms(opts.successPattern, after.text) && ++sentSameForm >= MAX_SAME_FORM_SENDS) {
+        await this.readComboboxOptions(page, after);
+        const missing = after.fields.filter((f) => f.kind !== FieldKind.FILE && ((f.required && needsAnswer(f)) || !!f.error));
+        if (missing.length) {
+          return {
+            ...out,
+            status: 'needs_input',
+            unresolved: missing.map((field) => ({ field, suggestion: null })),
+            detail: `The site keeps asking for ${missing.length} answer(s) - ${missing
+              .map((f) => f.label)
+              .slice(0, 3)
+              .join('; ')}`,
+          };
+        }
+        const why = after.errors.slice(0, 3).join('; ');
+        return { ...out, status: 'stuck', detail: `Submit keeps returning to the same form${why ? `: ${why}` : ''}` };
+      }
       if (errored.length && sameStep) {
         repeats++;
         if (repeats >= 2) {
@@ -262,9 +358,31 @@ export class FormRunnerService {
     });
   }
 
+  /** After a press that sends: the page as soon as it changes, or as it is after SEND_WAIT_MS. */
+  /** After a press: the page as soon as it changes, or as it is after `waitMs`. */
+  private async waitForChange(page: Page, scope: string | null, before: FormSnapshot, now: FormSnapshot, waitMs: number): Promise<FormSnapshot> {
+    const deadline = Date.now() + waitMs;
+    let latest = now;
+    while (Date.now() < deadline) {
+      await sleep(1000);
+      latest = await this.snapshot(page, scope).catch(() => latest);
+      if (stepShape(latest) !== stepShape(before) || latest.text !== before.text) return latest;
+    }
+    return latest;
+  }
+
+  /**
+   * After a press, until the page has had its say: the network goes quiet, or the page itself stops
+   * changing for a moment - whichever comes first. Job boards (LinkedIn, Indeed) keep background
+   * requests going, so waiting for network silence alone always took the full 7 seconds per step.
+   */
   async settle(page: Page): Promise<void> {
-    await page.waitForNetworkIdle({ idleTime: 400, timeout: 7000 }).catch(() => undefined);
-    await sleep(350);
+    await sleep(SETTLE_MIN_MS);
+    await Promise.race([
+      page.waitForNetworkIdle({ idleTime: 400, timeout: SETTLE_MAX_MS }).catch(() => undefined),
+      page.evaluate(pageQuietInPage, SETTLE_QUIET_MS, SETTLE_MAX_MS).catch(() => undefined),
+    ]);
+    await sleep(250);
   }
 
   async fill(page: Page, instructions: FillInstruction[]): Promise<void> {
@@ -340,7 +458,9 @@ export class FormRunnerService {
    * moves the form on, different fields, a captcha or other text; false if nothing changed in STEP_RENDER_WAIT_MS.
    */
   private async waitForStep(page: Page, scope: string | null, before: FormSnapshot): Promise<boolean> {
-    const deadline = Date.now() + STEP_RENDER_WAIT_MS;
+    // A page that is still loading (no fields, hardly any text - Indeed's smartapply spinner) gets longer.
+    const loading = before.fields.length === 0 && before.text.trim().length < 400;
+    const deadline = Date.now() + (loading ? SLOW_STEP_RENDER_WAIT_MS : STEP_RENDER_WAIT_MS);
     while (Date.now() < deadline) {
       await sleep(1500);
       const now = await this.snapshot(page, scope).catch(() => null);

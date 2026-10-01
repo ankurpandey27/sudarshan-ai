@@ -47,6 +47,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     pauseBeforeSubmit: false,
     pastAnswers: true,
     rescue: true,
+    carefulAfterPause: false,
   },
 };
 

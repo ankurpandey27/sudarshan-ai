@@ -341,6 +341,64 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     expect(out.status).toBe('applied');
   });
 
+  it('picks the site\'s own "I don\'t wish to answer" in dropdowns that show options only when opened (Sony, Greenhouse, 2026-10-01)', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'combobox-eeo.html').replace(/\\/g, '/')}`);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    const chosen = await page.evaluate(() => (window as unknown as { __chosen: Record<string, string> }).__chosen).catch(() => null);
+    expect(out.status).toBe('applied');
+    // The page is replaced on success; what was chosen was recorded before.
+    expect(chosen === null || Object.values(chosen).every((v) => v === "I don't wish to answer")).toBe(true);
+  });
+
+  it("never loops: Submit back on the same form twice -> it asks you, with the dropdown's real options", async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'combobox-eeo.html').replace(/\\/g, '/')}`);
+    // Nothing answers these here: no rule, no memory, no AI.
+    await page.evaluate(() => {
+      const w = window as unknown as { __opts: unknown };
+      w.__opts = null;
+    });
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx: { ...ctx, profile: { ...ctx.profile, gender: '' } },
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+      maxSteps: 15,
+    });
+    const submits = await page.evaluate(() => (window as unknown as { __submits: number }).__submits).catch(() => 0);
+    expect(submits).toBeLessThanOrEqual(2);
+    if (out.status !== 'applied') {
+      expect(out.status).toBe('needs_input');
+      expect(out.unresolved[0].field.options).toContain("I don't wish to answer");
+    }
+  });
+
+  it('counts a thank-you shown right after Submit, even with the job form still behind it - never applies twice (DataOrb, 2026-09-30)', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'thanks-over-form.html').replace(/\\/g, '/')}`);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx,
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    expect(out.status).toBe('applied');
+    expect(await page.evaluate(() => (window as unknown as { __sent: number; __again: number }).__sent)).toBe(1);
+    expect(await page.evaluate(() => (window as unknown as { __sent: number; __again: number }).__again)).toBe(0);
+  });
+
   it('never calls an unsent Indeed review page "applied" - keeps the resume, hands over the captcha (Indeed)', async () => {
     // Offline: the captcha frame must not really load.
     await page.setRequestInterception(true);

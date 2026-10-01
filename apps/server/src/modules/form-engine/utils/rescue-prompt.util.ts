@@ -17,7 +17,13 @@ export const RESCUE_SYSTEM_PROMPT =
 export function buildRescuePrompt(snap: FormSnapshot, goal: string, history: string[], size: { items: number; text: number }): string {
   const items: string[] = [];
   for (const f of snap.fields) {
-    if (f.kind === FieldKind.FILE) continue;
+    if (f.kind === FieldKind.FILE) {
+      // Upload fields: whether a file is there, never its name.
+      items.push(
+        `[${f.id}] file "${(f.label || f.name || 'upload').slice(0, 80)}"${f.required ? ' (required)' : ''}${f.value ? ' has a file' : ' empty'}${f.error ? ` error="${f.error.slice(0, 80)}"` : ''}`,
+      );
+      continue;
+    }
     const label = (f.label || f.placeholder || f.name || 'unlabelled').slice(0, 80);
     const value = f.value ? (isSensitive(label, f.value) ? ' value=[hidden]' : ` value="${f.value.slice(0, 40)}"`) : ' empty';
     const opts = f.options.length ? ` options=${JSON.stringify(f.options.filter((o) => o.trim()).slice(0, 12))}` : '';
@@ -42,7 +48,8 @@ RULES
 - Move the application forward: open the application form, go to the next step, accept required terms, then submit.
 - Never press anything that cancels, withdraws, deletes, logs out, saves for later, or leaves the application; never social links or other jobs.
 - Never touch password, one-time code or captcha controls. If a captcha or a login stands in the way, return "stuck".
-- Choose options only for questions about the application itself (terms, consent, how you heard about the job, yes/no about availability) - never guess personal details.
+- {"upload":"<file field id>"} attaches the candidate's resume to a file field that asks for a resume/CV.
+- Choose options only for questions about the application itself (terms, consent, how you heard about the job) - never personal details, and never visa, work permit, sponsorship, citizenship, salary, notice period, start date or relocation: leave those alone.
 - If the page already says the application was sent or received, return "done": true. If nothing here can move it forward, return "stuck": true.
 
 Return JSON: {"actions":[...],"done":false,"stuck":false,"why":"<12 words>"}`;

@@ -33,4 +33,20 @@ describe('Reading the question of a field (real browser)', () => {
     ]);
     await page.close();
   });
+
+  it('gives radio options their own words, never the question above them (CRUXO, Capgemini, 2026-09-30)', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'radio-options.html').replace(/\\/g, '/')}`);
+    const snap = await page.evaluate(extractFormInPage, null);
+    const got = snap.fields.map((f) => [f.label, f.options]);
+    expect(got).toEqual([
+      ['Are you comfortable working in an onsite setting?', ['Yes', 'No']],
+      ['Will you now, or in the future, require sponsorship for employment visa status?', ['Yes', 'No']],
+      // No words at all next to the buttons: their values, so they can still be told apart.
+      ['Do you speak Czech or Slovak?', ['true', 'false']],
+      ['Which languages do you speak?', ['English', 'Hindi']],
+      ['I agree to the privacy policy', []],
+    ]);
+    await page.close();
+  });
 });

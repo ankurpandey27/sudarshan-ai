@@ -45,6 +45,11 @@ export class JobsService implements OnApplicationBootstrap {
       JobStatus.APPLYING,
     ]);
     if (changes > 0) this.logger.warn(`Re-queued ${changes} application(s) interrupted by the last shutdown`);
+    // Their attempts end too, as interrupted - not "running" for ever in the history and the statistics.
+    this.storage.run(
+      "UPDATE attempts SET finished_at = ?, outcome = 'interrupted', result = 'interrupted', detail = COALESCE(detail, 'Interrupted by a shutdown') WHERE finished_at IS NULL",
+      [new Date().toISOString()],
+    );
     const merged = this.mergeSameRoles();
     if (merged > 0) this.logger.log(`Merged ${merged} duplicate listing(s) of the same job`);
   }
@@ -467,6 +472,11 @@ export class JobsService implements OnApplicationBootstrap {
         attemptId,
       ],
     );
+  }
+
+  /** How many of a job's attempts ended this way ("network"). */
+  countEndings(jobId: number, ended: string): number {
+    return Number(this.storage.get<{ n: number }>('SELECT COUNT(*) n FROM attempts WHERE job_id = ? AND result = ?', [jobId, ended])?.n ?? 0);
   }
 
   /** The step pictures of an attempt, for its replay. */

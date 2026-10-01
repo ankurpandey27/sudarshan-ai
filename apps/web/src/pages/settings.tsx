@@ -287,6 +287,12 @@ export function SettingsPage() {
                 hint={pastAnswersHint(agentStatus?.meaningModel)}
               />
               <Toggle
+                checked={draft.agent.carefulAfterPause}
+                onChange={(v) => agent('carefulAfterPause', v)}
+                label="Careful mode after a pause"
+                hint="When a platform was paused (its pages seemed to change) and is tried again: stop before every Submit on that job board's own forms until one application goes through. Off: it resumes normally. Company sites are never affected."
+              />
+              <Toggle
                 checked={draft.agent.rescue}
                 onChange={(v) => agent('rescue', v)}
                 label="Rescue stuck applications with AI"

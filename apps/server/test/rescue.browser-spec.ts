@@ -142,6 +142,53 @@ describe('The rescue agent on a site ordinary automation cannot finish (real bro
     expect(ai.prompts[1].length).toBeLessThanOrEqual(ai.prompts[0].length);
   });
 
+  it('never answers a visa question itself - it comes to you (Almedia, 2026-09-30)', async () => {
+    await page.setContent(`<form onsubmit="return false">
+      <p>Do you now, or will you in the future require visa sponsorship to be legally employed in Germany?</p>
+      <select id="visa"><option value="">Select</option><option>Yes, I will need sponsorship</option><option>No, I am legally entitled to work in Germany</option></select>
+      <button type="button" id="go">Onwards</button></form>`);
+    const planner = {
+      isAvailable: () => true,
+      current: () => ({ provider: 'fake', model: 'planner' }),
+      acceptsImages: () => false,
+      json: async (prompt: string) => {
+        if (!prompt.includes('CONTROLS AND FIELDS')) return prompt.includes('CLICKABLE CONTROLS') ? { id: '' } : { answers: [] };
+        const id = /\[(\w+)\] select "Do you now/.exec(prompt)?.[1];
+        return { actions: [{ choose: id, option: 'No, I am legally entitled to work in Germany' }] };
+      },
+    } as unknown as LlmService;
+    const { runner, opts } = setup({ llm: planner, prompts: [] });
+    const out = await runner.run(page, opts);
+    expect(out.status).toBe('needs_input');
+    expect(out.unresolved[0].field.label).toMatch(/visa sponsorship/);
+    // Nothing was chosen for you.
+    expect(await page.$eval('#visa', (s) => (s as HTMLSelectElement).value)).toBe('');
+  });
+
+  it('attaches your resume when the only thing missing is the upload, and nothing else', async () => {
+    await page.setContent(`<form onsubmit="return false"><p>Portfolio photo</p><input type="file" id="photo" accept="image/*">
+      <p>Attachments</p><input type="file" id="cv"><button type="button" onclick="document.body.innerHTML='<h1>Thank you for applying!</h1>'">Onwards</button></form>`);
+    const seen: string[] = [];
+    const planner = {
+      isAvailable: () => true,
+      current: () => ({ provider: 'fake', model: 'planner' }),
+      acceptsImages: () => false,
+      json: async (prompt: string) => {
+        if (!prompt.includes('CONTROLS AND FIELDS')) return prompt.includes('CLICKABLE CONTROLS') ? { id: '' } : { answers: [] };
+        seen.push(prompt);
+        const photo = /\[(\w+)\] file "Portfolio photo"/.exec(prompt)?.[1];
+        const cv = /\[(\w+)\] file "Attachments"/.exec(prompt)?.[1];
+        const go = /\[(\w+)\] \w+ "Onwards"/.exec(prompt)?.[1];
+        return { actions: [{ upload: photo }, { upload: cv }, { click: go }] };
+      },
+    } as unknown as LlmService;
+    const { runner, opts, steps } = setup({ llm: planner, prompts: [] });
+    await runner.run(page, { ...opts, ctx: { ...opts.ctx, resumePath: __filename } });
+    // The resume went only into the resume field, never the photo field.
+    expect(steps.join('\n')).toMatch(/skipped upload/);
+    expect(seen[0]).toMatch(/file "Attachments"/);
+  });
+
   it('pauses itself after failing again and again with a model - and can be tried again', () => {
     const ai = fakeAi();
     const { storage, rescue } = setup(ai);

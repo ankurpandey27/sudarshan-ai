@@ -25,12 +25,15 @@ import {
   PAGE_SWAPPED,
   EMBED_WAIT_MS,
   RENDER_WAIT_MS,
+  SLOW_RENDER_WAIT_MS,
+  MAX_APPLY_HOPS,
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 import { onJobBoard } from '../utils/offsite-url.util';
 import { embeddedApplicationUrl } from '../utils/embedded-ats.util';
+import { applicationDialogInPage } from '../../form-engine/scripts/cookie-banner.script';
 
 @Injectable()
 export class WebApplyAdapter implements ApplyAdapter {
@@ -76,7 +79,11 @@ export class WebApplyAdapter implements ApplyAdapter {
     let confirmedBefore = false;
     // Buttons already pressed on the way: Workday's "Apply" opens a pop-up but stays on the page behind it.
     const pressed = new Set<string>();
-    for (let hop = 0; hop < 3; hop++) {
+    // Up to 4 presses on the way (Stryker: its own Apply, Workday's Apply, "Apply Manually", then the account page)
+    // and always one more look at where the last one led.
+    for (let hop = 0; hop < MAX_APPLY_HOPS; hop++) {
+      // A cookie banner is not the application dialog, and covers the Apply button.
+      await this.runner.clearCookieBanner(current);
       const { snap, text, accountWall } = await this.readWhenReady(current);
       if (CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED);
       if (hop === 0) {
@@ -93,13 +100,16 @@ export class WebApplyAdapter implements ApplyAdapter {
       // Sudarshan never creates accounts or types passwords: this one is yours, with the page left open.
       if (accountWall) {
         return result(PrepareStatus.LOGIN_REQUIRED, {
-          detail: `${domain} needs an account before the application - sign in or create one in the agent browser, then approve the job again`,
+          // The site that asks (Workday behind a careers page), not the one the job started on.
+          detail: `${hostOf(current)} needs an account before the application - sign in or create one in the agent browser, then approve the job again`,
           page: current,
         });
       }
       // A form with a captcha at the bottom is still a form: fill it, then hand the captcha over.
       if (this.hasApplicationForm(snap)) {
-        const dialog = await current.$(DIALOG);
+        // Only a dialog that holds the form counts - never a cookie banner that happens to be open.
+        await this.runner.clearCookieBanner(current);
+        const dialog = await current.evaluate(applicationDialogInPage, DIALOG).catch(() => false);
         return result(PrepareStatus.READY, { scopeSelector: dialog ? DIALOG : null, page: current });
       }
       // The application is in a hiring system's frame on the page (LVT embeds Ashby): open it as a page -
@@ -113,7 +123,8 @@ export class WebApplyAdapter implements ApplyAdapter {
         await this.runner.settle(current);
         continue;
       }
-      if (this.looksLikeLogin(snap, text)) return result(PrepareStatus.LOGIN_REQUIRED, { detail: `Log in to ${domain} in the agent browser`, page: current });
+      if (this.looksLikeLogin(snap, text))
+        return result(PrepareStatus.LOGIN_REQUIRED, { detail: `Log in to ${hostOf(current)} in the agent browser`, page: current });
 
       // An "Apply now" comes first: the captcha often sits inside the application pop-up it opens
       // (Hashcash, 2026-09-28), and is handed over only after the form is filled.
@@ -135,7 +146,7 @@ export class WebApplyAdapter implements ApplyAdapter {
    * is read ("detached Frame") - so wait for a form, a login or an apply button, and read again.
    */
   private async readWhenReady(page: Page): Promise<{ snap: FormSnapshot; text: string; accountWall: boolean }> {
-    const deadline = Date.now() + RENDER_WAIT_MS;
+    const started = Date.now();
     for (;;) {
       try {
         const snap = await this.runner.snapshot(page, null);
@@ -147,9 +158,12 @@ export class WebApplyAdapter implements ApplyAdapter {
           this.looksLikeLogin(snap, text) ||
           CLOSED_TEXT.test(text) ||
           snap.actions.some((a) => !a.disabled && (a.kind === 'apply' || APPLIED_BUTTON.test(a.text.trim())));
+        // Nothing to act on yet - no form, no Apply: many hiring systems draw them late (Workday's Apply comes 15-20
+        // seconds after its menu and cookie banner, Stryker 2026-10-01), so such a page gets up to 30 seconds.
+        const deadline = started + (snap.fields.length === 0 ? SLOW_RENDER_WAIT_MS : RENDER_WAIT_MS);
         if (actionable || Date.now() >= deadline) return { snap, text, accountWall };
       } catch (err) {
-        if (!PAGE_SWAPPED.test((err as Error).message) || Date.now() >= deadline) throw err;
+        if (!PAGE_SWAPPED.test((err as Error).message) || Date.now() >= started + SLOW_RENDER_WAIT_MS) throw err;
       }
       await sleep(1000);
     }
@@ -207,5 +221,14 @@ export class WebApplyAdapter implements ApplyAdapter {
       this.logger.warn(`Navigator failed on ${domain}: ${(err as Error).message}`);
       return null;
     }
+  }
+}
+
+/** The site a page is on, without "www.". */
+function hostOf(page: Page): string {
+  try {
+    return new URL(page.url()).hostname.replace(/^www\./, '');
+  } catch {
+    return 'this site';
   }
 }

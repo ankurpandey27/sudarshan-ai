@@ -36,10 +36,11 @@ import { PlatformHealthService } from '../platform-health/platform-health.servic
 import { REFUSED_COOLDOWN_MS } from '../platform-health/constants/platform-health.constants';
 import { AttemptShot } from '../jobs/interfaces/attempt.interface';
 import { LearnersTrainerService } from '../learners/learners-trainer.service';
-import { CONTINUE_IDLE_MS, MAX_SHOTS } from './constants/apply.constants';
+import { CONTINUE_IDLE_MS, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
 import { OpenTab } from './interfaces/open-tab.interface';
 import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
+import { onJobBoard } from './utils/offsite-url.util';
 
 @Injectable()
 export class ApplyService {
@@ -179,11 +180,17 @@ export class ApplyService {
     } catch (err) {
       const msg = (err as Error).message;
       this.logger.warn(`Apply failed for job ${job.id}: ${msg}`);
-      final = { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}`, ended: 'error' };
+      // A few network failures are the connection; more on the same job is the site (a dead domain).
+      final =
+        NETWORK_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
+          ? // The connection, not the job: it keeps its tries and its place in the queue.
+            { status: JobStatus.APPROVED, detail: `Network problem, will try again: ${msg.slice(0, 160)}`, ended: 'network' }
+          : { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}`, ended: 'error' };
     }
     this.learnFromEnding(final, moves, outcome);
     // The site refused it for now (too many too fast): nothing wrong with this job - it keeps its tries
     // and its place in the queue, and the site is left alone for a few hours.
+    if (final.ended === 'network') this.jobs.forgetAttempt(job.id);
     if (final.ended === `prep:${PrepareStatus.REFUSED}` || final.ended === 'run:refused') {
       this.jobs.forgetAttempt(job.id);
       this.health.coolDown(job.platform, REFUSED_COOLDOWN_MS, final.detail);
@@ -274,6 +281,13 @@ export class ApplyService {
   private remember(jobId: number, page: Page, prep: PrepareResult, adapter: ApplyAdapter, moves: LearnedMove[], captcha: boolean): void {
     this.tabs.set(jobId, { page, prep, adapter, moves: [...moves], captcha, since: Date.now() });
     page.once('close', () => this.tabs.delete(jobId));
+    // Every open tab costs memory (84 were left open on 2026-09-29): beyond a dozen, the oldest is closed. Its job stays
+    // in "Do by hand" and opens again from Applications.
+    const open = [...this.tabs.entries()].filter(([, t]) => !t.page.isClosed()).sort((a, b) => a[1].since - b[1].since);
+    for (const [id, t] of open.slice(0, Math.max(0, open.length - MAX_OPEN_TABS))) {
+      this.tabs.delete(id);
+      void t.page.close().catch(() => undefined);
+    }
   }
 
   /** How a form is filled for this job: the same rules whether it starts now or carries on after you. */
@@ -285,8 +299,10 @@ export class ApplyService {
       ctx: this.context(job),
       domain: new URL(page.url()).hostname.replace(/^www\./, ''),
       allowLlm: true,
-      // Careful mode (the site seemed to change): stop before Submit until one application works again.
-      pauseBeforeSubmit: s.agent.pauseBeforeSubmit || this.health.state(job.platform).status === 'careful',
+      // Careful mode (the platform was paused and tried again) - only if you turned it on, and only on the
+      // job board's own forms, never a company site the job led to (Faye, 2026-09-30).
+      pauseBeforeSubmit:
+        s.agent.pauseBeforeSubmit || (s.agent.carefulAfterPause === true && this.health.state(job.platform).status === 'careful' && onJobBoard(page.url())),
       onStep: step,
       onShot: (p: Page, label: string) => this.shoot(attemptId, job.id, p, label),
       rescue: s.agent.rescue !== false,
@@ -382,7 +398,10 @@ export class ApplyService {
         for (const u of AnswerEngineService.toPending(o.unresolved)) this.pending.add({ jobId: job.id, ...u });
         return { status: JobStatus.NEEDS_INPUT, detail: o.detail };
       case 'ready_to_submit':
-        return { status: JobStatus.MANUAL, detail: 'Filled in - review and press Submit in the agent browser' };
+        return {
+          status: JobStatus.MANUAL,
+          detail: 'Filled in - Sudarshan stopped before Submit (you asked it to, in Settings) - review and press Submit in the agent browser',
+        };
       case 'blocked':
       case 'captcha':
         return { status: JobStatus.MANUAL, detail: o.detail };

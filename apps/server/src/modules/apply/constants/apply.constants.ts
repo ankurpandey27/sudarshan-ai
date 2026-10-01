@@ -98,3 +98,18 @@ export const EMBED_WAIT_MS = 6000;
 export const MAX_SHOTS = 24;
 /** After you solve a captcha, Sudarshan carries on only once you have not touched the tab for this long. */
 export const CONTINUE_IDLE_MS = 15_000;
+
+/** A company page still drawing (spinner, hardly any text) is waited for this long (Workday, 2026-09-30). */
+export const SLOW_RENDER_WAIT_MS = 30_000;
+
+/** Presses on the way from a job page to its application form, plus one look at where the last one led. */
+export const MAX_APPLY_HOPS = 5;
+
+/** A connection problem (Wi-Fi drop, DNS, QUIC, a page that never loaded) - not a problem with the job. */
+export const NETWORK_ERROR = /net::ERR_|chrome-error:\/\/|Navigation timeout of \d+ ms exceeded|ERR_INTERNET_DISCONNECTED|ECONNRESET|ETIMEDOUT|socket hang up/i;
+
+/** Network failures on one job retried for free; after that it counts like any other error. */
+export const MAX_NETWORK_RETRIES = 3;
+
+/** Tabs handed over to you kept open at most; beyond that the oldest is closed (its job opens again from Applications). */
+export const MAX_OPEN_TABS = 12;

@@ -143,9 +143,11 @@ export class InsightsService {
           severity: 'error',
           title: `${name} may have changed its pages - paused`,
           detail: `The last few ${name} applications got stuck (latest: "${(h.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan stopped applying on ${name} - it tries one again by itself at ${clockTime(h.until)}.`,
-          fix: `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again carefully": it resumes and stops before every Submit until one works.`,
+          fix: this.settings.get().agent.carefulAfterPause
+            ? `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again": it resumes and, as you set, stops before Submit on ${name}'s own forms until one works.`
+            : `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again": it resumes normally. (To have it stop before Submit after a pause, turn on "Careful mode after a pause" in Settings.)`,
           actions: [
-            { label: 'Try again carefully', api: `/agent/platforms/${h.platform}/retry` },
+            { label: 'Try again', api: `/agent/platforms/${h.platform}/retry` },
             { label: 'See what happened', to: '/applications' },
           ],
         });
@@ -159,16 +161,19 @@ export class InsightsService {
           fix: `Nothing to do now. To make it less likely: a lower daily limit for ${name} (Settings, Platforms & limits) and a longer gap between applications (Settings, Agent).`,
           actions: [{ label: 'Limits', to: '/settings?tab=platforms' }],
         });
-      } else if (h.status === 'careful') {
+      } else if (h.status === 'careful' && this.settings.get().agent.carefulAfterPause) {
         out.push({
           id: `careful-${h.platform}`,
           // A new careful-mode episode is a new card, even though it reads the same.
           version: `careful since ${h.since ?? ''}`,
           severity: 'info',
           title: `${name}: careful mode`,
-          detail: `After recent trouble, Sudarshan fills ${name} applications and stops before Submit, so you check each one.`,
-          fix: 'Press Submit in the open tab. After one application goes through, careful mode ends by itself.',
-          actions: [{ label: 'Applications', to: '/applications' }],
+          detail: `After recent trouble, Sudarshan fills ${name}'s own application forms and stops before Submit, so you check each one. Company sites are not affected.`,
+          fix: 'Press Submit in the open tab. After one application goes through, careful mode ends by itself - or turn it off in Settings (Careful mode after a pause).',
+          actions: [
+            { label: 'Applications', to: '/applications' },
+            { label: 'Settings', to: '/settings?tab=agent' },
+          ],
         });
       }
     }

@@ -37,7 +37,7 @@ export const INSTAHYRE_JOB_FUNCTIONS: { match: RegExp; id: number }[] = [
 // paging is &start=10, 20...; logged out, page 2 redirects to the login page.
 export const INDEED_ORIGIN = 'https://in.indeed.com';
 export const INDEED_PAGE_STEP = 10;
-export const INDEED_MAX_PAGES = 2;
+export const INDEED_MAX_PAGES = 5;
 /** Indeed is the strictest about automation: long, human gaps between pages. */
 export const INDEED_PAGE_DELAY_MS: [number, number] = [12_000, 18_000];
 /** The "Date posted" choices Indeed offers. */
