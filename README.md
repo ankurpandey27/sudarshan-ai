@@ -61,13 +61,17 @@ The main page is called **Lakshya** (लक्ष्य, "the target") - the aim
 
 - **Reads your resume (PDF)** into a profile: name, contact, title, city, links, years of experience, skills (with years), education.
 - **Imports an Excel sheet** of your known answers, extra job links (any site) and preferences.
-- **Searches** LinkedIn, Naukri, Indeed and Instahyre for your keywords and locations, and queues links you add from any career site. Each platform has its own on/off switch under **Apply on**.
+- **Searches** LinkedIn, Naukri, Indeed, Instahyre, Foundit and Hirist for your keywords and locations, and queues links you add from any career site. Each platform has its own on/off switch under **Apply on**.
 - **Scores every job** against your profile and explains the score (matched / missing skills, salary, location).
 - **Applies** - LinkedIn Easy Apply, Naukri (including its chat-style questions), Instahyre (one click), and generic career sites - in its own browser window you can watch.
 - **Applies on Indeed** - Sudarshan fills the steps and presses Submit itself. When Indeed shows a real captcha (an "I'm not a robot" box or a picture test), it leaves the tab open; you solve it and press Submit, and the job turns Applied by itself.
 - **Remembers every answer**, so forms get faster and cheaper over time.
 - **Asks you only what it cannot know**, once, and reuses your answer forever.
 - **Explains itself** - the "What needs attention" panel tells you, in plain words, anything stopping it and how to fix it.
+- **Tells you without you watching** - a summary of the day at the hour you choose, and one message when applications need you (a captcha, a question), as desktop notifications and, if you like, on your phone through Telegram.
+- **Reads employers' replies** (optional) - connect your mailbox and each application shows what came back: received, a test, an interview, an offer, or "not selected".
+- **Uses the right resume** - add a resume per kind of role (Frontend, Data...) and each application attaches the one made for that job.
+- **Checks your profile** - skills you have but have not listed, and skills many jobs ask for, from the jobs it finds.
 - **Learns and recovers** - see [How Sudarshan learns](#how-sudarshan-learns).
 
 ## Why it is fast
@@ -95,7 +99,23 @@ Browser agents that "look at a screenshot, think, click, repeat" need 30-60 AI c
 - **Google Chrome**, **Microsoft Edge** or **Brave** (already on most computers).
 - Works on **Windows, macOS and Linux**. No database, Docker or Python to install.
 
-**Run**
+**Install with one command** - it installs Node.js if you do not have it, downloads Sudarshan, adds a **Sudarshan** shortcut and starts it:
+
+Windows (in PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/ankurpandey27/sudarshan-ai/master/install.ps1 | iex
+```
+
+macOS or Linux (in a terminal):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ankurpandey27/sudarshan-ai/master/install.sh | bash
+```
+
+Next time, open it from the **Sudarshan** shortcut on your Desktop (Windows), `Sudarshan.command` on the Desktop (macOS) or your applications menu (Linux). Installed this way, it **updates itself** each time it starts.
+
+**Or run it yourself:**
 
 ```bash
 git clone https://github.com/ankurpandey27/sudarshan-ai.git
@@ -261,8 +281,9 @@ Download the template from the wizard or **Settings -> Spreadsheet -> Template**
 | **Questions** | Questions only you can answer - answer once, every waiting job continues |
 | **Applications** | Everything applied / needing attention, with the step-by-step trace of each attempt. Export to Excel, paste more links |
 | **Answer memory** | See and edit everything Sudarshan has learned |
-| **Profile** | Your details, skills (with years), CTC, notice period, resume |
-| **Settings** | AI model, search, per-site daily limits, pacing, active hours, dry-run mode |
+| **Story Bank** | A short interview about your real work; written answers are built on it |
+| **Profile** | Your details, skills (with years), CTC, notice period, resume, resumes for other roles, and **Profile check** (skills to add in one click) |
+| **Settings** | AI model, search, per-site daily limits, pacing, active hours, dry-run mode, **Notifications** (daily summary, Telegram, replies from your email), **Data & backups** |
 
 **Modes** - *Review* (default): Sudarshan finds and scores, you approve, it applies. *Auto*: it applies to anything above your auto-apply score on its own.
 
@@ -279,6 +300,8 @@ Look at **Lakshya -> What needs attention** first. Every problem is listed there
 | *All N jobs were skipped* | Nothing matched - the reasons are listed (skills, salary, location...) | Follow the fix shown; press **Re-score jobs** after changing your profile |
 | *N jobs waiting for your approval* | You are in Review mode | Approve jobs in **Review** |
 | *Not logged in to LinkedIn / Naukri* | The agent's browser session expired | Press **Log in** and sign in in the window that opens |
+| *Applying this fast can get your accounts restricted* | A daily limit, the gap between applications or the active hours is faster than a person | **Settings -> Platforms & limits -> Use safe pace**, then Save |
+| *Sudarshan was stopped right after pressing Submit* | It was closed or crashed at the moment it sent an application | Check the site or your email; mark it Applied or queue it again. It never sends twice by itself |
 | *Profile is missing ...* | Forms will ask for these | Fill them on **Profile** |
 | *Port 4747 is already in use* (terminal) | Sudarshan is already running | Open http://localhost:4747, or stop the other one |
 | *No Chrome, Edge or Brave found* | No supported browser | Install Google Chrome |
@@ -296,11 +319,13 @@ Each failed application also keeps a **screenshot** and a **step-by-step trace**
 - **API keys are encrypted** (AES-256-GCM) with a key generated on your machine, and never sent back to the page.
 - **No passwords stored** - you log in to job sites in the agent's own browser window.
 - **Local only** - the server listens on `127.0.0.1` and rejects requests from other websites.
-- The only traffic leaving your machine goes to the job sites you use and the AI provider you chose (none with a local model).
+- The only traffic leaving your machine goes to the job sites you use and the AI provider you chose (none with a local model) - and, only if you turn them on, Telegram (to your own bot) and your mailbox (read only).
+- **Your mailbox** (optional, Settings -> Notifications) is read on your computer with an app password, never by an AI. Only replies about your applications are kept - the sender, the subject and what they mean - never the email itself.
+- **Never sent twice.** Sudarshan notes the moment it presses Submit. If it is stopped right then, the job waits for you to check instead of being sent again.
 
 **Indeed is off by default.** Indeed restricts automation more than any other site here and often shows a security check ("Just a moment..."). Sudarshan waits for it to clear, goes slowly (12-18 s between pages, 15 applications a day by default), and hands the check to you if it stays. Turn it on under **Apply on** and log in to Indeed in the agent browser - logged out, Indeed shows only the first page of results and no application form. Indeed's review page is protected by Google's invisible reCAPTCHA ("This site is protected by reCAPTCHA"), which usually needs nothing from you: Sudarshan presses Submit itself. Only when Indeed shows a real captcha to solve does it hand the application to you.
 
-**Protect your accounts.** LinkedIn does not allow automated applications and restricts accounts that apply too fast. Defaults are deliberately conservative: **25 LinkedIn / 40 Naukri applications per day**, random 40-110 s gaps, a real visible browser, and captchas always handed to you. Raise limits at your own risk; you are responsible for how you use this tool.
+**Protect your accounts.** LinkedIn does not allow automated applications and restricts accounts that apply too fast. Defaults are deliberately conservative: **25 LinkedIn / 40 Naukri applications per day**, random 40-110 s gaps, active 8:00-23:00, a real visible browser, and captchas always handed to you. If you set a pace faster than a person (more than 30 a day on LinkedIn, under 30 s between applications, or applying through the night), **What needs attention** and Settings warn you, with a one-click **Use safe pace**. Raise limits at your own risk; you are responsible for how you use this tool.
 
 ---
 
@@ -337,36 +362,37 @@ Inside it:
 
 ### How the daily backup works
 
-1. Once a day, while Sudarshan is running, it writes a complete copy of your database to the `backups` folder, named by the date: `agent-2026-10-01.db`.
+1. Once a day, while Sudarshan is running, it writes a complete backup to the `backups` folder, named by the date: `agent-2026-10-01.db`. One file holds your whole database **and your resumes**.
 2. The copy is made safely while Sudarshan keeps working - you never need to stop it.
-3. The last **7** copies are kept; older ones are deleted by themselves.
+3. The last **7** are kept; older ones are deleted by themselves.
 4. The flight log says when it happened: *"Backed up your data to ..."*.
 
-You do not need to do anything for this to happen.
-
-### Restoring a backup
-
-Use this only if your data is damaged or you want to go back to an earlier day. It replaces your current data with the copy you choose.
-
-1. **Stop Sudarshan.** In the window where it runs, press **Ctrl + C** (on macOS too) and wait until it has stopped.
-2. **Open your data folder** (see [Where your data is](#where-your-data-is)).
-3. **Keep the current file, just in case.** Rename `agent.db` to `agent-damaged.db`.
-4. **Delete** `agent.db-wal` and `agent.db-shm` if they are there. They belong to the old file and must not be mixed with the backup.
-5. **Choose a backup.** Open the `backups` folder and copy the file of the day you want, for example `agent-2026-10-01.db`.
-6. **Paste it** into the data folder (one level up from `backups`) and **rename it** to `agent.db`.
-7. **Start Sudarshan** again with `npm start`.
-
-Everything is now as it was on that day. Applications Sudarshan sent after that day are no longer listed in it - they were still sent; only its record of them is older. When all is well, you can delete `agent-damaged.db`.
+You do not need to do anything for this to happen. **Settings -> Data & backups** shows the last backup and has **Back up now**.
 
 ### Keeping a copy somewhere else
 
-The daily backups are on the same disk as your data: they protect you from a damaged file, not from a broken disk or a lost laptop. For that, copy the backups now and then to another place:
+The `backups` folder is on the same disk as your data: it protects you from a damaged file, not from a broken disk or a lost laptop. So:
 
-1. Open your data folder.
-2. Copy the `backups` folder **and** `secret.key` (without the key, your saved AI keys cannot be read back - you would only need to enter them again).
-3. Paste them into a cloud folder (OneDrive, Google Drive, Dropbox) or a USB drive.
+1. Open **Settings -> Data & backups**.
+2. Under **Also copy each backup to this folder**, enter a folder that syncs elsewhere - OneDrive, Google Drive, Dropbox - or a USB disk, as a full path (for example `C:\Users\you\OneDrive\Sudarshan backups`). Press **Save changes**.
+3. Press **Back up now** to check it works. From then on every daily backup is copied there too, and the last 7 are kept; nothing else in that folder is touched.
 
-These files hold your personal details and answers: keep them somewhere private, and never share or upload them publicly.
+**Download a backup** gives you one file to keep anywhere.
+
+**AI keys are never in a backup** (`secret.key` stays out of it). A backup cannot leak your keys; after restoring, enter your AI key again in Settings. The same goes for a connected mailbox or Telegram bot.
+
+Backups hold your personal details and answers: keep them somewhere private, and never share or upload them publicly.
+
+### Restoring a backup
+
+Use this if your data is damaged, you want to go back to an earlier day, or you are moving to a new computer. It replaces your current data with the backup.
+
+1. Open **Settings -> Data & backups -> Restore from a backup**.
+2. Choose the file: a daily backup (`agent-2026-10-01.db` from the `backups` folder or your backup folder) or a downloaded one (`sudarshan-backup-....db`).
+3. Press **Restore**. Sudarshan checks it is a backup it can read, keeps your current data in `backups` as `before-restore-...db`, **restarts by itself** and puts your resumes back. The page reloads when it is ready.
+4. Enter your AI key again in **Settings -> AI model**.
+
+On a new computer: install Sudarshan, open it, and restore the backup the same way.
 
 ---
 
@@ -387,7 +413,7 @@ Everything is set from the UI. For power users, environment variables:
 
 ## Updating and removing
 
-**Update** to the latest version:
+**Update** to the latest version: installed with the one-line installer, it updates itself each time it starts (only when nothing in its folder was changed by hand; offline, it simply starts). Run the installer again any time to update too. Running it yourself from a clone:
 
 ```bash
 cd sudarshan-ai
@@ -473,7 +499,7 @@ Each one first **checks itself** on cases it has not seen, and acts only once it
 
 **Each site's steps.** For every site and every kind of step (for example Indeed's resume step), Sudarshan remembers which button moved the form forward - but only from applications the site actually **confirmed**. A page changing is not proof: a button that left the form (such as a notifications link) is never learned. Next time it presses the learned button first. If a click changes nothing - the site was redesigned - it notes that and tries the next safe button (never *Save and close*, *Withdraw* or *Delete*). If an application gets stuck, only the button that led into the dead end gets a strike.
 
-**From you, when it gets stuck.** A stuck application stays open in its tab. When you finish it by hand, Sudarshan saves the answers you typed or picked (only those - not what the site filled in itself) straight away. The buttons you pressed are learned once the site confirms the application; if you close the tab instead, they are forgotten. When the site shows its confirmation - even an hour later, on a new page - the job is marked Applied. For applications it did not see go through, **Applications -> Check Indeed** reads your Indeed "My jobs - Applied" list and marks those jobs Applied (matched by Indeed's own job id; it only reads the page).
+**From you, when it gets stuck.** A stuck application stays open in its tab. When you finish it by hand, Sudarshan saves the answers you typed or picked (only those - not what the site filled in itself) straight away. The buttons you pressed are learned once the site confirms the application; if you close the tab instead, they are forgotten. It also notes **how** you operated a field the site built itself - opened it and clicked an option, typed and picked a suggestion, typed and pressed Enter, clicked a choice's words - and fills that kind of field your way next time, on that site. When the site shows its confirmation - even an hour later, on a new page - the job is marked Applied. For applications it did not see go through, **Applications -> Check Indeed** reads your Indeed "My jobs - Applied" list and marks those jobs Applied (matched by Indeed's own job id; it only reads the page).
 
 **What it does not do.** It remembers answers and buttons; it does not work out new kinds of pages on its own. When a site changes how its forms work, the fix is still a code change.
 
@@ -492,6 +518,7 @@ It fills most application forms by itself - LinkedIn Easy Apply, Naukri, Instahy
 - **Captchas** ("I'm not a robot", picture puzzles, type-the-code boxes) - Sudarshan never solves them. It fills everything else and hands the application to you.
 - **Sites that make you create an account or log in**, or **verify with a code sent to your email or phone (OTP)** - these become **"Do by hand"** in Applications.
 - **Indeed** - Sudarshan submits Indeed applications itself; when Indeed shows a real captcha, you solve it and press Submit in the open tab.
+- **Foundit and Hirist** - Sudarshan cannot tell from outside whether you are logged in to them. Log in once from **Settings -> Site logins**; if a form asks you to sign in, the job is handed to you with its tab open.
 
 ### What happens when a form has a captcha
 
@@ -509,6 +536,9 @@ When it gets stuck on a form, the tab stays open: finish it there and Sudarshan 
 
 - **Verified against live accounts:** LinkedIn Easy Apply (multi-page forms, screening questions), Naukri one-click apply, Instahyre one-click apply, and company career-site forms (Keka).
 - **Also verified:** resume parsing, Excel import, LinkedIn and Naukri discovery, scoring, the form engine in a real browser, learning from forms you finish, security and key encryption.
+- **Foundit and Hirist (2026-10-02):** search verified on live data (17 and 16 jobs for one profile's searches); applying while logged out hands the job over with "Log in to ...". Applying while logged in has not been verified yet - keep **Stop before the final Submit** on for your first ones. Foundit listings that only point to LinkedIn are left to the LinkedIn search.
+- **Cutshort and Wellfound** are not searched: Cutshort shows results only to logged-in users, and Wellfound has almost no listings for Indian cities. Paste their job links under Applications -> Add job links instead.
+- **LinkedIn to company sites (2026-10-02):** "Apply" on a LinkedIn job follows to the company's site (for example SAP SuccessFactors) and hands the job to you when that site needs an account.
 - **Indeed:** search is verified. Indeed's review page uses invisible reCAPTCHA, which usually lets an application through; when it asks for a real captcha, Sudarshan never solves it - it hands the application over.
 - **Naukri chat questionnaire:** tested against a replica of Naukri's chat (Yes/No and typed questions, the "typing" pause, the hidden file input), using your saved answers and profile first; not yet verified on a live application end to end. Job sites change their pages often - keep **Stop before the final Submit** on for your first applications on a new site, and report what the flight log shows.
 
