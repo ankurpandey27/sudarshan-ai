@@ -9,6 +9,7 @@ import { UNTRUSTED_RULE, untrusted } from '../../llm/utils/untrusted.util';
 
 export const SCORE_SYSTEM_PROMPT =
   'You are a strict technical recruiter. Judge how well each job fits the candidate. Be realistic: seniority mismatch and missing core skills lower the score. ' +
+  'A skill counts as matched when the candidate has a specific form of it (MySQL or PostgreSQL for SQL, NestJS or Express for Node.js, AWS for cloud) - do not list it as missing. ' +
   UNTRUSTED_RULE;
 
 export function buildBatchScorePrompt(profile: ProfileSnapshot, jobs: Job[]): string {

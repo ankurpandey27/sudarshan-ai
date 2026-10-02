@@ -192,6 +192,21 @@ export interface Settings {
   };
 }
 
+export interface SkillGap {
+  skill: string;
+  jobs: number;
+  why: 'on_resume' | 'covered' | 'missing';
+  coveredBy?: string[];
+}
+
+export interface ProfileCheck {
+  jobs: number;
+  quickAdds: SkillGap[];
+  missing: SkillGap[];
+  noYears: string[];
+  tips: { id: string; text: string; to?: string }[];
+}
+
 export interface BackupStatus {
   last: { file: string; at: string } | null;
   count: number;

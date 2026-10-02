@@ -4,6 +4,7 @@
 import { Injectable } from '@nestjs/common';
 import { JobSnapshot, ProfileSnapshot } from './interfaces/snapshots.interface';
 import { canonicalSkill } from '../discovery/utils/job-normalizer.util';
+import { hasSkill } from '../profile/utils/has-skill.util';
 import { proximity } from './utils/geo.util';
 import { Scores } from './interfaces/scores.interface';
 import { SCORE_WEIGHTS } from './constants/scoring.constants';
@@ -46,7 +47,7 @@ export class ScoringEngine {
       return 60;
     }
     const have = new Set(skills.map(canonicalSkill));
-    const matched = required.filter((r) => have.has(canonicalSkill(r))).length;
+    const matched = required.filter((r) => hasSkill(have, r)).length;
     return Math.round((matched / required.length) * 100);
   }
 

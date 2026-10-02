@@ -10,6 +10,7 @@ import { useProfile } from '../lib/queries';
 import type { Profile, ProfileState } from '../lib/types';
 import { DropUpload } from '../components/drop-upload';
 import { Button, Card, CardHeader, Field, Input, PageTitle, Select, Textarea, Toggle } from '../components/ui';
+import { ProfileCheckPanel } from '../components/profile-check';
 import { useToast } from '../components/toast';
 
 const FIELD_LABELS: Partial<Record<keyof Profile, string>> = {
@@ -25,12 +26,13 @@ const FIELD_LABELS: Partial<Record<keyof Profile, string>> = {
   expectedCtc: 'expected CTC',
 };
 
-type ProfileTab = 'about' | 'work' | 'skills' | 'pay';
+type ProfileTab = 'about' | 'work' | 'skills' | 'pay' | 'check';
 const PROFILE_TABS: readonly TabDef<ProfileTab>[] = [
   { id: 'about', label: 'About you' },
   { id: 'work', label: 'Work' },
   { id: 'skills', label: 'Skills' },
   { id: 'pay', label: 'Pay & availability' },
+  { id: 'check', label: 'Profile check' },
 ];
 
 export function ProfilePage() {
@@ -95,6 +97,16 @@ export function ProfilePage() {
       )}
 
       <Tabs tabs={PROFILE_TABS} value={tab} onChange={setTab} />
+
+      {tab === 'check' && (
+        <ProfileCheckPanel
+          profile={draft}
+          onAdd={(name, years) => {
+            if (draft.skills.some((s) => s.name.toLowerCase() === name.toLowerCase())) return;
+            save.mutate({ ...draft, skills: [...draft.skills, { name, years }] });
+          }}
+        />
+      )}
 
       {tab === 'about' && (
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">

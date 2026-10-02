@@ -19,14 +19,25 @@ import { RESUME_MAX_BYTES } from './constants/profile.constants';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ProfileState } from './interfaces/profile-state.interface';
 import { ProfileService } from './profile.service';
+import { ProfileCheckService } from './profile-check.service';
+import { ProfileCheck } from './interfaces/profile-check.interface';
 
 @Controller('profile')
 export class ProfileController {
-  constructor(private readonly profile: ProfileService) {}
+  constructor(
+    private readonly profile: ProfileService,
+    private readonly checker: ProfileCheckService,
+  ) {}
 
   @Get()
   get(): ProfileState {
     return this.profile.state();
+  }
+
+  /** What would make your profile match more of the jobs found: skills to add, and short tips. */
+  @Get('check')
+  check(): ProfileCheck {
+    return this.checker.check();
   }
 
   @Patch()

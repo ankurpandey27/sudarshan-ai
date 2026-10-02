@@ -39,6 +39,7 @@ import { HOLD_BACK_BELOW } from '../taste/constants/taste.constants';
 import { belowLevel, levelFor } from './utils/seniority.util';
 import { addressesAi } from '../llm/utils/untrusted.util';
 import { STEERING_NOTE } from './constants/scoring.constants';
+import { hasSkill } from '../profile/utils/has-skill.util';
 
 @Injectable()
 export class ScoringService {
@@ -126,8 +127,9 @@ export class ScoringService {
           location: scores.locationScore,
           engine: scores.overallScore,
           llm: null,
-          matchedSkills: jsnap.requiredSkills.filter((r) => have.has(canonicalSkill(r))),
-          missingSkills: jsnap.requiredSkills.filter((r) => !have.has(canonicalSkill(r))),
+          // Related skills count: your MySQL covers a job's "SQL".
+          matchedSkills: jsnap.requiredSkills.filter((r) => hasSkill(have, r)),
+          missingSkills: jsnap.requiredSkills.filter((r) => !hasSkill(have, r)),
           summary: '',
         },
       });
