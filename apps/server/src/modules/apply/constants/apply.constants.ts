@@ -115,3 +115,8 @@ export const MAX_NETWORK_RETRIES = 3;
 
 /** Tabs handed over to you kept open at most; beyond that the oldest is closed (its job opens again from Applications). */
 export const MAX_OPEN_TABS = 12;
+
+/** How long a LinkedIn job page may take to draw its Apply / Easy Apply button. */
+export const APPLY_BUTTON_WAIT_MS = 15_000;
+/** LinkedIn's apply controls: "Easy Apply", or "Apply" on the company's site. */
+export const APPLY_ACTION = /easy apply|^apply\b/i;

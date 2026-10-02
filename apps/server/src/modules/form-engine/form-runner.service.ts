@@ -49,6 +49,9 @@ import { clickChoiceNearFieldInPage, fieldHtmlInPage, widgetSignaturesInPage } f
 import { heldAnswer, intendedText } from './utils/fill-check.util';
 import { isSensitive, redactSensitive } from '../answers/utils/sensitive.util';
 
+/** Fields whose answer is typed in: one that is empty again was emptied by the site. */
+const TYPED_KINDS = new Set<FillInstruction['kind']>([FieldKind.TEXT, FieldKind.TEXTAREA, FieldKind.NUMBER, FieldKind.EMAIL, FieldKind.TEL, FieldKind.URL]);
+
 const ACTION_PRIORITY: Record<FormAction['kind'], number> = { submit: 4, review: 3, next: 2, apply: 1, dismiss: -1, other: 0 };
 
 @Injectable()
@@ -290,6 +293,17 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     return this.rescue.run(page, opts, this, first);
   }
 
+  /** Typed answers that are no longer in their boxes. */
+  private async vanished(page: Page, scope: string | null, typed: FillInstruction[]): Promise<FillInstruction[]> {
+    if (!typed.length) return [];
+    const now = await this.snapshot(page, scope).catch(() => null);
+    if (!now) return [];
+    return typed.filter((i) => {
+      const f = now.fields.find((x) => x.id === i.id);
+      return !!f && f.value.trim() === '';
+    });
+  }
+
   private async steps(page: Page, opts: RunFormOptions): Promise<FormRunOutcome> {
     // Buttons that moved the form on; the caller learns them only if the application is confirmed.
     const moves: LearnedMove[] = [];
@@ -323,6 +337,8 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     let beforeSend = '';
     // Submits that came back to the same form: twice is a loop (Sony on Greenhouse, 2026-10-01: four rounds of the same fill).
     let sentSameForm = 0;
+    // Typed answers of this step, checked again just before a button is pressed.
+    let typedThisStep: FillInstruction[] = [];
 
     for (let step = 1; step <= maxSteps; step++) {
       out.steps = step;
@@ -405,6 +421,7 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
             ')',
         );
         const held = await this.fillAndCheck(page, snap, resolved.instructions, opts, step);
+        typedThisStep = resolved.instructions.filter((i) => TYPED_KINDS.has(i.kind) && i.value.trim() !== '');
         // Saved as yours only what the form shows it took - a fill that failed teaches nothing.
         this.answers.rememberHeld((resolved.toRemember ?? []).filter((r) => held.has(r.fieldId)));
         await jitter(250, 600);
@@ -462,6 +479,15 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
       if (sends && opts.pauseBeforeSubmit) {
         return { ...out, status: 'ready_to_submit', detail: 'Filled and waiting for you to press Submit' };
       }
+      // A step that drew itself again after it was filled can empty the boxes (LinkedIn, Somo Media 2026-10-02): every
+      // answer was gone when Review was pressed. Put back what vanished before pressing.
+      const lost = await this.vanished(page, opts.scopeSelector, typedThisStep);
+      if (lost.length) {
+        opts.onStep(`Step ${step}: the site emptied ${lost.length} answer(s) after they were filled - filled them again`);
+        await this.fill(page, lost);
+        await sleep(400);
+      }
+      typedThisStep = [];
       opts.onStep(`Step ${step}: "${action.text}"`);
       if (sends) opts.onSend?.();
       await this.click(page, action.id);

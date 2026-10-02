@@ -28,6 +28,7 @@ import { canonicalSkill, extractSkills } from '../discovery/utils/job-normalizer
 import { NOT_A_RESUME, REPLACES_RESUME } from './constants/background.constants';
 import { HIGH_STAKES_QUESTION } from './constants/inference.constants';
 import { aiTells, isWrittenAnswer, plainWords } from './utils/human-voice.util';
+import { bareNumber, FORMAT_ERROR } from './utils/bare-number.util';
 import { REWRITE_AT_TELLS } from './constants/human-voice.constants';
 import { UNTRUSTED_RULE, untrusted } from '../llm/utils/untrusted.util';
 
@@ -95,6 +96,19 @@ export class AnswerEngineService {
       if (fromProfile && !fromProfile.confident) {
         const yours = this.answers.lookup(field.label || field.placeholder);
         if (yours && yours.similarity === 1 && yours.source !== AnswerSource.LLM && toInstruction(field, yours.answer)) fromProfile = null;
+      }
+      // The site turned down the format of your detail ("Invalid input" for "30 days"): the same detail as a plain
+      // number, decided here - the AI given the same error answered "30 days" again (Somo Media, 2026-10-02).
+      if (fromProfile && forced && field.error && FORMAT_ERROR.test(field.error)) {
+        // Already a number, and the site emptied the box: put it back.
+        const bare = bareNumber(fromProfile.value) ?? (/^\d+(\.\d+)?$/.test(fromProfile.value.trim()) && !field.value.trim() ? fromProfile.value.trim() : null);
+        const ins = bare !== null ? toInstruction(field, bare) : null;
+        if (ins) {
+          result.instructions.push(ins);
+          result.stats.fields++;
+          result.stats.profileHits++;
+          continue;
+        }
       }
       if (fromProfile && !forced) {
         const ins = toInstruction(field, fromProfile.value);

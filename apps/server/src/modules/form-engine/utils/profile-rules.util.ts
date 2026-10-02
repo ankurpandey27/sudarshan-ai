@@ -79,7 +79,9 @@ const round = (n: number, dp: number): number => Math.round(n * 10 ** dp) / 10 *
 function noticePeriod(days: number | null, field: FormField): RuleAnswer | null {
   if (days === null) return null;
   const q = field.label.toLowerCase();
-  if (field.kind === FieldKind.NUMBER || /\(in (days|months|weeks)\)|in (days|months|weeks)\b/.test(q)) {
+  // A short box (LinkedIn's "0/20") takes the number of days: "30 days" was "Invalid input" there (Somo Media, 2026-10-02).
+  const shortBox = field.maxLength !== null && field.maxLength <= SHORT_ANSWER_MAX && !field.options.length;
+  if (field.kind === FieldKind.NUMBER || shortBox || /\(in (days|months|weeks)\)|in (days|months|weeks)\b/.test(q)) {
     if (/month/.test(q)) return fact(Math.ceil(days / 30));
     if (/week/.test(q)) return fact(Math.ceil(days / 7));
     return fact(days);

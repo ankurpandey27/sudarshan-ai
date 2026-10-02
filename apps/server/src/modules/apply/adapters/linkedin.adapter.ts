@@ -9,7 +9,7 @@ import { FormRunnerService } from '../../form-engine/form-runner.service';
 import { documentTextInPage } from '../../form-engine/scripts/page-helpers.script';
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
-import { CLOSED_TEXT, COMPANY_SITE_WAIT_MS, LINKEDIN_APPLIED, NEW_TAB_WAIT_MS, LINKEDIN_SCOPE, LINKEDIN_SUCCESS } from '../constants/apply.constants';
+import { APPLY_ACTION, APPLY_BUTTON_WAIT_MS, CLOSED_TEXT, COMPANY_SITE_WAIT_MS, LINKEDIN_APPLIED, NEW_TAB_WAIT_MS, LINKEDIN_SCOPE, LINKEDIN_SUCCESS } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
@@ -48,7 +48,14 @@ export class LinkedInApplyAdapter implements ApplyAdapter {
     const text = await page.evaluate(documentTextInPage);
     if (CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED, { detail: 'No longer accepting applications' });
 
-    const snap = await this.runner.snapshot(page, null);
+    // The 2026 page has none of the classes waited for above and draws its Apply link late (Taxmann, 2026-10-02:
+    // "No apply button found", yet the link was there seconds later): wait for the button itself.
+    let snap = await this.runner.snapshot(page, null);
+    for (const until = Date.now() + APPLY_BUTTON_WAIT_MS; Date.now() < until && !snap.actions.some((a) => !a.disabled && APPLY_ACTION.test(a.text)); ) {
+      if (LINKEDIN_APPLIED.test(await page.evaluate(documentTextInPage).catch(() => ''))) break;
+      await sleep(1000);
+      snap = await this.runner.snapshot(page, null);
+    }
     const buttons = snap.actions.filter((a) => !a.disabled);
     const easy = buttons.find((a) => /easy apply/i.test(a.text));
     if (!easy) {

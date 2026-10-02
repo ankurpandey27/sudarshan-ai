@@ -181,4 +181,40 @@ describe('Checking every fill, and learning how to operate a field (real browser
     expect(out.status).toBe('applied');
     await page.close();
   });
+
+  it('fills again answers the step emptied when it drew itself again, and sends "30" where "30 days" was rejected (LinkedIn, Somo Media, 2026-10-02)', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'linkedin-redraw.html').replace(/\\/g, '/')}`);
+    const storage = new StorageService(':memory:');
+    const runner = new FormRunnerService(
+      new AnswerEngineService(new AnswersService(storage), noLlm),
+      new RecipesService(storage),
+      noLlm,
+      new PlaybookService(storage),
+      undefined,
+      undefined,
+      new WidgetRecipesService(storage),
+    );
+    const steps: string[] = [];
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx: {
+        profile: { ...EMPTY_PROFILE, country: 'India', currentCtc: 1_200_000, expectedCtc: 1_800_000, noticePeriodDays: 30 },
+        job: { id: 1, title: 'Full Stack Developer', company: 'Somo Media', location: 'Delhi', description: '' },
+        resumePath: null,
+        skillYears: () => null,
+      },
+      domain: 'linkedin.com',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: (m) => steps.push(m),
+    });
+    expect(out.status).toBe('applied');
+    // Emptied answers are put back (before Review, or after it on the step that comes back), and the notice
+    // period goes as the number the box takes.
+    expect(await page.evaluate(() => (window as unknown as { __sent: string[] }).__sent)).toEqual(['12', '18', '30']);
+    expect(steps.filter((s) => /"Submit application"/.test(s)).length).toBeLessThanOrEqual(2);
+    await page.close();
+  });
 });

@@ -1,0 +1,46 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>LinkedIn-style step that draws itself again</title></head>
+<body>
+<!-- Somo Media on LinkedIn (2026-10-02): the step drew itself again just after it was filled, so every answer was gone
+     when Review was pressed; and "Duration of your notice period?" took digits only - "30 days" was "Invalid input". -->
+<form onsubmit="return false">
+  <div id="boxes"></div>
+  <button type="button" id="review">Submit application</button>
+</form>
+<script>
+  const QUESTIONS = [
+    { id: 'cur', label: 'What is your current CTC? ( Please Specify LPA Only)*', counter: true },
+    { id: 'exp', label: 'What is your Expected CTC? ( Please Specify LPA Only)*', counter: true },
+    { id: 'np', label: 'Duration of your notice period ?*', counter: false },
+  ];
+  const draw = () => {
+    document.getElementById('boxes').innerHTML = QUESTIONS.map((q) =>
+      `<div class="q"><label for="${q.id}">${q.label}</label><input id="${q.id}" type="text" required><div class="err"></div>${q.counter ? '<span class="count">0/20</span>' : ''}</div>`).join('');
+  };
+  draw();
+  window.__redrawn = false;
+  window.__sent = null;
+  // The first answer typed starts a redraw a moment later - after a quick check, before Review.
+  document.addEventListener('input', () => {
+    if (window.__redrawn) return;
+    window.__redrawn = true;
+    setTimeout(draw, 550);
+  }, true);
+  document.getElementById('review').addEventListener('click', () => {
+    let ok = true;
+    for (const q of QUESTIONS) {
+      const input = document.getElementById(q.id);
+      const err = input.parentElement.querySelector('.err');
+      const good = /^\d{1,2}(\.\d+)?$/.test(input.value.trim());
+      err.textContent = good ? '' : 'Invalid input';
+      err.setAttribute('role', good ? '' : 'alert');
+      input.setAttribute('aria-invalid', good ? 'false' : 'true');
+      ok = ok && good;
+    }
+    if (ok) {
+      window.__sent = QUESTIONS.map((q) => document.getElementById(q.id).value.trim());
+      document.body.innerHTML = '<h1>Your application was sent</h1>';
+    }
+  });
+</script>
+</body></html>
