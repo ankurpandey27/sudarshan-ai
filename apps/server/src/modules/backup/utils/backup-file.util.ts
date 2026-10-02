@@ -14,7 +14,7 @@ type Run = (sql: string, params: string[]) => unknown;
  * taken while the app runs) with your resume inside it. secret.key is never in it, so a saved AI key
  * cannot be read from a backup - after restoring, you enter the key again.
  */
-export function writeBackup(run: Run, file: string, resumePath: string | null): void {
+export function writeBackup(run: Run, file: string, resumePath: string | null, extraResumes: { id: number; path: string }[] = []): void {
   rmSync(file, { force: true });
   run('VACUUM INTO ?', [file]);
   const db = new DatabaseSync(file);
@@ -23,6 +23,10 @@ export function writeBackup(run: Run, file: string, resumePath: string | null): 
     if (resumePath && existsSync(resumePath)) {
       db.prepare(`INSERT OR REPLACE INTO ${BACKUP_FILES_TABLE} (name, data) VALUES ('resume', ?)`).run(readFileSync(resumePath));
       db.prepare(`INSERT OR REPLACE INTO ${BACKUP_FILES_TABLE} (name, data) VALUES ('resume_name', ?)`).run(Buffer.from(basename(resumePath)));
+    }
+    // Your extra resumes (one per kind of role) travel with it.
+    for (const r of extraResumes) {
+      if (existsSync(r.path)) db.prepare(`INSERT OR REPLACE INTO ${BACKUP_FILES_TABLE} (name, data) VALUES (?, ?)`).run(`resumes:${r.id}`, readFileSync(r.path));
     }
   } finally {
     db.close();
@@ -84,6 +88,17 @@ export function applyPendingRestore(paths: { dataDir: string; database: string; 
         const target = join(paths.uploads, `restored-${Date.now()}-${name}`);
         writeFileSync(target, resume);
         db.prepare('UPDATE profile SET resume_path = ? WHERE id = 1').run(target);
+      }
+      const extras = db.prepare(`SELECT name, data FROM ${BACKUP_FILES_TABLE} WHERE name LIKE 'resumes:%'`).all() as { name: string; data: Uint8Array }[];
+      for (const r of extras) {
+        const id = Number(r.name.slice('resumes:'.length));
+        const row = db.prepare('SELECT name FROM resumes WHERE id = ?').get(id) as { name: string } | undefined;
+        if (!row) continue;
+        const folder = join(paths.uploads, 'resumes', String(id));
+        mkdirSync(folder, { recursive: true });
+        const target = join(folder, row.name.replace(/[^\w.\- ]/g, '_') || 'resume.pdf');
+        writeFileSync(target, r.data);
+        db.prepare('UPDATE resumes SET path = ? WHERE id = ?').run(target, id);
       }
       db.exec(`DROP TABLE ${BACKUP_FILES_TABLE}`);
     }

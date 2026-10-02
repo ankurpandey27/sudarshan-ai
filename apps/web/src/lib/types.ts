@@ -209,6 +209,15 @@ export interface ProfileCheck {
   tips: { id: string; text: string; to?: string }[];
 }
 
+export interface Resume {
+  id: number;
+  label: string;
+  name: string;
+  forJobs: string[];
+  skills: string[];
+  createdAt: string;
+}
+
 export interface TelegramStatus {
   connected: boolean;
   bot: string | null;

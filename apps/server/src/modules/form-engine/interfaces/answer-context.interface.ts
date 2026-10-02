@@ -17,6 +17,8 @@ export interface AnswerContext {
   profile: CandidateProfile;
   job: AnswerJobContext;
   resumePath: string | null;
+  /** The name of the extra resume chosen for this job ("Frontend"); unset for your main resume. */
+  resumeLabel?: string;
   /** null when the skill is not in the profile. */
   skillYears: (skill: string) => number | null;
   /** Your Story Bank stories that fit this job, for written answers. */

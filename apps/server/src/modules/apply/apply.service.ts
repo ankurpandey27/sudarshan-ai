@@ -42,6 +42,7 @@ import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
 import { onJobBoard } from './utils/offsite-url.util';
 import { StoriesService } from '../stories/stories.service';
+import { ResumesService } from '../resumes/resumes.service';
 
 @Injectable()
 export class ApplyService {
@@ -72,6 +73,7 @@ export class ApplyService {
     private readonly health: PlatformHealthService,
     @Optional() private readonly stories?: StoriesService,
     @Optional() private readonly trainer?: LearnersTrainerService,
+    @Optional() private readonly resumes?: ResumesService,
   ) {
     this.adapters = [linkedin, naukri, indeed, web];
   }
@@ -419,6 +421,7 @@ export class ApplyService {
 
   private context(job: Job): AnswerContext {
     const profile = this.profile.get();
+    const chosen = this.resumes?.forJob(job) ?? null;
     // Everything known about your years - profile and your own answers - the highest wins.
     const experience = experienceFrom({
       profileTotal: profile.totalYearsExperience,
@@ -429,7 +432,9 @@ export class ApplyService {
     return {
       profile: { ...profile, totalYearsExperience: experience.total },
       job: { id: job.id, title: job.title, company: job.company, location: job.location, description: job.description, foundOn: FOUND_ON[job.platform] },
-      resumePath: this.profile.resumePath(),
+      // The resume made for this kind of job, if you added one; your main resume otherwise.
+      resumePath: chosen?.path ?? this.profile.resumePath(),
+      resumeLabel: chosen?.label,
       skillYears: experience.skillYears,
       stories: this.stories?.forJob(`${job.title} ${job.description}`) ?? [],
     };

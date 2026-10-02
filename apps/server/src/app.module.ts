@@ -31,6 +31,7 @@ import { LearnersModule } from './modules/learners/learners.module';
 import { StoriesModule } from './modules/stories/stories.module';
 import { BackupModule } from './modules/backup/backup.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ResumesModule } from './modules/resumes/resumes.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
     ProfileModule,
     BackupModule,
     NotificationsModule,
+    ResumesModule,
     HousekeepingModule,
     TasteModule,
     JobsModule,

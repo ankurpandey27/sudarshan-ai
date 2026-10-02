@@ -283,4 +283,16 @@ export const MIGRATIONS: string[] = [
   `
   ALTER TABLE attempts ADD COLUMN sent_at TEXT;
   `,
+  // Extra resumes, one per kind of role; each application attaches the one made for that job.
+  `
+  CREATE TABLE resumes (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    label      TEXT NOT NULL,
+    path       TEXT NOT NULL,
+    name       TEXT NOT NULL,
+    for_jobs   TEXT NOT NULL DEFAULT '[]',
+    skills     TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL
+  );
+  `,
 ];

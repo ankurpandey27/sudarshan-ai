@@ -373,7 +373,7 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
         const files = up.instructions.filter((i) => i.kind === FieldKind.FILE);
         if (files.length) {
           await this.fill(page, files);
-          opts.onStep(`Step ${step}: uploaded your resume, waiting for the site to read it`);
+          opts.onStep(`Step ${step}: uploaded your ${opts.ctx.resumeLabel ? `"${opts.ctx.resumeLabel}" ` : ''}resume, waiting for the site to read it`);
           await page.waitForNetworkIdle({ idleTime: 800, timeout: 15_000 }).catch(() => undefined);
           await sleep(1500);
           continue;

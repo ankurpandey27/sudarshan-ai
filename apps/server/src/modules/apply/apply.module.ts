@@ -16,9 +16,10 @@ import { WebApplyAdapter } from './adapters/web.adapter';
 import { ApplyService } from './apply.service';
 import { PlatformHealthModule } from '../platform-health/platform-health.module';
 import { StoriesModule } from '../stories/stories.module';
+import { ResumesModule } from '../resumes/resumes.module';
 
 @Module({
-  imports: [PlatformHealthModule, LearnersModule, AnswersModule, BrowserModule, FormEngineModule, JobsModule, LearningModule, ProfileModule, StoriesModule],
+  imports: [PlatformHealthModule, LearnersModule, AnswersModule, BrowserModule, FormEngineModule, JobsModule, LearningModule, ProfileModule, StoriesModule, ResumesModule],
   providers: [ApplyService, LinkedInApplyAdapter, NaukriApplyAdapter, IndeedApplyAdapter, WebApplyAdapter],
   exports: [ApplyService],
 })

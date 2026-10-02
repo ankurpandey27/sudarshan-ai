@@ -11,6 +11,7 @@ import type { Profile, ProfileState } from '../lib/types';
 import { DropUpload } from '../components/drop-upload';
 import { Button, Card, CardHeader, Field, Input, PageTitle, Select, Textarea, Toggle } from '../components/ui';
 import { ProfileCheckPanel } from '../components/profile-check';
+import { ExtraResumesCard } from '../components/extra-resumes-card';
 import { useToast } from '../components/toast';
 
 const FIELD_LABELS: Partial<Record<keyof Profile, string>> = {
@@ -168,6 +169,7 @@ export function ProfilePage() {
                 />
               </div>
             </Card>
+            <ExtraResumesCard />
             <Card>
               <CardHeader title="Links" />
               <div className="space-y-3 p-4">

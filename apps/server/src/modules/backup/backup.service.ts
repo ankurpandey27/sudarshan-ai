@@ -11,6 +11,7 @@ import { localDay } from '../../common/utils/date.util';
 import { requestRestart } from '../../common/utils/restart.util';
 import { ProfileService } from '../profile/profile.service';
 import { SettingsService } from '../settings/settings.service';
+import { ResumesService } from '../resumes/resumes.service';
 import { DAILY_BACKUP, KEEP_BACKUPS, RESTORE_PENDING } from './constants/backup.constants';
 import { BackupCheck } from './interfaces/backup-check.interface';
 import { BackupStatus } from './interfaces/backup-status.interface';
@@ -32,7 +33,12 @@ export class BackupService {
     private readonly profile: ProfileService,
     // Optional so the daily backup works in tests without settings.
     @Optional() private readonly settings?: SettingsService,
+    @Optional() private readonly resumes?: ResumesService,
   ) {}
+
+  private write(file: string): void {
+    writeBackup((sql, params) => this.storage.run(sql, params), file, this.profile.resumePath(), this.resumes?.files() ?? []);
+  }
 
   private get dir(): string {
     const dir = this.config.getOrThrow<string>('paths.backups');
@@ -49,7 +55,7 @@ export class BackupService {
     const file = join(this.dir, `agent-${today}.db`);
     const fresh = force || !existsSync(file);
     if (fresh) {
-      writeBackup((sql, params) => this.storage.run(sql, params), file, this.profile.resumePath());
+      this.write(file);
       prune(this.dir);
       this.logger.log(`Backed up your data to ${file}`);
     }
@@ -72,7 +78,7 @@ export class BackupService {
   /** A backup made now, for downloading; the caller deletes it once sent. */
   exportFile(): string {
     const file = join(this.dir, `export-${Date.now()}.db`);
-    writeBackup((sql, params) => this.storage.run(sql, params), file, this.profile.resumePath());
+    this.write(file);
     return file;
   }
 

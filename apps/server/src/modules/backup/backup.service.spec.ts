@@ -11,6 +11,7 @@ import { MIGRATIONS } from '../../common/storage/constants/migrations.constants'
 import { ProfileService } from '../profile/profile.service';
 import { SettingsService } from '../settings/settings.service';
 import { BackupService } from './backup.service';
+import { ResumesService } from '../resumes/resumes.service';
 import { RESTORE_PENDING } from './constants/backup.constants';
 import { applyPendingRestore, checkBackup } from './utils/backup-file.util';
 
@@ -95,6 +96,32 @@ describe('backing up your data', () => {
       rmSync(other, { recursive: true, force: true });
     }
     void paths;
+  });
+
+  it('carries your extra resumes too', () => {
+    const { storage, paths } = setup();
+    const extra = join(paths.uploads, 'resumes', '1', 'frontend.pdf');
+    mkdirSync(join(paths.uploads, 'resumes', '1'), { recursive: true });
+    writeFileSync(extra, '%PDF-1.4 frontend');
+    storage.run("INSERT INTO resumes (id, label, path, name, created_at) VALUES (1, 'Frontend', ?, 'frontend.pdf', 'x')", [extra]);
+    const config = { getOrThrow: (k: string) => (k === 'paths.backups' ? paths.backups : dir) } as unknown as ConfigService;
+    const resumes = { files: () => [{ id: 1, path: extra }] } as unknown as ResumesService;
+    const file = new BackupService(config, storage, { resumePath: () => null } as unknown as ProfileService, undefined, resumes).exportFile();
+    storage.onApplicationShutdown();
+
+    const other = mkdtempSync(join(tmpdir(), 'sudarshan-restore-'));
+    try {
+      const to = { dataDir: other, database: join(other, 'agent.db'), uploads: join(other, 'uploads'), backups: join(other, 'backups') };
+      writeFileSync(join(other, RESTORE_PENDING), readFileSync(file));
+      applyPendingRestore(to);
+      const restored = new StorageService(to.database);
+      const path = restored.get<{ path: string }>('SELECT path FROM resumes WHERE id = 1')!.path;
+      expect(path).toBe(join(to.uploads, 'resumes', '1', 'frontend.pdf'));
+      expect(readFileSync(path, 'utf8')).toBe('%PDF-1.4 frontend');
+      restored.onApplicationShutdown();
+    } finally {
+      rmSync(other, { recursive: true, force: true });
+    }
   });
 
   it('refuses a file that is not a backup, or one from a newer Sudarshan', () => {

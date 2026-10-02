@@ -46,8 +46,9 @@ export const api = {
   post: <T>(path: string, body?: unknown) => request<T>('POST', path, body ?? {}),
   patch: <T>(path: string, body: unknown) => request<T>('PATCH', path, body),
   del: <T>(path: string) => request<T>('DELETE', path),
-  upload: <T>(path: string, file: File) => {
+  upload: <T>(path: string, file: File, fields: Record<string, string> = {}) => {
     const form = new FormData();
+    for (const [k, v] of Object.entries(fields)) form.append(k, v);
     form.append('file', file);
     return request<T>('POST', path, form);
   },
