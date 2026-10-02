@@ -36,7 +36,7 @@ const ctx: AnswerContext = {
 };
 
 describe('answers worked out from your profile (2026-09-30)', () => {
-  it('uses inferred answers to low-stakes questions, asks you the high-stakes ones', async () => {
+  it('uses inferred answers to low-stakes questions, asks you the high-stakes ones and your preferences', async () => {
     const employed = q('Have you previously been employed by a Planet Group Company?');
     const drugTest = q('Are you willing to take a drug test?');
     const lambda = q('How many years of experience do you have with AWS Lambda?', FieldKind.NUMBER);
@@ -56,10 +56,11 @@ describe('answers worked out from your profile (2026-09-30)', () => {
     const answers = new AnswersService(new StorageService(':memory:'));
     const llm = { isAvailable: () => true, json: async () => reply } as unknown as LlmService;
     const res = await new AnswerEngineService(answers, llm).resolve([employed, drugTest, lambda, salary, notice, referrer], ctx, { allowLlm: true });
-    expect(res.instructions.map((i) => i.id).sort()).toEqual([employed.id, drugTest.id, lambda.id].sort());
-    expect(res.unresolved.map((u) => u.field.id)).toEqual([salary.id, notice.id, referrer.id]);
+    expect(res.instructions.map((i) => i.id).sort()).toEqual([employed.id, lambda.id].sort());
+    // "Are you willing to..." is yours to say, like pay and notice: asked once, remembered.
+    expect(res.unresolved.map((u) => u.field.id)).toEqual([drugTest.id, salary.id, notice.id, referrer.id]);
     // The AI's suggestion comes along, so you only confirm it.
-    expect(res.unresolved[0].suggestion).toBe('4500');
+    expect(res.unresolved[1].suggestion).toBe('4500');
     // Every answer the AI gave here was worked out (one may come from a profile rule first).
     expect(res.stats.inferred).toBe(res.stats.llmAnswers);
     // Worked out, not stated by you: never saved as your own answer.

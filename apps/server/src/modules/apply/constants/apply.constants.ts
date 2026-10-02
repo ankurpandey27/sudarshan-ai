@@ -121,3 +121,6 @@ export const MAX_OPEN_TABS = 12;
 export const APPLY_BUTTON_WAIT_MS = 15_000;
 /** LinkedIn's apply controls: "Easy Apply", or "Apply" on the company's site. */
 export const APPLY_ACTION = /easy apply|^apply\b/i;
+
+/** How an attempt ended when it stopped to ask you questions it had never asked for that job - not a failed try. */
+export const NEW_QUESTIONS = 'run:new_questions';

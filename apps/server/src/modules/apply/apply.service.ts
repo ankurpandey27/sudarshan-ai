@@ -36,7 +36,7 @@ import { PlatformHealthService } from '../platform-health/platform-health.servic
 import { REFUSED_COOLDOWN_MS } from '../platform-health/constants/platform-health.constants';
 import { AttemptShot } from '../jobs/interfaces/attempt.interface';
 import { LearnersTrainerService } from '../learners/learners-trainer.service';
-import { CONTINUE_IDLE_MS, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
+import { CONTINUE_IDLE_MS, NEW_QUESTIONS, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
 import { OpenTab } from './interfaces/open-tab.interface';
 import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
@@ -140,7 +140,7 @@ export class ApplyService {
         const run: FormRunOutcome = active.runForm ? await active.runForm(page, prep, opts) : await this.runner.run(page, opts);
         outcome = run;
         moves.push(...(run.moves ?? []));
-        final = { ...this.mapOutcome(job, run), ended: `run:${run.status}` };
+        final = { ended: `run:${run.status}`, ...this.mapOutcome(job, run) };
         this.recipes.outcome(opts.domain, run.status === 'applied');
         if (run.status === 'applied') await active.afterSuccess?.(page);
         // Left to the user: keep the tab and learn from how they finish it.
@@ -194,7 +194,7 @@ export class ApplyService {
     this.learnFromEnding(final, moves, outcome);
     // The site refused it for now (too many too fast): nothing wrong with this job - it keeps its tries
     // and its place in the queue, and the site is left alone for a few hours.
-    if (final.ended === 'network') this.jobs.forgetAttempt(job.id);
+    if (final.ended === 'network' || final.ended === NEW_QUESTIONS) this.jobs.forgetAttempt(job.id);
     if (final.ended === `prep:${PrepareStatus.REFUSED}` || final.ended === 'run:refused') {
       this.jobs.forgetAttempt(job.id);
       this.health.coolDown(job.platform, REFUSED_COOLDOWN_MS, final.detail);
@@ -265,7 +265,7 @@ export class ApplyService {
       const opts = this.formOptions(job, tab.prep, page, attemptId, step, s);
       run = tab.adapter.runForm ? await tab.adapter.runForm(page, tab.prep, opts) : await this.runner.run(page, opts);
       moves.push(...(run.moves ?? []));
-      final = { ...this.mapOutcome(job, run), ended: `run:${run.status}` };
+      final = { ended: `run:${run.status}`, ...this.mapOutcome(job, run) };
       if (run.status === 'applied') await tab.adapter.afterSuccess?.(page);
     } catch (err) {
       final = { status: JobStatus.MANUAL, detail: `Could not continue: ${(err as Error).message.slice(0, 160)} - finish it in the open tab`, ended: 'error' };
@@ -395,13 +395,17 @@ export class ApplyService {
     }
   }
 
-  private mapOutcome(job: Job, o: FormRunOutcome): { status: JobStatus; detail: string } {
+  private mapOutcome(job: Job, o: FormRunOutcome): { status: JobStatus; detail: string; ended?: string } {
     switch (o.status) {
       case 'applied':
         return { status: JobStatus.APPLIED, detail: `Applied in ${o.steps} step(s), ${o.llmCalls} AI call(s)` };
-      case 'needs_input':
-        for (const u of AnswerEngineService.toPending(o.unresolved)) this.pending.add({ jobId: job.id, ...u });
-        return { status: JobStatus.NEEDS_INPUT, detail: o.detail };
+      case 'needs_input': {
+        const asked = AnswerEngineService.toPending(o.unresolved);
+        // Questions never asked for this job before: progress, not a failed try (only the same ones coming back are).
+        const fresh = !this.pending.askedBefore(job.id, asked.map((a) => a.question));
+        for (const u of asked) this.pending.add({ jobId: job.id, ...u });
+        return { status: JobStatus.NEEDS_INPUT, detail: o.detail, ...(fresh ? { ended: NEW_QUESTIONS } : {}) };
+      }
       case 'ready_to_submit':
         return {
           status: JobStatus.MANUAL,

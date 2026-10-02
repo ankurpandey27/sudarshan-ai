@@ -29,6 +29,14 @@ export class PendingQuestionsService {
     @Optional() private readonly translation?: TranslationService,
   ) {}
 
+  /** Whether any of these questions was asked before for this job. */
+  askedBefore(jobId: number, questions: string[]): boolean {
+    return questions.some((q) => {
+      const key = questionKey(q);
+      return !!key && !!this.storage.get('SELECT 1 FROM pending_questions WHERE job_id = ? AND key = ?', [jobId, key]);
+    });
+  }
+
   add(input: PendingQuestionInput): void {
     const key = questionKey(input.question);
     if (!key) return;

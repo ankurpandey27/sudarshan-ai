@@ -26,7 +26,7 @@ import { AnswerMatch } from '../answers/interfaces/answer.interface';
 import { ageOn, parseBirthDate } from '../answers/utils/birth-date.util';
 import { canonicalSkill, extractSkills } from '../discovery/utils/job-normalizer.util';
 import { NOT_A_RESUME, REPLACES_RESUME } from './constants/background.constants';
-import { HIGH_STAKES_QUESTION } from './constants/inference.constants';
+import { HIGH_STAKES_QUESTION, PREFERENCE_QUESTION } from './constants/inference.constants';
 import { aiTells, isWrittenAnswer, plainWords } from './utils/human-voice.util';
 import { bareNumber, FORMAT_ERROR } from './utils/bare-number.util';
 import { REWRITE_AT_TELLS } from './constants/human-voice.constants';
@@ -42,14 +42,21 @@ const COVER_LETTER = /cover\s*letter|motivation letter/i;
  */
 function accepted(a: LlmFieldAnswer, field: FormField): boolean {
   if (a.basis === 'unknown') return false;
-  if (a.basis === 'inferred') return !HIGH_STAKES_QUESTION.test(field.label || field.placeholder);
+  if (a.basis === 'inferred') return !HIGH_STAKES_QUESTION.test(field.label || field.placeholder) && !PREFERENCE_QUESTION.test(field.label || field.placeholder);
   return a.confident !== false;
 }
+
+/** Jobs whose AI answers are kept between tries. */
+const MAX_DRAFT_JOBS = 200;
+const draftKey = (f: FormField) => (f.label || f.placeholder || f.name).trim().toLowerCase();
 
 // Order: profile rules, answer memory, one batched AI call, then the user.
 @Injectable()
 export class AnswerEngineService {
   private readonly logger = new Logger(AnswerEngineService.name);
+  // The AI's answers for an application that stopped to ask you something, by job and question: the next try uses
+  // them, so the AI is not asked again and cannot change its mind into new questions (BambooHR, 2026-10-02).
+  private readonly drafts = new Map<number, Map<string, string>>();
 
   constructor(
     private readonly answers: AnswersService,
@@ -165,6 +172,14 @@ export class AnswerEngineService {
 
       // Optional fields are filled too when your profile has the answer - a complete application does
       // better. The AI answers them only from facts; one it cannot answer stays blank and is never asked.
+      const draft = forced ? undefined : this.drafts.get(ctx.job.id)?.get(draftKey(field));
+      const fromDraft = draft !== undefined ? toInstruction(field, draft) : null;
+      if (fromDraft) {
+        result.instructions.push(fromDraft);
+        result.stats.fields++;
+        result.stats.llmAnswers++;
+        continue;
+      }
       if (!field.required && !forced && !this.worthAsking(field)) continue;
       forLlm.push(field);
     }
@@ -174,6 +189,7 @@ export class AnswerEngineService {
     const useLlm = opts.allowLlm && this.llm.isAvailable();
     if (useLlm) await this.addPastAnswers(forLlm, hints, unknownCountry, result);
     const llmAnswers = useLlm ? await this.askLlm(forLlm, ctx, hints, result) : null;
+    const kept: [string, string][] = [];
     if (llmAnswers) await this.humanize(llmAnswers, forLlm, result);
     for (const field of forLlm) {
       const a = llmAnswers?.get(field.id);
@@ -182,6 +198,7 @@ export class AnswerEngineService {
       if (check && a?.value?.trim() && a.confident !== false) this.fieldLearner?.finishCheck(check.id, ctx, field, check.key, a.value);
       const ins = a && a.value.trim() ? toInstruction(field, a.value) : null;
       if (ins && a && accepted(a, field)) {
+        kept.push([draftKey(field), a.value]);
         result.instructions.push(ins);
         result.stats.fields++;
         result.stats.llmAnswers++;
@@ -206,7 +223,18 @@ export class AnswerEngineService {
         }
       }
     }
+    // Stopping to ask you: what the AI did answer waits for the next try of this job.
+    if (result.unresolved.length && kept.length) this.keepDrafts(ctx.job.id, kept);
     return result;
+  }
+
+  private keepDrafts(jobId: number, answers: [string, string][]): void {
+    const mine = this.drafts.get(jobId) ?? new Map<string, string>();
+    for (const [k, v] of answers) mine.set(k, v);
+    this.drafts.delete(jobId);
+    this.drafts.set(jobId, mine);
+    // The most recent jobs only.
+    while (this.drafts.size > MAX_DRAFT_JOBS) this.drafts.delete(this.drafts.keys().next().value!);
   }
 
   /**
