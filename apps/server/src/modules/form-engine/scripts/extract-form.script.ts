@@ -416,7 +416,24 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       'button, [role=button], input[type=submit], input[type=button], a[href], a[data-toggle], a[data-bs-toggle], a[onclick], a[class~=btn], a[class*="btn-"], a[class*="button"]',
     ),
   ).filter(visible);
+  // Ads are never pressed: "APPLY NOW" banners for loans and other job sites (Himalayas, 2026-10-03). Google's own
+  // ads come in frames, which are never read; these catch ads drawn into the page itself - an ad slot, a box
+  // labelled as an ad, or a link through an ad network. Not "sponsored": a job page itself can be a sponsored job.
+  const AD_BOX =
+    'ins.adsbygoogle, .adsbygoogle, [id^="google_ads"], [id^="div-gpt-ad"], [data-ad-slot], [data-ad-client], [data-google-query-id], [data-ad], [data-ads], [aria-label="Advertisement" i], [aria-label^="Ad " i], .advertisement, [class~="ad-slot"], [class~="ad-container"], [class~="ad-banner"]';
+  const AD_LINK = /(^|\.)(doubleclick\.net|googleadservices\.com|googlesyndication\.com|adservice\.google\.[a-z.]+|taboola\.com|outbrain\.com|adnxs\.com|criteo\.com|amazon-adsystem\.com|mgid\.com|revcontent\.com)$/i;
+  const isAd = (el: Element): boolean => {
+    if (el.closest(AD_BOX)) return true;
+    const href = (el as HTMLAnchorElement).href;
+    if (!href) return false;
+    try {
+      return AD_LINK.test(new URL(href).hostname);
+    } catch {
+      return false;
+    }
+  };
   for (const el of clickables) {
+    if (isAd(el)) continue;
     const text = clean((el as HTMLElement).innerText || el.getAttribute('aria-label') || (el as HTMLInputElement).value || el.getAttribute('title')).slice(
       0,
       80,

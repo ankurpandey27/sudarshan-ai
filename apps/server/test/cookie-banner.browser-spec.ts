@@ -4,6 +4,8 @@
 import puppeteer, { Browser, Page } from 'puppeteer-core';
 import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
 import { applicationDialogInPage, dismissCookieBannerInPage } from '../src/modules/form-engine/scripts/cookie-banner.script';
+import { extractFormInPage } from '../src/modules/form-engine/scripts/extract-form.script';
+import { join } from 'node:path';
 
 // Banners as company career sites show them (2026-09-30): each button records that it was pressed.
 const page = (body: string) => `<!doctype html><html><body><h1>Senior Backend Engineer</h1><button id="apply">Apply</button>${body}
@@ -98,5 +100,23 @@ describe('Cookie banners on company sites (real browser)', () => {
     expect(await tab.evaluate(applicationDialogInPage, sel)).toBe(false);
     await tab.setContent(page(`<div role="dialog"><h2>Apply</h2><label>Full name <input></label><input type="file"></div>`));
     expect(await tab.evaluate(applicationDialogInPage, sel)).toBe(true);
+  });
+});
+
+describe('Ads on job pages (real browser)', () => {
+  it('never offers an ad as the Apply button - only the job page\'s own (Himalayas, 2026-10-03)', async () => {
+    const executablePath = findBrowserExecutable();
+    if (!executablePath) throw new Error('Chrome/Edge not found - browser tests need one installed');
+    const browser = await puppeteer.launch({ executablePath, headless: true, args: ['--allow-file-access-from-files'] });
+    try {
+      const tab = await browser.newPage();
+      await tab.goto(`file://${join(__dirname, 'fixtures', 'job-with-ads.html').replace(/\\/g, '/')}`);
+      const snap = await tab.evaluate(extractFormInPage, null);
+      const apply = snap.actions.filter((a) => a.kind === 'apply');
+      expect(apply).toHaveLength(1);
+      expect(await tab.evaluate((id) => document.querySelector(`[data-jaa-act="${id}"]`)?.id, apply[0].id)).toBe('real');
+    } finally {
+      await browser.close();
+    }
   });
 });
