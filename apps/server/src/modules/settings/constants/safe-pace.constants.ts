@@ -11,6 +11,7 @@ export const SAFE_DAILY: Record<keyof SourcesSettings, number> = {
   instahyre: 40,
   foundit: 30,
   hirist: 30,
+  himalayas: 30,
   links: 40,
   externalSites: 30,
 };
@@ -26,6 +27,7 @@ export const SOURCE_SETTING_NAMES: Record<keyof SourcesSettings, string> = {
   instahyre: 'Instahyre',
   foundit: 'Foundit',
   hirist: 'Hirist',
+  himalayas: 'Himalayas',
   links: 'Other career sites',
   externalSites: 'Company career sites',
 };

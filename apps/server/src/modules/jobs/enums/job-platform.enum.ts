@@ -9,5 +9,6 @@ export enum JobPlatform {
   INSTAHYRE = 'instahyre',
   FOUNDIT = 'foundit',
   HIRIST = 'hirist',
+  HIMALAYAS = 'himalayas',
   OTHER = 'other',
 }

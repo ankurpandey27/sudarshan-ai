@@ -3,7 +3,7 @@
 
 import { mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
+import { Injectable, Logger, OnApplicationShutdown, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer, { Browser, Page } from 'puppeteer-core';
 import { EventsService } from '../../common/events/events.service';
@@ -15,6 +15,10 @@ import { BrowserBusyError } from './errors/browser-busy.error';
 import { BrowserStatus, SiteId } from './interfaces/site-session.interface';
 import { findBrowserExecutable } from './utils/browser-executable.util';
 import { BrowserUnavailableError } from './errors/browser-unavailable.error';
+import { StorageService } from '../../common/storage/storage.service';
+import { loginBaselineKey, loginCookiesKey } from './constants/login-learning.constants';
+import { newLoginCookies } from './utils/login-cookies.util';
+import { SiteSession } from './interfaces/site-session.interface';
 
 /**
  * One persistent browser profile. Users log in once in this window, so no
@@ -41,6 +45,8 @@ export class BrowserService implements OnApplicationShutdown {
     config: ConfigService,
     private readonly settings: SettingsService,
     private readonly events: EventsService,
+    // Optional so the browser works in tests and tools without a database (no login learning there).
+    @Optional() private readonly storage?: StorageService,
   ) {
     this.profileDir = config.getOrThrow<string>('paths.browserProfile');
     this.screenshotsDir = config.getOrThrow<string>('paths.screenshots');
@@ -105,8 +111,8 @@ export class BrowserService implements OnApplicationShutdown {
       running: this.isRunning(),
       executable,
       headless: this.launchedHeadless,
-      // A site whose login cookies are not known: null, "cannot tell" - never shown as logged out.
-      sessions: SITES.map((s) => ({ id: s.id, label: s.label, loggedIn: s.authCookies.length ? loggedIn.has(s.id) : null })),
+      // A site whose login cookies are not known yet: null, "cannot tell" - never shown as logged out.
+      sessions: SITES.map((s) => ({ id: s.id, label: s.label, loggedIn: this.authCookiesOf(s).length ? loggedIn.has(s.id) : null })),
     };
   }
 
@@ -118,7 +124,8 @@ export class BrowserService implements OnApplicationShutdown {
     const target = SITES.find((s) => s.id === site);
     if (!target || !this.browser?.connected) return;
     const cookies = await this.browser.cookies().catch(() => []);
-    const auth = cookies.filter((c) => c.domain.replace(/^\./, '').endsWith(target.cookieDomain) && target.authCookies.includes(c.name));
+    const names = this.authCookiesOf(target);
+    const auth = cookies.filter((c) => c.domain.replace(/^\./, '').endsWith(target.cookieDomain) && names.includes(c.name));
     if (auth.length) this.staleLogins.set(site, authFingerprint(auth));
   }
 
@@ -134,6 +141,34 @@ export class BrowserService implements OnApplicationShutdown {
     const loggedIn = await this.isLoggedIn(site);
     await page.goto(loggedIn ? target.homeUrl : target.loginUrl, { waitUntil: 'domcontentloaded' });
     await page.bringToFront();
+    // A site whose login cookies are not known: note the cookies a logged-out visit has, so the ones signing in
+    // adds can be told apart and learned (see loggedInSites).
+    if (!loggedIn && !this.authCookiesOf(target).length && this.storage) {
+      const names = (await this.browser!.cookies().catch(() => [])).filter((c) => c.domain.replace(/^\./, '').endsWith(target.cookieDomain)).map((c) => c.name);
+      this.saveSetting(loginBaselineKey(site), names);
+    }
+  }
+
+  /** The cookies that mean you are logged in to a site: known ones, or ones learned when you signed in. */
+  private authCookiesOf(site: SiteSession): string[] {
+    if (site.authCookies.length || !this.storage) return site.authCookies;
+    return this.readSetting<string[]>(loginCookiesKey(site.id)) ?? [];
+  }
+
+  private readSetting<T>(key: string): T | null {
+    const row = this.storage?.get<{ value: string }>('SELECT value FROM settings WHERE key = ?', [key]);
+    try {
+      return row ? (JSON.parse(row.value) as T) : null;
+    } catch {
+      return null;
+    }
+  }
+
+  private saveSetting(key: string, value: unknown): void {
+    this.storage?.run(
+      'INSERT INTO settings (key, value, updated_at) VALUES (?, ?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at',
+      [key, JSON.stringify(value), new Date().toISOString()],
+    );
   }
 
   async openForUser(url: string): Promise<void> {
@@ -185,9 +220,19 @@ export class BrowserService implements OnApplicationShutdown {
       const cookies = await this.browser.cookies();
       const now = Date.now() / 1000;
       for (const site of SITES) {
-        const auth = cookies.filter(
-          (c) => c.domain.replace(/^\./, '').endsWith(site.cookieDomain) && site.authCookies.includes(c.name) && (c.expires === -1 || c.expires > now),
-        );
+        const onSite = cookies.filter((c) => c.domain.replace(/^\./, '').endsWith(site.cookieDomain));
+        let names = this.authCookiesOf(site);
+        // Not known yet, and you pressed Log in for it: the persistent, script-hidden cookies signing in added are its login.
+        const baseline = !names.length ? this.readSetting<string[]>(loginBaselineKey(site.id)) : null;
+        if (baseline) {
+          const learned = newLoginCookies(new Set(baseline), onSite);
+          if (learned.length) {
+            this.saveSetting(loginCookiesKey(site.id), learned);
+            this.logger.log(`Learned how a ${site.label} login looks (${learned.join(', ')})`);
+            names = learned;
+          }
+        }
+        const auth = onSite.filter((c) => names.includes(c.name) && (c.expires === -1 || c.expires > now));
         // A cookie the site already turned away (login wall) does not count until it changes.
         const stale = this.staleLogins.get(site.id);
         if (auth.length && stale !== authFingerprint(auth)) out.add(site.id);

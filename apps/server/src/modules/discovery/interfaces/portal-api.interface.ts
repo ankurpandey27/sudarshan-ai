@@ -43,3 +43,26 @@ export interface HiristJob {
 export interface HiristSearchResponse {
   data?: HiristJob[];
 }
+
+/** One job in Himalayas' public jobs API (himalayas.app/jobs/api/search). Verified 2026-10-02. */
+export interface HimalayasJob {
+  title: string;
+  companyName?: string;
+  description?: string;
+  excerpt?: string;
+  minSalary?: number | null;
+  maxSalary?: number | null;
+  currency?: string | null;
+  salaryPeriod?: string | null;
+  locationRestrictions?: string[];
+  categories?: string[];
+  pubDate?: number;
+  expiryDate?: number;
+  applicationLink?: string;
+  guid?: string;
+}
+
+export interface HimalayasSearchResponse {
+  jobs?: HimalayasJob[];
+  totalCount?: number;
+}

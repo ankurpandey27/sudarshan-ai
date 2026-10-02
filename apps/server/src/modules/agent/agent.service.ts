@@ -292,6 +292,7 @@ export class AgentService implements OnApplicationShutdown {
     await check(JobPlatform.INDEED, s.indeed, 'indeed');
     await check(JobPlatform.FOUNDIT, s.foundit, 'foundit');
     await check(JobPlatform.HIRIST, s.hirist, 'hirist');
+    await check(JobPlatform.HIMALAYAS, s.himalayas, 'himalayas');
     await check(JobPlatform.OTHER, s.links);
     const changed = JSON.stringify(blocked) !== JSON.stringify(this.blocked);
     this.blocked = blocked;

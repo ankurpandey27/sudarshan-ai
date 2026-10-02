@@ -13,6 +13,7 @@ export const PLATFORM_COLOR: Record<JobPlatform, string> = {
   instahyre: 'var(--p-instahyre)',
   foundit: 'var(--p-foundit)',
   hirist: 'var(--p-hirist)',
+  himalayas: 'var(--p-himalayas)',
   other: 'var(--p-other)',
 };
 const DOT = PLATFORM_COLOR;

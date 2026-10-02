@@ -61,7 +61,7 @@ The main page is called **Lakshya** (लक्ष्य, "the target") - the aim
 
 - **Reads your resume (PDF)** into a profile: name, contact, title, city, links, years of experience, skills (with years), education.
 - **Imports an Excel sheet** of your known answers, extra job links (any site) and preferences.
-- **Searches** LinkedIn, Naukri, Indeed, Instahyre, Foundit and Hirist for your keywords and locations, and queues links you add from any career site. Each platform has its own on/off switch under **Apply on**.
+- **Searches** LinkedIn, Naukri, Indeed, Instahyre, Foundit, Hirist and Himalayas (remote jobs open to your country) for your keywords and locations, and queues links you add from any career site. Each platform has its own on/off switch under **Apply on**.
 - **Scores every job** against your profile and explains the score (matched / missing skills, salary, location).
 - **Applies** - LinkedIn Easy Apply, Naukri (including its chat-style questions), Instahyre (one click), and generic career sites - in its own browser window you can watch.
 - **Applies on Indeed** - Sudarshan fills the steps and presses Submit itself. When Indeed shows a real captcha (an "I'm not a robot" box or a picture test), it leaves the tab open; you solve it and press Submit, and the job turns Applied by itself.
@@ -536,6 +536,8 @@ When it gets stuck on a form, the tab stays open: finish it there and Sudarshan 
 - **Verified against live accounts:** LinkedIn Easy Apply (multi-page forms, screening questions), Naukri one-click apply, Instahyre one-click apply, and company career-site forms (Keka).
 - **Also verified:** resume parsing, Excel import, LinkedIn and Naukri discovery, scoring, the form engine in a real browser, learning from forms you finish, security and key encryption.
 - **Foundit and Hirist (2026-10-02):** search verified on live data (17 and 16 jobs for one profile's searches); log in to each once from **Settings -> Site logins** (the login is checked like LinkedIn's). Applying while logged in has not been verified yet - keep **Stop before the final Submit** on for your first ones. Foundit listings that only point to LinkedIn are left to the LinkedIn search.
+- **Himalayas (2026-10-02):** remote jobs from its public API, only those open to your country (83 for one profile's searches). Applying needs a Himalayas login: press **Log in** for it under **Settings -> Site logins** once.
+- **Logins Sudarshan learns.** For a site whose login it does not know yet, it notes the cookies when you press **Log in**, and the secure ones that appear after you sign in become that site's login check - it shows **Connected** from then on.
 - **Cutshort and Wellfound** are not searched: Cutshort shows results only to logged-in users, and Wellfound has almost no listings for Indian cities. Paste their job links under Applications -> Add job links instead.
 - **LinkedIn to company sites (2026-10-02):** "Apply" on a LinkedIn job follows to the company's site (for example SAP SuccessFactors) and hands the job to you when that site needs an account.
 - **Indeed:** search is verified. Indeed's review page uses invisible reCAPTCHA, which usually lets an application through; when it asks for a real captcha, Sudarshan never solves it - it hands the application over.

@@ -34,6 +34,11 @@ export class SourcesSettingsDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => SourceSettingsDto)
+  himalayas?: SourceSettingsDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SourceSettingsDto)
   indeed?: SourceSettingsDto;
 
   @IsOptional()

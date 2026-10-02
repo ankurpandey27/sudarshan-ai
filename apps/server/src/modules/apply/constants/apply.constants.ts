@@ -65,6 +65,7 @@ export const FOUND_ON: Record<JobPlatform, string> = {
   [JobPlatform.INSTAHYRE]: 'Instahyre',
   [JobPlatform.FOUNDIT]: 'Foundit',
   [JobPlatform.HIRIST]: 'Hirist',
+  [JobPlatform.HIMALAYAS]: 'Himalayas',
   [JobPlatform.OTHER]: 'Company website',
 };
 

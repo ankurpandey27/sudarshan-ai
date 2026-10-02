@@ -21,6 +21,7 @@ export function platformOf(source: JobSource, url: string, applyUrl: string | nu
   // Foundit and Hirist by the job's own page: a listing that sends you to a company site is that site's job.
   if (isHostOf(hostOf(url), 'foundit.in')) return JobPlatform.FOUNDIT;
   if (isHostOf(hostOf(url), 'hirist.tech') || isHostOf(hostOf(url), 'hirist.com')) return JobPlatform.HIRIST;
+  if (isHostOf(hostOf(url), 'himalayas.app')) return JobPlatform.HIMALAYAS;
   return JobPlatform.OTHER;
 }
 

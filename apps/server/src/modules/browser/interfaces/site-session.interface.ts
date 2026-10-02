@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-export type SiteId = 'linkedin' | 'naukri' | 'instahyre' | 'indeed' | 'foundit' | 'hirist';
+export type SiteId = 'linkedin' | 'naukri' | 'instahyre' | 'indeed' | 'foundit' | 'hirist' | 'himalayas';
 
 export interface SiteSession {
   id: SiteId;

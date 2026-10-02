@@ -45,6 +45,8 @@ export interface SourcesSettings {
   indeed: SourceSettings;
   foundit: SourceSettings;
   hirist: SourceSettings;
+  /** Himalayas: remote jobs open to your country. */
+  himalayas: SourceSettings;
   /** Every other career site (links from Excel or pasted). */
   links: SourceSettings;
   externalSites: SourceSettings;

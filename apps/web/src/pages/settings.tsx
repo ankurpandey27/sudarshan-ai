@@ -242,6 +242,7 @@ export function SettingsPage() {
                   ['instahyre', 'Instahyre', 'Search and one-click apply on Instahyre'],
                   ['foundit', 'Foundit', 'Search and apply on Foundit (Monster India) - log in first under Site logins; listings that only point to LinkedIn are left to LinkedIn'],
                   ['hirist', 'Hirist', 'Search and apply on Hirist tech jobs - log in first under Site logins'],
+                  ['himalayas', 'Himalayas', 'Remote jobs open to your country - log in first under Site logins'],
                   ['links', 'Other career sites', 'Any other job link from Excel or pasted'],
                   ['externalSites', 'Company career sites', 'Follow "Apply on company site" into Greenhouse, Lever, Workday...'],
                 ] as const

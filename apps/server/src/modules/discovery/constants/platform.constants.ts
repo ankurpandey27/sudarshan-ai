@@ -65,3 +65,10 @@ export const HIRIST_SEARCH_API = 'https://gladiator.hirist.tech/job/search';
 export const HIRIST_PAGE_SIZE = 20;
 export const HIRIST_MAX_PAGES = 5;
 export const HIRIST_PAGE_DELAY_MS: [number, number] = [1_500, 3_500];
+
+// Himalayas' public jobs API (remote jobs; country = where you may live). Verified 2026-10-02: plain HTTP, no key,
+// 20 per page, paged by &page=; its job pages are behind Cloudflare and applying needs a Himalayas login.
+export const HIMALAYAS_SEARCH_API = 'https://himalayas.app/jobs/api/search';
+export const HIMALAYAS_PAGE_SIZE = 20;
+export const HIMALAYAS_MAX_PAGES = 4;
+export const HIMALAYAS_PAGE_DELAY_MS: [number, number] = [1_500, 3_000];

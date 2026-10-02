@@ -31,6 +31,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     // Off until you log in to them (Settings -> Site logins).
     foundit: { enabled: false, dailyLimit: 20 },
     hirist: { enabled: false, dailyLimit: 20 },
+    himalayas: { enabled: false, dailyLimit: 20 },
     links: { enabled: true, dailyLimit: 30 },
     externalSites: { enabled: false, dailyLimit: 15 },
   },

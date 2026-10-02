@@ -9,6 +9,7 @@ export const PLATFORM_SQL = `(CASE
   WHEN url LIKE '%instahyre.com/%' OR apply_url LIKE '%instahyre.com/%' THEN '${JobPlatform.INSTAHYRE}'
   WHEN url LIKE '%foundit.in/%' THEN '${JobPlatform.FOUNDIT}'
   WHEN url LIKE '%hirist.tech/%' OR url LIKE '%hirist.com/%' THEN '${JobPlatform.HIRIST}'
+  WHEN url LIKE '%himalayas.app/%' THEN '${JobPlatform.HIMALAYAS}'
   ELSE '${JobPlatform.OTHER}' END)`;
 
 export const PLATFORM_LABEL: Record<JobPlatform, string> = {
@@ -18,5 +19,6 @@ export const PLATFORM_LABEL: Record<JobPlatform, string> = {
   [JobPlatform.INSTAHYRE]: 'Instahyre',
   [JobPlatform.FOUNDIT]: 'Foundit',
   [JobPlatform.HIRIST]: 'Hirist',
+  [JobPlatform.HIMALAYAS]: 'Himalayas',
   [JobPlatform.OTHER]: 'Other sites',
 };

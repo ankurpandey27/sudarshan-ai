@@ -41,7 +41,7 @@ export function SiteConnections() {
                 <CheckCircle2 className="size-3" /> Connected
               </Badge>
             ) : s.loggedIn === null ? (
-              <Badge>Log in once - checked when applying</Badge>
+              <Badge>Log in once - Sudarshan then knows</Badge>
             ) : (
               <Badge>{data?.running ? 'Not logged in' : 'Browser closed'}</Badge>
             )}

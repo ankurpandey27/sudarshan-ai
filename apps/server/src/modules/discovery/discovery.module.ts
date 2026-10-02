@@ -12,10 +12,11 @@ import { InstahyreSource } from './sources/instahyre.source';
 import { IndeedSource } from './sources/indeed.source';
 import { FounditSource } from './sources/foundit.source';
 import { HiristSource } from './sources/hirist.source';
+import { HimalayasSource } from './sources/himalayas.source';
 
 @Module({
   imports: [BrowserModule, JobsModule, ProfileModule],
-  providers: [DiscoveryService, LinkedInSource, NaukriSource, InstahyreSource, IndeedSource, FounditSource, HiristSource],
+  providers: [DiscoveryService, LinkedInSource, NaukriSource, InstahyreSource, IndeedSource, FounditSource, HiristSource, HimalayasSource],
   exports: [DiscoveryService],
 })
 export class DiscoveryModule {}

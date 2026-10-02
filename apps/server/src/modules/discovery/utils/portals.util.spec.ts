@@ -4,7 +4,7 @@
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { platformOf } from '../../jobs/utils/platform.util';
 import { JobPlatform } from '../../jobs/enums/job-platform.enum';
-import { founditJobToDiscovered, founditSearchPath, hiristJobToDiscovered, hiristQuery, inPlace } from './portals.util';
+import { founditJobToDiscovered, founditSearchPath, himalayasJobToDiscovered, himalayasSearchUrl, hiristJobToDiscovered, hiristQuery, inPlace } from './portals.util';
 
 // Shapes as Foundit and Hirist returned them on 2026-10-02.
 const foundit = {
@@ -71,6 +71,29 @@ describe('Foundit and Hirist listings', () => {
     expect(inPlace('Remote', 'Pune', false)).toBe(false);
     expect(inPlace('Noida', 'Delhi NCR', false)).toBe(true);
     expect(inPlace('Pune', 'Delhi NCR', false)).toBe(false);
+  });
+
+  it('reads a Himalayas job as remote, with plain-text description, and skips an expired one', () => {
+    const himalayas = {
+      title: 'Senior Node.js Developer',
+      companyName: 'ITHR Technologies Consulting LLC',
+      description: '<h3>Title: Senior Node.js Developer</h3><p>Remote WFH, <b>Node.js</b> and AWS.</p>',
+      minSalary: null,
+      maxSalary: null,
+      currency: null,
+      locationRestrictions: ['India'],
+      pubDate: 1788899534,
+      expiryDate: 1791433247,
+      applicationLink: 'https://himalayas.app/companies/ithr-technologies-consulting-llc/jobs/senior-node-js-developer',
+    };
+    const j = himalayasJobToDiscovered(himalayas, 1790000000000)!;
+    expect(j).toMatchObject({ location: 'Remote (India)', isRemote: true, salaryRaw: null, company: 'ITHR Technologies Consulting LLC' });
+    expect(j.description).toContain('Node.js and AWS');
+    expect(j.description).not.toContain('<');
+    expect(platformOf(j.source, j.url)).toBe(JobPlatform.HIMALAYAS);
+    expect(himalayasJobToDiscovered(himalayas, 1792000000000)).toBeNull();
+    expect(himalayasJobToDiscovered({ ...himalayas, minSalary: 45000, maxSalary: 50000, currency: 'USD', salaryPeriod: 'annual' }, 1790000000000)!.salaryRaw).toBe('USD 45000-50000 annual');
+    expect(himalayasSearchUrl('node.js', 'India', 2)).toBe('https://himalayas.app/jobs/api/search?q=node.js&country=India&page=2');
   });
 
   it('searches Hirist by the skill name its tags use', () => {

@@ -18,7 +18,7 @@ export interface ScoreDetail {
   summary: string;
 }
 
-export type JobPlatform = 'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'foundit' | 'hirist' | 'other';
+export type JobPlatform = 'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'foundit' | 'hirist' | 'himalayas' | 'other';
 
 export interface Job {
   id: number;
@@ -170,7 +170,7 @@ export interface Settings {
     coreSkills: string[];
     minExperience: number | null;
   };
-  sources: Record<'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'foundit' | 'hirist' | 'links' | 'externalSites', { enabled: boolean; dailyLimit: number }>;
+  sources: Record<'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'foundit' | 'hirist' | 'himalayas' | 'links' | 'externalSites', { enabled: boolean; dailyLimit: number }>;
   agent: {
     mode: 'review' | 'auto';
     minApplyScore: number;
@@ -349,7 +349,7 @@ export interface BrowserStatus {
   executable: string | null;
   headless: boolean;
   /** loggedIn is null for a site whose login Sudarshan cannot check (Foundit, Hirist). */
-  sessions: { id: 'linkedin' | 'naukri' | 'instahyre' | 'indeed' | 'foundit' | 'hirist'; label: string; loggedIn: boolean | null }[];
+  sessions: { id: 'linkedin' | 'naukri' | 'instahyre' | 'indeed' | 'foundit' | 'hirist' | 'himalayas'; label: string; loggedIn: boolean | null }[];
 }
 
 export interface WorkbookImportResult {

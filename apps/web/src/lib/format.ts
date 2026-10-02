@@ -41,6 +41,7 @@ export const PLATFORMS = [
   { key: 'instahyre', label: 'Instahyre', setting: 'instahyre' },
   { key: 'foundit', label: 'Foundit', setting: 'foundit' },
   { key: 'hirist', label: 'Hirist', setting: 'hirist' },
+  { key: 'himalayas', label: 'Himalayas', setting: 'himalayas' },
   { key: 'other', label: 'Other sites', setting: 'links' },
 ] as const;
 

@@ -13,6 +13,7 @@ export const SAFE_DAILY: Record<SourceKey, number> = {
   instahyre: 40,
   foundit: 30,
   hirist: 30,
+  himalayas: 30,
   links: 40,
   externalSites: 30,
 };
@@ -26,6 +27,7 @@ const SITE_NAMES: Record<SourceKey, string> = {
   instahyre: 'Instahyre',
   foundit: 'Foundit',
   hirist: 'Hirist',
+  himalayas: 'Himalayas',
   links: 'Other career sites',
   externalSites: 'Company career sites',
 };

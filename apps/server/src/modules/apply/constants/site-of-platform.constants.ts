@@ -12,4 +12,5 @@ export const SITE_OF_PLATFORM: Partial<Record<JobPlatform, SiteId>> = {
   [JobPlatform.INSTAHYRE]: 'instahyre',
   [JobPlatform.FOUNDIT]: 'foundit',
   [JobPlatform.HIRIST]: 'hirist',
+  [JobPlatform.HIMALAYAS]: 'himalayas',
 };

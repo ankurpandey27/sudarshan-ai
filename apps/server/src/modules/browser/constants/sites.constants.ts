@@ -55,6 +55,15 @@ export const SITES: SiteSession[] = [
     cookieDomain: 'hirist.tech',
     authCookies: ['hirist_seeker_enc', 'HIRIST_CK1'],
   },
+  // Its login cookies are learned the first time you sign in from Site logins.
+  {
+    id: 'himalayas',
+    label: 'Himalayas',
+    loginUrl: 'https://himalayas.app/login',
+    homeUrl: 'https://himalayas.app/jobs',
+    cookieDomain: 'himalayas.app',
+    authCookies: [],
+  },
 ];
 
 // Avoid the automation banner and navigator.webdriver.

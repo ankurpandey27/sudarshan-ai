@@ -4,8 +4,9 @@
 import { isHostOf } from '../../jobs/utils/host.util';
 import { DiscoveredJob } from '../../jobs/interfaces/discovered-job.interface';
 import { parseJobUrl } from '../../jobs/utils/job-url.util';
-import { FOUNDIT_ORIGIN, FOUNDIT_PAGE_SIZE, HIRIST_PAGE_SIZE, HIRIST_SEARCH_API } from '../constants/platform.constants';
-import { FounditJob, HiristJob } from '../interfaces/portal-api.interface';
+import { FOUNDIT_ORIGIN, FOUNDIT_PAGE_SIZE, HIMALAYAS_SEARCH_API, HIRIST_PAGE_SIZE, HIRIST_SEARCH_API } from '../constants/platform.constants';
+import { parse } from 'node-html-parser';
+import { FounditJob, HimalayasJob, HiristJob } from '../interfaces/portal-api.interface';
 import { extractSkills } from './job-normalizer.util';
 
 const REMOTE = /^(remote|work from home|wfh)$/i;
@@ -111,5 +112,34 @@ export function hiristJobToDiscovered(j: HiristJob): DiscoveredJob | null {
     description: [skills.length && `Skills: ${skills.join(', ')}`, j.max !== undefined && `Experience: ${j.min ?? 0}-${j.max} years`].filter(Boolean).join('\n'),
     skills,
     postedAt: j.createdTime ? new Date(j.createdTime).toISOString() : null,
+  };
+}
+
+export function himalayasSearchUrl(keyword: string, country: string, page: number): string {
+  const q = new URLSearchParams({ q: keyword.trim(), country, page: String(page) });
+  return `${HIMALAYAS_SEARCH_API}?${q}`;
+}
+
+/** A Himalayas job: always remote, open to the countries it lists; an expired one is skipped. */
+export function himalayasJobToDiscovered(j: HimalayasJob, now = Date.now()): DiscoveredJob | null {
+  if (!j?.title) return null;
+  if (j.expiryDate && j.expiryDate * 1000 < now) return null;
+  const parsed = parseJobUrl(j.applicationLink || j.guid || '');
+  if (!parsed) return null;
+  const where = j.locationRestrictions?.length ? j.locationRestrictions.slice(0, 5).join(', ') : 'Anywhere';
+  const text = j.description ? parse(j.description).structuredText : (j.excerpt ?? '');
+  const pay = j.minSalary || j.maxSalary ? `${j.currency ?? ''} ${j.minSalary ?? ''}-${j.maxSalary ?? ''} ${j.salaryPeriod ?? ''}`.replace(/\s+/g, ' ').trim() : null;
+  return {
+    source: parsed.source,
+    externalId: parsed.externalId,
+    url: parsed.url,
+    title: j.title.trim(),
+    company: (j.companyName ?? '').trim(),
+    location: `Remote (${where})`,
+    isRemote: true,
+    easyApply: false,
+    salaryRaw: pay,
+    description: text.slice(0, 20_000),
+    postedAt: j.pubDate ? new Date(j.pubDate * 1000).toISOString() : null,
   };
 }
