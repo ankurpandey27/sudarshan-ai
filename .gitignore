@@ -37,3 +37,4 @@ logs/
 # ---- The answer-matching model (downloaded by npm install; over GitHub's file size limit) ----
 /models/*
 !/models/README.md
+/.sudarshan-auto-update

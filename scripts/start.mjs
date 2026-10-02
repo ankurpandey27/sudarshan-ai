@@ -94,6 +94,33 @@ const healthy = () =>
 
 console.log(`\n  Sudarshan - goes out, finishes the task, returns.\n`);
 
+// Installed with the one-line installer: brought up to date first. A developer's clone (no marker file), or a copy
+// with local changes, is left alone; offline, this version starts.
+if (existsSync(p('.sudarshan-auto-update')) && existsSync(p('.git')) && process.env.SUDARSHAN_AUTO_UPDATE !== '0') await update();
+
+async function update() {
+  const s = step('Checking for updates');
+  const git = (args) =>
+    new Promise((resolve) => {
+      const child = spawn('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] });
+      let out = '';
+      const timer = setTimeout(() => child.kill(), 30_000);
+      child.stdout.on('data', (d) => (out += d));
+      child.on('error', () => resolve({ code: 1, out: '' }));
+      child.on('exit', (code) => {
+        clearTimeout(timer);
+        resolve({ code, out: out.trim() });
+      });
+    });
+  const changed = await git(['status', '--porcelain', '--untracked-files=no']);
+  if (changed.code !== 0 || changed.out) return s.stop('Not updated - this copy has local changes');
+  if ((await git(['fetch', '--quiet', 'origin'])).code !== 0) return s.stop('Could not check for updates (offline?) - starting this version');
+  const before = (await git(['rev-parse', 'HEAD'])).out;
+  const merged = await git(['merge', '--ff-only', '--quiet', '@{u}']);
+  const after = (await git(['rev-parse', 'HEAD'])).out;
+  s.stop(merged.code !== 0 ? 'Not updated - the update could not be applied cleanly' : before === after ? 'Up to date' : 'Updated to the latest version');
+}
+
 // Install on first run or when package-lock changed.
 if (!existsSync(p('node_modules')) || mtime(p('package-lock.json')) > mtime(p('node_modules', '.package-lock.json'))) {
   await npm('Installing dependencies (the first run takes a few minutes)', 'Dependencies installed', ['install', '--no-audit', '--no-fund']);
