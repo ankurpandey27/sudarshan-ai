@@ -42,7 +42,7 @@ const make = () => {
   const llm = {
     isAvailable: () => true,
     json: async (prompt: string) => {
-      const questions = JSON.parse(/QUESTIONS\n(.*)\n/.exec(prompt)![1]) as { id: string; question: string }[];
+      const questions = JSON.parse(/<<<FORM QUESTIONS[^\n]*\n(.*)\n/.exec(prompt)![1]) as { id: string; question: string }[];
       asked.push(...questions.map((q) => q.question));
       return {
         answers: questions.map((q) =>

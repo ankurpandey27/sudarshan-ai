@@ -1,0 +1,8 @@
+# Every text file uses LF, on every OS - no line-ending warnings or whole-file diffs from Windows.
+* text=auto eol=lf
+
+*.pdf binary
+*.png binary
+*.jpg binary
+*.ico binary
+*.onnx binary

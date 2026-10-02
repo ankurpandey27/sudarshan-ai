@@ -17,6 +17,8 @@ import { JobStatus } from '../src/modules/jobs/enums/job-status.enum';
 import { JobsService } from '../src/modules/jobs/jobs.service';
 import { LearningService } from '../src/modules/learning/learning.service';
 import { LlmService } from '../src/modules/llm/llm.service';
+import { WidgetRecipesService } from '../src/modules/form-engine/widget-recipes.service';
+import { FillMethod } from '../src/modules/form-engine/enums/fill-method.enum';
 
 const FIXTURE = `file://${join(__dirname, 'fixtures', 'easy-apply-2026.html').replace(/\\/g, '/')}`;
 const noLlm = { isConfigured: () => false, isAvailable: () => false } as unknown as LlmService;
@@ -237,6 +239,37 @@ describe('Learning from the user (real browser)', () => {
     await until(() => jobs.get(jobId).status === JobStatus.APPLIED, 15000);
     expect(jobs.get(jobId).status).toBe(JobStatus.APPLIED);
     expect(jobs.get(jobId).reason).toMatch(/^Finished by you/);
+    await page.close();
+  });
+  it('learns how you operate a dropdown the site built itself, and nothing from plain fields', async () => {
+    const storage = new StorageService(':memory:');
+    const events = new EventsService();
+    const answers = new AnswersService(storage);
+    const recipes = new RecipesService(storage);
+    const jobs = new JobsService(storage, events);
+    const playbook = new PlaybookService(storage);
+    const widgets = new WidgetRecipesService(storage);
+    const runner = new FormRunnerService(new AnswerEngineService(answers, noLlm), recipes, noLlm, playbook);
+    const learning = new LearningService(runner, answers, recipes, playbook, jobs, events, widgets);
+    const [jobId] = jobs.saveDiscovered([
+      { source: JobSource.LINKEDIN, externalId: 'fixture-ways', url: 'https://x.test/ways', title: 'Engineer', company: 'Acme', location: '', isRemote: false, easyApply: false, description: '' },
+    ]);
+    const url = `file://${join(__dirname, 'fixtures', 'button-dropdown.html').replace(/\\/g, '/')}`;
+    page = await browser.newPage();
+    await page.goto(url);
+    await learning.watch(page, { jobId, jobLabel: 'Engineer @ Acme', domain: 'smartapply.indeed.com', scopeSelector: null, successPattern: GENERIC_SUCCESS });
+
+    // You open the button dropdown, pick "LinkedIn" from its list, and tick a plain radio.
+    await page.click('#hear');
+    await page.click('.menu li:nth-child(3)');
+    await page.click('input[value=n]');
+    const count = () => Number(storage.get<{ n: number }>('SELECT COUNT(*) n FROM widget_recipes')?.n ?? 0);
+    await until(() => count() > 0);
+    const rows = storage.all<{ domain: string; widget: string; method: string; ok: number }>('SELECT domain, widget, method, ok FROM widget_recipes');
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({ domain: 'smartapply.indeed.com', method: FillMethod.OPEN_PICK, ok: 1 });
+    expect(rows[0].widget).toMatch(/^button\|combobox\|/);
+    expect(widgets.best('smartapply.indeed.com', rows[0].widget)).toBe(FillMethod.OPEN_PICK);
     await page.close();
   });
 });

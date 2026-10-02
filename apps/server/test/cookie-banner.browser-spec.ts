@@ -47,6 +47,15 @@ describe('Cookie banners on company sites (real browser)', () => {
     expect(await tab.evaluate(dismissCookieBannerInPage)).toBe('Allow selection');
   });
 
+  it("Workday's own notice (Stryker careers, 2026-10-02): Decline by its id, whatever the wording", async () => {
+    await tab.setContent(
+      page(`<div class="banner" data-automation-id="legalNotice"><p>Bitte geben Sie an, ob Sie zustimmen.</p>
+      <button data-automation-id="legalNoticeAcceptButton">Zustimmen</button><button data-automation-id="legalNoticeDeclineButton">Nein danke</button></div>`),
+    );
+    expect(await tab.evaluate(dismissCookieBannerInPage)).toBe('Nein danke');
+    expect(await pressed()).toEqual(['Nein danke']);
+  });
+
   it('OneTrust by its id, and Usercentrics inside a shadow root', async () => {
     await tab.setContent(
       page(

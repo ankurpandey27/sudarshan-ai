@@ -4,6 +4,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { api } from './api';
 import type {
+  InterviewQuestion,
+  Story,
   AgentStatus,
   AnalyticsReport,
   TasteState,
@@ -67,3 +69,6 @@ export const useAnalytics = (days: number, platform: string) =>
 
 export const useTaste = () => useQuery({ queryKey: ['taste'], queryFn: () => api.get<TasteState>('/taste'), refetchInterval: 60000 });
 export const useLearners = () => useQuery({ queryKey: ['learners'], queryFn: () => api.get<LearnerStatus[]>('/learners'), refetchInterval: 60000 });
+
+export const useStories = () => useQuery({ queryKey: ['stories'], queryFn: () => api.get<Story[]>('/stories') });
+export const useInterview = () => useQuery({ queryKey: ['stories-interview'], queryFn: () => api.get<InterviewQuestion[]>('/stories/interview') });

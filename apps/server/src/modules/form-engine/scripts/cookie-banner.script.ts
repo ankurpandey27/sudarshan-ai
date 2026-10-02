@@ -28,7 +28,7 @@ export function dismissCookieBannerInPage(): string | null {
     return label(el) || 'cookie banner';
   };
 
-  // Well-known consent tools, most private choice first: OneTrust, Cookiebot, Usercentrics, Didomi, Osano, CookieYes.
+  // Well-known consent tools, most private choice first: OneTrust, Cookiebot, Usercentrics, Didomi, Osano, CookieYes, Workday.
   const known = [
     '#onetrust-reject-all-handler',
     '#CybotCookiebotDialogBodyButtonDecline',
@@ -36,6 +36,7 @@ export function dismissCookieBannerInPage(): string | null {
     '#didomi-notice-disagree-button',
     '.osano-cm-denyAll',
     '.cky-btn-reject',
+    '[data-automation-id="legalNoticeDeclineButton"]',
     '#CybotCookiebotDialogBodyLevelButtonLevelOptinAllowallSelection',
     '[data-testid="uc-save-button"]',
     '#onetrust-accept-btn-handler',
@@ -44,6 +45,7 @@ export function dismissCookieBannerInPage(): string | null {
     '[data-testid="uc-accept-all-button"]',
     '#didomi-notice-agree-button',
     '.cky-btn-accept',
+    '[data-automation-id="legalNoticeAcceptButton"]',
   ];
   for (const sel of known) {
     const el = all(sel).find(visible);

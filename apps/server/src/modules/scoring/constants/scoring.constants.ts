@@ -20,3 +20,7 @@ export const LAST_RUN_KEEP_MS = 15_000;
 export const CORE_SKILL_BONUS = 5;
 /** At most this many bonus points. */
 export const CORE_SKILL_BONUS_MAX = 10;
+
+/** Shown on a job whose post tries to steer AI tools; it is scored by rules only. */
+export const STEERING_NOTE =
+  'This job post contains text aimed at AI tools (for example "ignore previous instructions"), so the AI did not read it: scored by rules only. Read it yourself before applying.';

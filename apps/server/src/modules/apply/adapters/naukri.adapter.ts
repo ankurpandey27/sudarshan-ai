@@ -25,6 +25,7 @@ import { PrepareStatus } from '../enums/prepare-status.enum';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { naukriDoneTypingInPage, naukriLastQuestionInPage, naukriSendInPage, naukriSendReadyInPage } from '../scripts/naukri-chat.script';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
+import { asChoiceQuestion, boxesToTick } from '../utils/naukri-choices.util';
 
 const MAX_QUESTIONS = 20;
 const REFUSED_DETAIL = 'Naukri is refusing applications for now ("please try again later") - it stays in the queue';
@@ -109,9 +110,14 @@ export class NaukriApplyAdapter implements ApplyAdapter {
       // The question lives in a chat bubble, not next to the input.
       // The chat keeps a file input around; a resume goes there only when the question asks for one.
       const wantsFile = NAUKRI_FILE_QUESTION.test(question);
-      const fields = snap.fields
-        .filter((f) => f.kind !== FieldKind.FILE || wantsFile)
-        .map((f) => ({ ...f, label: question || f.label, required: true, value: '' }));
+      const shown = snap.fields.filter((f) => f.kind !== FieldKind.FILE || wantsFile);
+      // A checkbox per choice: one multi-select question with those choices, not a yes/no per box.
+      const boxes = shown.filter((f) => f.kind === FieldKind.CHECKBOX);
+      const choice = boxes.length > 1 ? asChoiceQuestion(boxes, question) : null;
+      const fields = [
+        ...(choice ? [choice] : []),
+        ...shown.filter((f) => !choice || f.kind !== FieldKind.CHECKBOX).map((f) => ({ ...f, label: question || f.label, required: true, value: '' })),
+      ];
       if (fields.length === 0) {
         if (!(await page.evaluate(naukriSendInPage, NAUKRI_DRAWER))) await sleep(1500);
         await jitter(1200, 2000);
@@ -129,14 +135,20 @@ export class NaukriApplyAdapter implements ApplyAdapter {
       }
       // What was answered, and from where, so every answer sent can be checked in the flight log.
       const from = resolved.stats.llmCalls ? 'AI' : resolved.stats.memoryHits ? 'your saved answer' : resolved.stats.profileHits ? 'your profile' : 'default';
-      const given = resolved.instructions
-        .map((i) => i.value)
-        .filter(Boolean)
-        .join(', ');
+      // The chosen choices become ticks on their own boxes ("NO" never beside a real choice).
+      const instructions = resolved.instructions.flatMap((i) =>
+        choice && i.id === choice.id && i.kind === FieldKind.CHECKBOX_GROUP ? boxesToTick(i, boxes) : [i],
+      );
+      const given = choice
+        ? instructions.map((i) => boxes.find((b) => b.id === i.id)?.label ?? i.value).join(', ')
+        : instructions
+            .map((i) => i.value)
+            .filter(Boolean)
+            .join(', ');
       opts.onStep(`Naukri: "${question.slice(0, 80)}" -> "${given.slice(0, 80)}" (${from})`);
 
-      const typed = resolved.instructions.filter((i) => [FieldKind.TEXT, FieldKind.TEXTAREA, FieldKind.NUMBER].includes(i.kind));
-      const others = resolved.instructions.filter((i) => !typed.includes(i));
+      const typed = instructions.filter((i) => [FieldKind.TEXT, FieldKind.TEXTAREA, FieldKind.NUMBER].includes(i.kind));
+      const others = instructions.filter((i) => !typed.includes(i));
       if (others.length) await this.runner.fill(page, others);
       for (const ins of typed) {
         // The chat box is a React contenteditable; it only reacts to real key events.

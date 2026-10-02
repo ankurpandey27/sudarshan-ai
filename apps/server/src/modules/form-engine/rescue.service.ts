@@ -152,6 +152,7 @@ export class RescueService {
           if (sends && opts.pauseBeforeSubmit) {
             return done({ ...out, status: 'ready_to_submit', detail: 'Filled and waiting for you to press Submit (rescued)' }, 'progressed');
           }
+          if (sends) opts.onSend?.();
           await hands.click(page, target.id);
           pressed = true;
           // Learned for this site only if the application is then confirmed.

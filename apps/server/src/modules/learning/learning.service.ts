@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { Frame, Page } from 'puppeteer-core';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
@@ -24,12 +24,17 @@ import { formFingerprint, learnedSummary } from './utils/learning.util';
 import { PlaybookService } from '../form-engine/playbook.service';
 import { stepSignature } from '../form-engine/utils/step-signature.util';
 import { CONFIRMED_WORLDWIDE } from '../form-engine/constants/form-runner.constants';
+import { WidgetRecipesService } from '../form-engine/widget-recipes.service';
+import { widgetSignaturesInPage } from '../form-engine/scripts/field-widget.script';
+import { FieldWays } from './interfaces/learn-event.interface';
+import { fillWayFromOps, isCustomWidget, showsAnswer } from './utils/fill-way.util';
 
 /**
  * Learning by demonstration. When the agent leaves a form to the user, it watches
  * the user finish it: every answer they give goes into answer memory and every
- * button that moves the form on becomes part of that site's recipe. The next
- * form with the same questions, on any site, fills itself.
+ * button that moves the form on becomes part of that site's recipe, and the way they
+ * operated a field Sudarshan's usual filling missed is learned for that kind of field.
+ * The next form with the same questions, on any site, fills itself.
  */
 @Injectable()
 export class LearningService {
@@ -44,12 +49,14 @@ export class LearningService {
     private readonly playbook: PlaybookService,
     private readonly jobs: JobsService,
     private readonly events: EventsService,
+    // Optional so learning works in tests and tools without the widget store.
+    @Optional() private readonly widgetRecipes?: WidgetRecipesService,
   ) {}
 
   async watch(page: Page, target: WatchTarget): Promise<void> {
     if (this.watched.has(page) || page.isClosed()) return;
     this.watched.add(page);
-    const session: LearningSession = { known: new Map(), pending: null, moves: [], answers: 0, steps: 0, done: false };
+    const session: LearningSession = { known: new Map(), pending: null, moves: [], answers: 0, steps: 0, ways: new Set(), done: false };
     this.sessions.set(page, session);
     try {
       // What is already filled (by the site or the agent) is not the user's answer.
@@ -61,11 +68,13 @@ export class LearningService {
         session.lastActivity = Date.now();
         this.learnStep(target, session, e.snap);
         this.learnAnswers(e.snap, session, new Set(e.touched ?? []));
+        if (e.ways) this.learnWays(target, session, e.snap, e.ways);
         if (e.type === 'click') this.onClick(page, target, session, e.text, e.snap);
       });
       // The extractor and recorder are re-added on every navigation, for multi-page forms.
       const setup = `window.__sudarshanExtract = ${extractFormInPage.toString()};
         window.__sudarshanScope = ${JSON.stringify(target.scopeSelector)};
+        window.__sudarshanWidget = ${widgetSignaturesInPage.toString()};
         (${learnRecorderInPage.toString()})();`;
       await page.evaluateOnNewDocument(setup);
       await page.evaluate(setup);
@@ -116,6 +125,24 @@ export class LearningService {
       if (session.known.get(f.label) === value) continue;
       session.known.set(f.label, value);
       if (this.answers.remember(f.label, value, AnswerSource.USER, f.kind)) session.answers++;
+    }
+  }
+
+  /**
+   * A site's own widget (a button that opens a list, a searchable dropdown) that now shows your answer:
+   * how you operated it is saved for that kind of field on this site, unless a way already works here.
+   * Fields the usual filling handles (plain text boxes, selects, radios) teach nothing.
+   */
+  private learnWays(target: WatchTarget, session: LearningSession, snap: FormSnapshot, ways: FieldWays): void {
+    if (!this.widgetRecipes) return;
+    for (const [id, { widget, ops }] of Object.entries(ways)) {
+      if (session.ways.has(widget) || !isCustomWidget(widget)) continue;
+      const field = snap.fields.find((f) => f.id === id);
+      if (!field || field.kind === FieldKind.FILE || !showsAnswer(field.value)) continue;
+      const method = fillWayFromOps(ops);
+      if (!method || this.widgetRecipes.worksHere(target.domain, widget)) continue;
+      this.widgetRecipes.record(target.domain, widget, method, true);
+      session.ways.add(widget);
     }
   }
 

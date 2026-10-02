@@ -1,0 +1,12 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Two yes/no questions</title></head>
+<body>
+<!-- Two custom yes/no questions side by side: clicking "Yes" for one must never answer the other. -->
+<form onsubmit="return false">
+  <div class="q"><p>Are you willing to relocate?</p>
+    <div role="radiogroup" id="rel" aria-label="Are you willing to relocate?"><span role="radio" aria-checked="false">Yes</span> <span role="radio" aria-checked="false">No</span></div></div>
+  <div class="q"><p>Do you need visa sponsorship?</p>
+    <div role="radiogroup" id="visa" aria-label="Do you need visa sponsorship?"><span role="radio" aria-checked="false">Yes</span> <span role="radio" aria-checked="false">No</span></div></div>
+</form>
+<script>document.querySelectorAll('[role=radio]').forEach((r) => r.addEventListener('click', () => { r.parentElement.querySelectorAll('[role=radio]').forEach((x) => x.setAttribute('aria-checked', 'false')); r.setAttribute('aria-checked', 'true'); }));</script>
+</body></html>

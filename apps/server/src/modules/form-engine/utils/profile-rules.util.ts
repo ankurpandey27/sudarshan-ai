@@ -8,6 +8,7 @@ import { FormField } from '../interfaces/form-field.interface';
 import { ProfileRule } from '../interfaces/profile-rule.interface';
 import { BACKGROUND_QUESTION } from '../constants/background.constants';
 import { cleanRecordAnswer } from './background.util';
+import { jobSourceAnswer } from './job-source.util';
 
 const yes = (b: boolean): string => (b ? 'Yes' : 'No');
 const fact = (value: string | number | null | undefined): RuleAnswer | null =>
@@ -52,6 +53,9 @@ const wholeYears = (y: number): number => Math.max(0, Math.round(y));
 
 // "...experience with X / in X / using X / on X": about one subject. "In total", "overall", "in the industry",
 // "in IT", "in software development" still mean your whole career.
+/** A text box this short wants a number or a word, not a sentence. */
+const SHORT_ANSWER_MAX = 30;
+
 const ABOUT_A_SUBJECT =
   /\b(experience|worked|working)\b.*\b(with|in|using|on)\s+(?!(total|overall|all\b|years?|yrs|months?|numbers?|digits|the industry|industry|it\b|the it\b|software (development|engineering|industry)|tech(nology)? industry|your career|this (field|industry)|a professional)\b)[a-z0-9]/;
 
@@ -268,7 +272,11 @@ const RULES: ProfileRule[] = [
   { key: 'grade', test: /\b(cgpa|gpa|percentage|grade)\b/, answer: (c) => fact(c.profile.education[0]?.grade) },
   {
     test: /how did you (hear|find|learn)|source of (application|hire)|where did you (hear|find)/,
-    answer: (c) => guess(c.job.foundOn || 'LinkedIn'),
+    // Where this job was really found, fitted to the form's own choices (a fact, not a guess, once it fits).
+    answer: (c, f) => {
+      const pick = jobSourceAnswer(c.job.foundOn, f.options);
+      return pick === null ? null : f.options.length ? fact(pick) : guess(pick);
+    },
   },
   {
     key: 'languages',
@@ -289,7 +297,12 @@ function checkboxRule(field: FormField): RuleAnswer | null {
 
 function skillYearsRule(ctx: AnswerContext, field: FormField): RuleAnswer | null {
   const q = field.label.toLowerCase();
-  const asksYears = /\byears?\b|\byrs?\b|how (long|many)/.test(q) && /experien|worked|work(ing)? with|using|hands[- ]on/.test(q);
+  // "Experience working with databases (PostgreSQL, MySQL...)?" in a short box (LinkedIn's 20 characters, or a
+  // number box) asks for years too - "5" was accepted where words were "Invalid input" (AppGreat, 2026-10-01).
+  const shortBox = field.kind === FieldKind.NUMBER || (field.maxLength !== null && field.maxLength <= SHORT_ANSWER_MAX);
+  const asksYears =
+    (/\byears?\b|\byrs?\b|how (long|many)/.test(q) && /experien|worked|work(ing)? with|using|hands[- ]on/.test(q)) ||
+    (shortBox && /^(experience|exp\.?)\b|\bexperience (working |developing |building )?(with|in|of)\b/.test(q));
   const asksYesNo =
     [FieldKind.RADIO, FieldKind.SELECT, FieldKind.CHECKBOX].includes(field.kind) &&
     /^(do|have|are|did) you\b|\b(experience|familiar|worked|knowledge|proficien)/.test(q);

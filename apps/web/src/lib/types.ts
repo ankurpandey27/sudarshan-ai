@@ -361,3 +361,21 @@ export interface LearnerStatus {
   trainedAt: string | null;
   note: string;
 }
+
+export interface Story {
+  id: number;
+  promptId: string | null;
+  title: string;
+  text: string;
+  skills: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InterviewQuestion {
+  id: string;
+  question: string;
+  why: string;
+  example: string;
+  answered: boolean;
+}

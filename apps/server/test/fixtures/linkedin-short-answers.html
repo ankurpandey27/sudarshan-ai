@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>LinkedIn-style short answers</title></head>
+<body>
+<!-- AppGreat on LinkedIn (2026-10-01): "Experience working with X?" boxes limited by a counter ("0/20"), no
+     maxlength attribute; anything but a whole number is "Invalid input". -->
+<form onsubmit="return false">
+  <div class="q"><label for="db">Experience working with databases (SQL or NoSQL): PostgreSQL, MySQL, MongoDB, or similar?*</label>
+    <input id="db" type="text" required><div class="err"></div><span class="count">0/20</span></div>
+  <div class="q"><label for="ci">Experience working with CI/CD pipelines (GitHub Actions, Bitrise, CircleCI)?*</label>
+    <input id="ci" type="text" required><div class="err"></div><span class="count">0/20</span></div>
+  <button type="button" id="review">Submit application</button>
+</form>
+<script>
+  window.__sent = null;
+  for (const input of document.querySelectorAll('input')) {
+    const count = input.parentElement.querySelector('.count');
+    const err = input.parentElement.querySelector('.err');
+    input.addEventListener('input', () => {
+      count.textContent = input.value.length + '/20';
+      const ok = /^\d{1,2}$/.test(input.value.trim());
+      err.textContent = ok || !input.value ? '' : 'Invalid input';
+      err.setAttribute('role', ok ? '' : 'alert');
+      input.setAttribute('aria-invalid', ok ? 'false' : 'true');
+    });
+  }
+  document.getElementById('review').addEventListener('click', () => {
+    const vals = [...document.querySelectorAll('input')].map((i) => i.value.trim());
+    if (vals.every((v) => /^\d{1,2}$/.test(v))) { window.__sent = vals; document.body.innerHTML = '<h1>Your application was sent</h1>'; }
+  });
+</script>
+</body></html>

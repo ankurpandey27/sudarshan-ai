@@ -38,8 +38,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     intervalMinutes: 60,
     minDelaySeconds: 40,
     maxDelaySeconds: 110,
-    activeHoursStart: 0,
-    activeHoursEnd: 24,
+    // Applying through the night looks like a robot.
+    activeHoursStart: 8,
+    activeHoursEnd: 23,
     headless: false,
     browserPath: '',
     llmScoring: true,

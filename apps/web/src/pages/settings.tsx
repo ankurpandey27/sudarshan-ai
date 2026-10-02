@@ -3,7 +3,7 @@
 
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Download, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, Download, ShieldCheck } from 'lucide-react';
 import { api } from '../lib/api';
 import { useAgent, useSettings } from '../lib/queries';
 import type { AgentStatus, Settings, WorkbookImportResult } from '../lib/types';
@@ -17,6 +17,7 @@ import { useLocation } from 'react-router';
 import { Tabs, useTab, type TabDef } from '../components/tabs';
 import { TagInput } from '../components/tag-input';
 import { LearnersCard } from '../components/learners-card';
+import { overSafeDaily, paceWarnings, safePace } from '../lib/safe-pace';
 
 type SettingsTab = 'ai' | 'search' | 'platforms' | 'agent' | 'accounts' | 'data';
 const SETTINGS_TABS: readonly TabDef<SettingsTab>[] = [
@@ -84,6 +85,21 @@ export function SettingsPage() {
     });
   const dirty = JSON.stringify([draft.search, draft.sources, draft.agent]) !== JSON.stringify([data.search, data.sources, data.agent]);
   const num = (v: string) => (v === '' ? 0 : Number(v));
+  const risks = paceWarnings(draft);
+  const paceBox = risks.length > 0 && (
+    <div className="flex items-start gap-3 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2.5 text-[13px]">
+      <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warn" />
+      <div className="min-w-0 flex-1">
+        <b className="text-warn">This pace can get your accounts restricted</b>
+        <ul className="mt-1 list-disc pl-4 text-ink-2">
+          {risks.map((r) => (
+            <li key={r}>{r}</li>
+          ))}
+        </ul>
+      </div>
+      <Button onClick={() => setDraft(safePace(draft))}>Use safe pace</Button>
+    </div>
+  );
 
   return (
     <>
@@ -208,6 +224,8 @@ export function SettingsPage() {
           </Card>
         )}
 
+        {(tab === 'platforms' || tab === 'agent') && paceBox}
+
         {tab === 'platforms' && (
           <Card>
             <CardHeader title="Job sites & daily limits" hint="Low limits protect your accounts. LinkedIn restricts accounts that apply too fast." />
@@ -226,7 +244,7 @@ export function SettingsPage() {
                   <div className="flex-1">
                     <Toggle checked={draft.sources[k].enabled} onChange={(v) => source(k, { enabled: v })} label={label} hint={hint} />
                   </div>
-                  <Field label="Per day" className="w-20">
+                  <Field label="Per day" className={overSafeDaily(draft, k) ? 'w-20 [&_input]:border-warn' : 'w-20'}>
                     <Input
                       type="number"
                       min={0}

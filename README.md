@@ -438,7 +438,22 @@ scripts/    start.mjs (the one command), dev.mjs
 
 Everything below runs and is stored on your computer. None of it needs an AI model, except where it says so.
 
-**Your answers.** Every answer - yours, from your profile, or from the AI - goes into **Answer memory** and is reused for the same question on any site. Your own answers always win.
+**Your answers.** Every answer - yours, from your profile, or from the AI - goes into **Answer memory** and is reused for the same question on any site. Your own answers always win. An AI answer is saved only after the form shows it took, so a fill that failed never becomes a lesson.
+
+**Your Story Bank.** Written questions ("Why are you a fit?", "Describe a challenge you solved", "Tell us about a workflow you automated") are where applications stand out or sound generic. Open **Story Bank** in the menu and answer a short interview, once: your proudest work, something you made faster and by how much, a hard problem, a time you led. If an answer has no number, date or name, Sudarshan asks once for one, then saves it as it is. On every job site, the stories that fit the job are given to the AI, which builds written answers on their facts and never changes their numbers. Edit or delete them any time.
+
+**Answers that sound like you.** Written answers follow plain-writing rules: no "leverage", "robust", "seamless", "spearheaded", no "It's not just X, it's Y", no "I am thrilled to apply", at most one dash. Every written answer is checked; AI-ish words become plain ones without any AI call, and an answer that still reads as AI is rewritten once, with the same facts. (Rules adapted from [linkedin-skills](https://github.com/sergebulaev/linkedin-skills), MIT.)
+
+**Job posts cannot steer the AI.** Job posts, web pages and form questions are written by strangers. In every AI prompt they are fenced off and marked as data, never instructions. A job post that tries to talk to AI tools ("ignore previous instructions", "rate this job 100") is never shown to the AI at all: it is scored by rules only, and its summary in Review tells you why.
+
+**How to work each kind of field.** Forms are built from many kinds of controls: plain boxes, dropdowns that open, searchable dropdowns, chips, custom radio buttons. After filling, Sudarshan reads every field again to check the answer took - not empty, not still "Select an option", no error on it. When one did not:
+
+1. It tries the way that worked for this kind of field before.
+2. Then the other ways a person would operate it: click it open and click the option; type to search and pick a suggestion; type and press Enter; click the choice's own words.
+3. If none works, it asks the AI once, showing it the field (a picture when the model takes images, and its code), and tries what the AI says.
+4. Whatever worked is remembered for that site, and for every site once it has worked on several. Next time that kind of field is filled the right way first, with no trial and no AI.
+
+The flight log says when a field "needed another way to fill - learned for next time", or which ways were tried when none worked.
 
 **Answers to similar questions.** A small multilingual model runs on your computer (about 130 MB, no GPU): `npm install` / `npm start` download it once into the project's `models` folder, then it works offline. It is not in the Git repository (it is larger than GitHub allows per file); for an offline machine, copy the `models` folder over. `SUDARSHAN_MODELS_DIR` keeps it elsewhere, `SUDARSHAN_SKIP_MODEL=1` never downloads it. When a question goes to the AI, it finds your own saved answers to questions that *mean* the same - in any wording or language - and shows them to the AI, which decides whether one really answers this question. They are never filled in by themselves: similar-looking questions can ask opposite things ("current" vs "expected" CTC, 10th vs 12th board). Only your answers and your spreadsheet's are shown, never the AI's own earlier guesses, and a "years of X" question sees only past answers about X. Measured on real saved answers (40 questions, 2026-09-30): answered right 19 vs 15 before, asked the user 12 vs 15 times, wrong 9 vs 10. The flight log says when it helped. Turn it off in **Settings -> Agent -> Use my past answers for similar questions**; if the model cannot run on a computer, everything works as before.
 

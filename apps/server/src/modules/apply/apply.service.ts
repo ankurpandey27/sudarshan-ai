@@ -41,6 +41,7 @@ import { OpenTab } from './interfaces/open-tab.interface';
 import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
 import { onJobBoard } from './utils/offsite-url.util';
+import { StoriesService } from '../stories/stories.service';
 
 @Injectable()
 export class ApplyService {
@@ -69,6 +70,7 @@ export class ApplyService {
     private readonly events: EventsService,
     private readonly learning: LearningService,
     private readonly health: PlatformHealthService,
+    @Optional() private readonly stories?: StoriesService,
     @Optional() private readonly trainer?: LearnersTrainerService,
   ) {
     this.adapters = [linkedin, naukri, indeed, web];
@@ -305,6 +307,7 @@ export class ApplyService {
         s.agent.pauseBeforeSubmit || (s.agent.carefulAfterPause === true && this.health.state(job.platform).status === 'careful' && onJobBoard(page.url())),
       onStep: step,
       onShot: (p: Page, label: string) => this.shoot(attemptId, job.id, p, label),
+      onSend: () => this.jobs.markSent(attemptId),
       rescue: s.agent.rescue !== false,
     };
   }
@@ -428,6 +431,7 @@ export class ApplyService {
       job: { id: job.id, title: job.title, company: job.company, location: job.location, description: job.description, foundOn: FOUND_ON[job.platform] },
       resumePath: this.profile.resumePath(),
       skillYears: experience.skillYears,
+      stories: this.stories?.forJob(`${job.title} ${job.description}`) ?? [],
     };
   }
 }

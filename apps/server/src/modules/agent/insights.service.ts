@@ -20,6 +20,7 @@ import { PlatformHealthService } from '../platform-health/platform-health.servic
 import { StorageService } from '../../common/storage/storage.service';
 import { visibleInsights } from './utils/insight-dismissal.util';
 import { clockTime } from '../../common/utils/date.util';
+import { paceRisks } from '../settings/utils/pace-risks.util';
 
 const FIELD_NAMES: Record<string, string> = {
   firstName: 'first name',
@@ -120,6 +121,18 @@ export class InsightsService {
         detail: 'The agent does not know what jobs to look for.',
         fix: 'Add job titles or keywords in Settings -> What to search.',
         actions: [{ label: 'Set keywords', to: '/settings' }],
+      });
+    }
+
+    const risks = paceRisks(s);
+    if (risks.length) {
+      out.push({
+        id: 'pace-risk',
+        severity: 'warn',
+        title: 'Applying this fast can get your accounts restricted',
+        detail: `Job sites watch for people who apply faster than a person could: ${risks.join('; ')}.`,
+        fix: 'Open Settings -> Platforms & limits and press "Use safe pace" (then Save), or lower these yourself.',
+        actions: [{ label: 'Open limits', to: '/settings?tab=platforms' }],
       });
     }
 

@@ -27,6 +27,9 @@ import { ageOn, parseBirthDate } from '../answers/utils/birth-date.util';
 import { canonicalSkill, extractSkills } from '../discovery/utils/job-normalizer.util';
 import { NOT_A_RESUME, REPLACES_RESUME } from './constants/background.constants';
 import { HIGH_STAKES_QUESTION } from './constants/inference.constants';
+import { aiTells, isWrittenAnswer, plainWords } from './utils/human-voice.util';
+import { REWRITE_AT_TELLS } from './constants/human-voice.constants';
+import { UNTRUSTED_RULE, untrusted } from '../llm/utils/untrusted.util';
 
 const RESUME_FIELD = /resume|cv\b|curriculum|bio ?data/i;
 const COVER_LETTER = /cover\s*letter|motivation letter/i;
@@ -157,6 +160,7 @@ export class AnswerEngineService {
     const useLlm = opts.allowLlm && this.llm.isAvailable();
     if (useLlm) await this.addPastAnswers(forLlm, hints, unknownCountry, result);
     const llmAnswers = useLlm ? await this.askLlm(forLlm, ctx, hints, result) : null;
+    if (llmAnswers) await this.humanize(llmAnswers, forLlm, result);
     for (const field of forLlm) {
       const a = llmAnswers?.get(field.id);
       // The AI's answer settles the field learner's quiet prediction for this field.
@@ -170,7 +174,8 @@ export class AnswerEngineService {
         if (a.basis === 'inferred') result.stats.inferred = (result.stats.inferred ?? 0) + 1;
         // Inferred answers are worked out again each time, never saved as your own.
         if (a.reusable && a.basis !== 'inferred' && field.kind !== FieldKind.TEXTAREA) {
-          this.answers.remember(field.label, a.value, AnswerSource.LLM, field.kind);
+          if (opts.deferMemory) (result.toRemember ??= []).push({ fieldId: field.id, question: field.label, answer: a.value, kind: field.kind });
+          else this.answers.remember(field.label, a.value, AnswerSource.LLM, field.kind);
         }
         continue;
       }
@@ -302,6 +307,44 @@ export class AnswerEngineService {
     }
   }
 
+  /**
+   * Written answers that read as AI cost an application with a recruiter. Every one gets the plain-words
+   * pass (no AI); the ones that still carry several tells are rewritten together in one AI call - same
+   * facts, plainer words - and kept only if the rewrite really reads plainer.
+   */
+  private async humanize(answers: Map<string, LlmFieldAnswer>, fields: FormField[], result: ResolveResult): Promise<void> {
+    const stillAi: { id: string; question: string; text: string; tells: string[] }[] = [];
+    for (const f of fields) {
+      const a = answers.get(f.id);
+      if (!a || f.options.length || !isWrittenAnswer(a.value)) continue;
+      a.value = plainWords(a.value);
+      if (f.maxLength) a.value = a.value.slice(0, f.maxLength);
+      const tells = aiTells(a.value);
+      if (tells.length >= REWRITE_AT_TELLS) stillAi.push({ id: f.id, question: f.label, text: a.value, tells });
+    }
+    if (!stillAi.length || !this.llm.isAvailable()) return;
+    try {
+      const res = await this.llm.json<{ answers?: { id: string; text: string }[] }>(
+        `Rewrite each answer so it reads like the candidate wrote it. Keep every fact, claim and number exactly; add none. Plain words, varied sentences, no dramatic reveals, no lists of three, at most one dash. Same language as the answer.
+
+${untrusted('answers', JSON.stringify(stillAi.map(({ id, question, text, tells }) => ({ id, question, text, why: tells.slice(0, 5) }))))}
+
+Return JSON: {"answers":[{"id":"<id>","text":"<rewritten>"}]}`,
+        { purpose: LlmPurpose.FORM_ANSWER, maxTokens: 1500, system: UNTRUSTED_RULE },
+      );
+      result.stats.llmCalls++;
+      for (const r of res.answers ?? []) {
+        const was = stillAi.find((x) => x.id === r.id);
+        const a = answers.get(r.id);
+        const text = typeof r.text === 'string' ? plainWords(r.text.trim()) : '';
+        // Kept only when it is really plainer and not much shorter (no facts dropped).
+        if (was && a && text && aiTells(text).length < was.tells.length && text.length >= was.text.length * 0.6) a.value = text;
+      }
+    } catch {
+      // The plain-words pass already ran; the answer stands.
+    }
+  }
+
   private async askLlm(
     fields: FormField[],
     ctx: AnswerContext,
@@ -333,5 +376,10 @@ export class AnswerEngineService {
       options: u.field.options.filter((o) => o.trim() && !/^(select|choose)/i.test(o)),
       suggestion: u.suggestion,
     }));
+  }
+
+  /** Saves AI answers the form showed it took (see deferMemory). */
+  rememberHeld(items: { question: string; answer: string; kind: string }[]): void {
+    for (const it of items) this.answers.remember(it.question, it.answer, AnswerSource.LLM, it.kind);
   }
 }

@@ -10,7 +10,7 @@ import { AnswerEngineService } from './answer-engine.service';
 import { RecipesService } from './recipes.service';
 import { FieldKind } from './enums/field-kind.enum';
 import { FillInstruction } from './interfaces/fill-instruction.interface';
-import { FormAction, FormSnapshot } from './interfaces/form-field.interface';
+import { FormAction, FormField, FormSnapshot } from './interfaces/form-field.interface';
 import { FormRunOutcome, RunFormOptions } from './interfaces/form-run.interface';
 import { LearnedMove } from './interfaces/learned-move.interface';
 import { extractFormInPage } from './scripts/extract-form.script';
@@ -42,6 +42,12 @@ import { stepSignature } from './utils/step-signature.util';
 import { ButtonLearnerService } from '../learners/button-learner.service';
 import { RescueService } from './rescue.service';
 import { dismissCookieBannerInPage } from './scripts/cookie-banner.script';
+import { WidgetRecipesService } from './widget-recipes.service';
+import { FillMethod } from './enums/fill-method.enum';
+import { METHODS_BY_KIND, MAX_RECOVERED_FIELDS, TEXT_METHODS } from './constants/fill-check.constants';
+import { clickChoiceNearFieldInPage, fieldHtmlInPage, widgetSignaturesInPage } from './scripts/field-widget.script';
+import { heldAnswer, intendedText } from './utils/fill-check.util';
+import { isSensitive, redactSensitive } from '../answers/utils/sensitive.util';
 
 const ACTION_PRIORITY: Record<FormAction['kind'], number> = { submit: 4, review: 3, next: 2, apply: 1, dismiss: -1, other: 0 };
 
@@ -58,12 +64,181 @@ export class FormRunnerService {
     private readonly playbook: PlaybookService,
     @Optional() private readonly buttonLearner?: ButtonLearnerService,
     @Optional() private readonly rescue?: RescueService,
+    @Optional() private readonly widgetRecipes?: WidgetRecipesService,
   ) {}
 
   /**
    * The form as it is now. A page that moves on while it is being read (a Submit answered by a new page)
    * is read again once the new page is there, instead of failing the whole application.
    */
+  /**
+   * Fills, then reads the fields again to see the answers took. A field that did not take its answer
+   * (still empty, still "Select an option", an error on it) is tried again the way that worked for this
+   * kind of field before, then the other ways a person would operate it, then as the AI suggests from a
+   * picture of it - and what works is learned for next time. Returns the ids of the fields that hold.
+   */
+  async fillAndCheck(page: Page, snap: FormSnapshot, instructions: FillInstruction[], opts: RunFormOptions, step: number): Promise<Set<string>> {
+    const held = new Set<string>();
+    const checkable = instructions.filter((i) => i.kind !== FieldKind.FILE);
+    const signatures = await page
+      .evaluate(
+        widgetSignaturesInPage,
+        checkable.map((i) => i.id),
+      )
+      .catch(() => ({}) as Record<string, string>);
+    // A field whose widget has a learned way of working is done that way straight away.
+    const learned = new Map<string, FillMethod>();
+    for (const ins of checkable) {
+      const method = this.widgetRecipes?.best(opts.domain, signatures[ins.id] ?? '');
+      if (method && method !== FillMethod.NATIVE) learned.set(ins.id, method);
+    }
+    await this.fill(
+      page,
+      instructions.filter((i) => !learned.has(i.id)),
+    );
+    for (const [id, method] of learned) {
+      const ins = instructions.find((i) => i.id === id)!;
+      const field = snap.fields.find((f) => f.id === id);
+      if (field) await this.operate(page, ins, field, method);
+    }
+    await sleep(400);
+    let now = await this.snapshot(page, opts.scopeSelector).catch(() => null);
+    if (!now) return new Set(instructions.map((i) => i.id));
+    const failed: FillInstruction[] = [];
+    for (const ins of instructions) {
+      const field = now.fields.find((f) => f.id === ins.id);
+      // Gone from the page (a step that moved on, a field that became something else): nothing to check.
+      if (!field || heldAnswer(field, ins)) held.add(ins.id);
+      else failed.push(ins);
+    }
+    // In the box but rejected ("Invalid input"): the answer's FORMAT is wrong, not how it was put in - operating it
+    // again changes nothing. It is not saved, and the next pass re-answers it with the site's error in hand.
+    const rejected = (ins: FillInstruction) => {
+      const f = now!.fields.find((x) => x.id === ins.id);
+      return !!f && !!f.error && f.value.trim() !== '' && ![FieldKind.SELECT, FieldKind.COMBOBOX, FieldKind.RADIO].includes(f.kind);
+    };
+    for (const ins of failed.filter(rejected))
+      opts.onStep(
+        `Step ${step}: the site rejected the answer to "${(now.fields.find((f) => f.id === ins.id)?.label ?? '').slice(0, 60)}" - answering it again in its format`,
+      );
+    for (const ins of failed.filter((i) => !rejected(i)).slice(0, MAX_RECOVERED_FIELDS)) {
+      const before = snap.fields.find((f) => f.id === ins.id) ?? now.fields.find((f) => f.id === ins.id)!;
+      const widget = signatures[ins.id] ?? '';
+      const tried = new Set<FillMethod>([learned.get(ins.id) ?? FillMethod.NATIVE]);
+      if (learned.has(ins.id)) this.widgetRecipes?.record(opts.domain, widget, learned.get(ins.id)!, false);
+      const ladder = (METHODS_BY_KIND[before.kind] ?? TEXT_METHODS).filter((m) => !tried.has(m));
+      let fixed = false;
+      for (const method of ladder) {
+        tried.add(method);
+        await this.operate(page, ins, before, method);
+        await sleep(400);
+        now = (await this.snapshot(page, opts.scopeSelector).catch(() => null)) ?? now;
+        const field = now.fields.find((f) => f.id === ins.id);
+        fixed = !field || heldAnswer(field, ins);
+        this.widgetRecipes?.record(opts.domain, widget, method, fixed);
+        if (fixed) break;
+      }
+      // Every usual way failed: the AI looks at the field and says how to work it.
+      if (!fixed && opts.allowLlm && this.llm.isAvailable()) {
+        const advice = await this.askHowToFill(page, ins, before, [...tried]);
+        if (advice) {
+          await this.operate(page, ins, before, advice.method, advice.text);
+          await sleep(400);
+          now = (await this.snapshot(page, opts.scopeSelector).catch(() => null)) ?? now;
+          const field = now.fields.find((f) => f.id === ins.id);
+          fixed = !field || heldAnswer(field, ins);
+          this.widgetRecipes?.record(opts.domain, widget, advice.method, fixed);
+        }
+      }
+      if (fixed) {
+        held.add(ins.id);
+        opts.onStep(`Step ${step}: "${before.label.slice(0, 60)}" needed another way to fill - learned for next time`);
+      } else {
+        opts.onStep(`Step ${step}: could not fill "${before.label.slice(0, 60)}" - tried ${[...tried].join(', ')}`);
+      }
+    }
+    return held;
+  }
+
+  /** One way of operating a field, as a person would with mouse and keys. */
+  private async operate(page: Page, ins: FillInstruction, field: FormField, method: FillMethod, override?: string): Promise<void> {
+    const sel = `[data-jaa-id="${ins.id}"]`;
+    const text = override ?? intendedText(ins, field);
+    try {
+      switch (method) {
+        case FillMethod.NATIVE:
+          await this.fill(page, [ins]);
+          return;
+        case FillMethod.KEYS:
+          await page.click(sel, { count: 3 });
+          await page.keyboard.press('Backspace');
+          await page.keyboard.type(text, { delay: 25 });
+          return;
+        case FillMethod.OPEN_PICK:
+          await page.click(sel);
+          await sleep(500);
+          if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) {
+            if (!(await page.evaluate(clickChoiceNearFieldInPage, ins.id, text))) await page.keyboard.press('Escape');
+          }
+          return;
+        case FillMethod.TYPE_PICK:
+          await page.click(sel, { count: 3 });
+          await page.keyboard.press('Backspace');
+          await page.keyboard.type(text, { delay: 30 });
+          await sleep(800);
+          if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) {
+            await page.keyboard.press('ArrowDown');
+            await page.keyboard.press('Enter');
+          }
+          return;
+        case FillMethod.TYPE_ENTER:
+          await page.click(sel, { count: 3 });
+          await page.keyboard.press('Backspace');
+          await page.keyboard.type(text, { delay: 30 });
+          await sleep(600);
+          await page.keyboard.press('Enter');
+          return;
+        case FillMethod.LABEL_CLICK:
+          for (const part of text.split(' | ')) await page.evaluate(clickChoiceNearFieldInPage, ins.id, part);
+          return;
+      }
+    } catch (err) {
+      this.logger.debug(`${method} on ${ins.id} failed: ${(err as Error).message}`);
+    }
+  }
+
+  /** The AI, shown the field (a picture when the model takes images, and its code), says how to operate it. */
+  private async askHowToFill(page: Page, ins: FillInstruction, field: FormField, tried: FillMethod[]): Promise<{ method: FillMethod; text?: string } | null> {
+    try {
+      const html = redactSensitive(await page.evaluate(fieldHtmlInPage, ins.id));
+      const handle = await page.$(`[data-jaa-id="${ins.id}"]`);
+      const box = handle ? await handle.evaluateHandle((el) => el.parentElement?.parentElement ?? el.parentElement ?? el) : null;
+      const shot =
+        box && this.llm.acceptsImages() !== false
+          ? await (box as unknown as ElementHandle<Element>).screenshot({ type: 'jpeg', quality: 60, encoding: 'base64' }).catch(() => null)
+          : null;
+      const methods = Object.values(FillMethod);
+      const res = await this.llm.json<{ method?: string; text?: string }>(
+        `A job application field did not take its answer when filled. Say how a person would operate it.
+QUESTION: ${field.label}
+FIELD KIND (as read): ${field.kind}${field.options.length ? `; options seen: ${JSON.stringify(field.options.slice(0, 15))}` : ''}
+ANSWER TO PUT IN: ${isSensitive(field.label, intendedText(ins, field)) ? '[hidden]' : intendedText(ins, field)}
+ALREADY TRIED (did not work): ${tried.join(', ')}
+ITS HTML: ${html}
+
+Methods: native (set the value), keys (click and type), open-pick (click it open, click the option), type-pick (type to search, click the suggestion), type-enter (type, press Enter), label-click (click the choice's own words near the field).
+Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what to type or click, if different from the answer>"}`,
+        { purpose: LlmPurpose.FORM_ANSWER, maxTokens: 150, ...(shot ? { images: [{ mediaType: 'image/jpeg' as const, data: String(shot) }] } : {}) },
+      );
+      const method = methods.find((m) => m === res?.method);
+      if (!method) return null;
+      const text = typeof res.text === 'string' && res.text.trim() && !isSensitive(field.label, res.text) ? res.text.trim() : undefined;
+      return { method, text };
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * The options of searchable dropdowns that show them only when opened (Greenhouse's "Select..."): each is
    * opened, read and closed. Ones that wait for typing (a city search) show none and stay as they are.
@@ -208,7 +383,7 @@ export class FormRunnerService {
       // Searchable dropdowns show their options only when opened: read them first, so an answer becomes one of them.
       await this.readComboboxOptions(page, snap);
       const fillable = snap.fields.filter((f) => f.kind !== FieldKind.FILE || needsUpload(f));
-      const resolved = await this.answers.resolve(fillable, opts.ctx, { allowLlm: opts.allowLlm, force });
+      const resolved = await this.answers.resolve(fillable, opts.ctx, { allowLlm: opts.allowLlm, force, deferMemory: true });
       out.fields += resolved.stats.fields;
       out.memoryHits += resolved.stats.memoryHits;
       out.profileHits += resolved.stats.profileHits;
@@ -229,7 +404,9 @@ export class FormRunnerService {
             (resolved.stats.pastAnswerHints ? `, the AI saw your answers to ${resolved.stats.pastAnswerHints} similar question(s)` : '') +
             ')',
         );
-        await this.fill(page, resolved.instructions);
+        const held = await this.fillAndCheck(page, snap, resolved.instructions, opts, step);
+        // Saved as yours only what the form shows it took - a fill that failed teaches nothing.
+        this.answers.rememberHeld((resolved.toRemember ?? []).filter((r) => held.has(r.fieldId)));
         await jitter(250, 600);
       }
 
@@ -286,6 +463,7 @@ export class FormRunnerService {
         return { ...out, status: 'ready_to_submit', detail: 'Filled and waiting for you to press Submit' };
       }
       opts.onStep(`Step ${step}: "${action.text}"`);
+      if (sends) opts.onSend?.();
       await this.click(page, action.id);
       pressed++;
       justSent = sends;
@@ -398,6 +576,14 @@ export class FormRunnerService {
       } else if (ins.kind === FieldKind.COMBOBOX) {
         const input = await page.$(sel);
         if (!input) continue;
+        // A dropdown drawn as a button cannot be typed into: open it and click the option.
+        if (!(await input.evaluate((el) => el.tagName === 'INPUT').catch(() => true))) {
+          await input.click().catch(() => undefined);
+          await sleep(500);
+          if (!(await page.evaluate(pickTypeaheadOptionInPage, ins.value, true).catch(() => null))) await page.keyboard.press('Escape');
+          await sleep(300);
+          continue;
+        }
         await input.click({ count: 3 }).catch(() => undefined);
         await page.keyboard.press('Backspace');
         await input.type(ins.value, { delay: 35 });

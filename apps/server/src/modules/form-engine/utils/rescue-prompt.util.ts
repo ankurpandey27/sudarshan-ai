@@ -5,9 +5,11 @@ import { compressText } from '../../../common/utils/text.util';
 import { isSensitive, redactSensitive } from '../../answers/utils/sensitive.util';
 import { FieldKind } from '../enums/field-kind.enum';
 import { FormSnapshot } from '../interfaces/form-field.interface';
+import { UNTRUSTED_RULE, untrusted } from '../../llm/utils/untrusted.util';
 
 export const RESCUE_SYSTEM_PROMPT =
-  'You operate a web browser to finish a job application on a site that ordinary automation could not handle. The page may be in any language: judge controls by meaning. You can only press controls and choose options; typed answers are handled elsewhere.';
+  'You operate a web browser to finish a job application on a site that ordinary automation could not handle. The page may be in any language: judge controls by meaning. You can only press controls and choose options; typed answers are handled elsewhere. ' +
+  UNTRUSTED_RULE;
 
 /**
  * The page as the AI sees it: numbered controls and fields (no values that identify the candidate), a
@@ -35,7 +37,7 @@ export function buildRescuePrompt(snap: FormSnapshot, goal: string, history: str
 ADDRESS: ${snap.url.split('?')[0]}
 
 PAGE TEXT (excerpt):
-${compressText(redactSensitive(snap.text), size.text)}
+${untrusted('page text', compressText(redactSensitive(snap.text), size.text))}
 ${snap.errors.length ? `\nERRORS SHOWN: ${snap.errors.slice(0, 3).join(' | ')}\n` : ''}
 CONTROLS AND FIELDS:
 ${items.slice(0, size.items).join('\n')}

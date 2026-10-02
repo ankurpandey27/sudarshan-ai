@@ -22,6 +22,8 @@ export interface RunFormOptions {
   onStep: (message: string) => void;
   /** A picture of the page at each step, for the step-by-step replay. */
   onShot?: (page: Page, label: string) => Promise<void>;
+  /** Called just before a button that sends the application is pressed - a crash after it must not apply twice. */
+  onSend?: () => void;
   /** Let the rescue agent take over when the usual way gets stuck (default: yes, when the AI may be used). */
   rescue?: boolean;
 }

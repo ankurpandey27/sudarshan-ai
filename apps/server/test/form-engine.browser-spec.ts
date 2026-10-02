@@ -383,6 +383,34 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     }
   });
 
+  it('fills a required dropdown drawn as a button ("Select an option") by opening it and clicking the option (Indeed, 2026-10-01)', async () => {
+    await page.goto(`file://${join(__dirname, 'fixtures', 'button-dropdown.html').replace(/\\/g, '/')}`);
+    const snap = await runner.snapshot(page, null);
+    const hear = snap.fields.find((f) => /how did you hear/i.test(f.label));
+    // "Select an option" is no answer: the field still needs one.
+    expect(hear?.value).toBe('');
+    const picked: string[] = [];
+    await page.exposeFunction('__note', (v: string) => picked.push(v)).catch(() => undefined);
+    await page.evaluate(() => {
+      const w = window as unknown as { __note: (v: string) => void };
+      new MutationObserver(() => {
+        const t = document.getElementById('hear')?.textContent;
+        if (t && t !== 'Select an option') w.__note(t);
+      }).observe(document.body, { subtree: true, childList: true, characterData: true });
+    });
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx: { ...ctx, job: { ...ctx.job, foundOn: 'Indeed' } as typeof ctx.job },
+      domain: 'fixture.local',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    expect(out.status).toBe('applied');
+    expect(picked).toContain('Indeed');
+  });
+
   it('counts a thank-you shown right after Submit, even with the job form still behind it - never applies twice (DataOrb, 2026-09-30)', async () => {
     await page.goto(`file://${join(__dirname, 'fixtures', 'thanks-over-form.html').replace(/\\/g, '/')}`);
     const out = await runner.run(page, {

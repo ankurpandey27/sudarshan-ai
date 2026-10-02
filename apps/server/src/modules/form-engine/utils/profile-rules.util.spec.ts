@@ -117,4 +117,14 @@ describe('answerFromProfile', () => {
     expect(answerFromProfile(ctx, { ...field('I agree to the privacy policy', FieldKind.CHECKBOX), value: 'false' })?.value).toBe('true');
     expect(answerFromProfile(ctx, { ...field('Follow Acme to stay up to date', FieldKind.CHECKBOX), value: 'true' })?.value).toBe('true');
   });
+
+  it('reads "Experience working with X?" in a 20-character box as years of X (LinkedIn, AppGreat, 2026-10-01)', () => {
+    const short = (label: string) => ({ ...field(label, FieldKind.TEXT), maxLength: 20 });
+    const withSkills = { ...ctx, skillYears: (s: string) => (/postgres|mysql|mongo/i.test(s) ? 5 : null) };
+    expect(answerFromProfile(withSkills, short('Experience working with databases (SQL or NoSQL): PostgreSQL, MySQL, MongoDB, or similar?'))?.value).toBe('5');
+    // The same words in a long box are a question to describe, not a number.
+    expect(answerFromProfile(withSkills, { ...field('Experience working with databases (PostgreSQL)?', FieldKind.TEXTAREA), maxLength: 2000 })?.value).not.toBe(
+      '5',
+    );
+  });
 });

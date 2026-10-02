@@ -11,7 +11,7 @@ import { detectRemote, extractSkills, parseSalary } from '../discovery/utils/job
 import { JobSource } from './enums/job-source.enum';
 import { JobPlatform } from './enums/job-platform.enum';
 import { PLATFORM_SQL } from './constants/job-platform.constants';
-import { MERGE_KEEP_ORDER, MERGEABLE, SAME_ROLE_WINDOW_DAYS } from './constants/jobs.constants';
+import { INTERRUPTED_AFTER_SEND, MERGE_KEEP_ORDER, MERGEABLE, SAME_ROLE_WINDOW_DAYS } from './constants/jobs.constants';
 import { roleKey } from './utils/role-key.util';
 import { JobList } from './interfaces/job-list.interface';
 import { JobStatus } from './enums/job-status.enum';
@@ -37,21 +37,29 @@ export class JobsService implements OnApplicationBootstrap {
     @Optional() private readonly taste?: TasteService,
   ) {}
 
-  // Rows left in APPLYING by a crash go back to the queue.
+  // Rows left in APPLYING by a crash go back to the queue - unless Submit had already been pressed:
+  // the application may have gone through, so you check it instead of Sudarshan applying twice.
   onApplicationBootstrap(): void {
-    const { changes } = this.storage.run('UPDATE jobs SET status = ?, updated_at = ? WHERE status = ?', [
-      JobStatus.APPROVED,
-      new Date().toISOString(),
-      JobStatus.APPLYING,
-    ]);
+    this.recoverInterrupted();
+    const merged = this.mergeSameRoles();
+    if (merged > 0) this.logger.log(`Merged ${merged} duplicate listing(s) of the same job`);
+  }
+
+  recoverInterrupted(): void {
+    const now = new Date().toISOString();
+    const sent = this.storage.run(
+      `UPDATE jobs SET status = ?, reason = ?, updated_at = ? WHERE status = ?
+         AND id IN (SELECT job_id FROM attempts WHERE finished_at IS NULL AND sent_at IS NOT NULL)`,
+      [JobStatus.MANUAL, INTERRUPTED_AFTER_SEND, now, JobStatus.APPLYING],
+    ).changes;
+    if (sent > 0) this.logger.warn(`${sent} application(s) stopped right after Submit - check them by hand`);
+    const { changes } = this.storage.run('UPDATE jobs SET status = ?, updated_at = ? WHERE status = ?', [JobStatus.APPROVED, now, JobStatus.APPLYING]);
     if (changes > 0) this.logger.warn(`Re-queued ${changes} application(s) interrupted by the last shutdown`);
     // Their attempts end too, as interrupted - not "running" for ever in the history and the statistics.
     this.storage.run(
       "UPDATE attempts SET finished_at = ?, outcome = 'interrupted', result = 'interrupted', detail = COALESCE(detail, 'Interrupted by a shutdown') WHERE finished_at IS NULL",
-      [new Date().toISOString()],
+      [now],
     );
-    const merged = this.mergeSameRoles();
-    if (merged > 0) this.logger.log(`Merged ${merged} duplicate listing(s) of the same job`);
   }
 
   /**
@@ -440,6 +448,11 @@ export class JobsService implements OnApplicationBootstrap {
 
   startAttempt(jobId: number): number {
     return this.storage.run('INSERT INTO attempts (job_id, started_at) VALUES (?, ?)', [jobId, new Date().toISOString()]).lastInsertRowid;
+  }
+
+  /** The button that sends the application is about to be pressed in this attempt. */
+  markSent(attemptId: number): void {
+    this.storage.run('UPDATE attempts SET sent_at = COALESCE(sent_at, ?) WHERE id = ?', [new Date().toISOString(), attemptId]);
   }
 
   /** `result` is how the attempt ended in detail (e.g. "run:stuck", "prep:no_apply_button"), used for platform health. */

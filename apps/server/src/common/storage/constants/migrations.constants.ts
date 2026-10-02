@@ -255,4 +255,32 @@ export const MIGRATIONS: string[] = [
     at      TEXT NOT NULL
   );
   `,
+  // How to operate each kind of field, learned from what worked (per site; shared once proved on several).
+  `
+  CREATE TABLE widget_recipes (
+    domain TEXT NOT NULL,
+    widget TEXT NOT NULL,
+    method TEXT NOT NULL,
+    ok     INTEGER NOT NULL DEFAULT 0,
+    fail   INTEGER NOT NULL DEFAULT 0,
+    at     TEXT NOT NULL,
+    PRIMARY KEY (domain, widget, method)
+  );
+  `,
+  // Your Story Bank: true, specific stories from your work, for written answers on every portal.
+  `
+  CREATE TABLE stories (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    prompt_id  TEXT,
+    title      TEXT NOT NULL,
+    text       TEXT NOT NULL,
+    skills     TEXT NOT NULL DEFAULT '[]',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  );
+  `,
+  // When the button that sends the application was pressed: a crash after it never leads to applying twice.
+  `
+  ALTER TABLE attempts ADD COLUMN sent_at TEXT;
+  `,
 ];

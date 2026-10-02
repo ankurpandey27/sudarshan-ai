@@ -19,6 +19,8 @@ export interface AnswerContext {
   resumePath: string | null;
   /** null when the skill is not in the profile. */
   skillYears: (skill: string) => number | null;
+  /** Your Story Bank stories that fit this job, for written answers. */
+  stories?: string[];
 }
 
 export interface RuleAnswer {

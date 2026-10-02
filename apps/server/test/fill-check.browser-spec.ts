@@ -1,0 +1,184 @@
+// Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
+// SPDX-License-Identifier: MIT
+
+import { join } from 'node:path';
+import puppeteer, { Browser } from 'puppeteer-core';
+import { StorageService } from '../src/common/storage/storage.service';
+import { AnswersService } from '../src/modules/answers/answers.service';
+import { GENERIC_SUCCESS } from '../src/modules/apply/constants/apply.constants';
+import { findBrowserExecutable } from '../src/modules/browser/utils/browser-executable.util';
+import { AnswerEngineService } from '../src/modules/form-engine/answer-engine.service';
+import { FormRunnerService } from '../src/modules/form-engine/form-runner.service';
+import { PlaybookService } from '../src/modules/form-engine/playbook.service';
+import { RecipesService } from '../src/modules/form-engine/recipes.service';
+import { WidgetRecipesService } from '../src/modules/form-engine/widget-recipes.service';
+import { clickChoiceNearFieldInPage } from '../src/modules/form-engine/scripts/field-widget.script';
+import { LlmService } from '../src/modules/llm/llm.service';
+import { EMPTY_PROFILE } from '../src/modules/profile/constants/profile.constants';
+
+const FIXTURE = `file://${join(__dirname, 'fixtures', 'keys-only.html').replace(/\\/g, '/')}`;
+const noLlm = { isConfigured: () => false, isAvailable: () => false } as unknown as LlmService;
+
+describe('Checking every fill, and learning how to operate a field (real browser)', () => {
+  let browser: Browser;
+  beforeAll(async () => {
+    const executablePath = findBrowserExecutable();
+    if (!executablePath) throw new Error('Chrome/Edge not found - browser tests need one installed');
+    browser = await puppeteer.launch({ executablePath, headless: true, args: ['--allow-file-access-from-files'] });
+  });
+  afterAll(async () => {
+    await browser?.close();
+  });
+
+  it('notices a field that did not take its answer, finds the way that works, and uses it straight away next time', async () => {
+    const storage = new StorageService(':memory:');
+    const widgets = new WidgetRecipesService(storage);
+    const runner = new FormRunnerService(
+      new AnswerEngineService(new AnswersService(storage), noLlm),
+      new RecipesService(storage),
+      noLlm,
+      new PlaybookService(storage),
+      undefined,
+      undefined,
+      widgets,
+    );
+    const ctx = {
+      profile: { ...EMPTY_PROFILE, firstName: 'Priya', lastName: 'Sharma', country: 'India' },
+      job: { id: 1, title: 'Backend', company: 'Acme', location: 'Noida', description: '' },
+      resumePath: null,
+      skillYears: () => null,
+    };
+    const run = async () => {
+      const page = await browser.newPage();
+      await page.goto(FIXTURE);
+      const steps: string[] = [];
+      const out = await runner.run(page, {
+        scopeSelector: null,
+        successPattern: GENERIC_SUCCESS,
+        ctx,
+        domain: 'careers.guarded.example',
+        allowLlm: false,
+        pauseBeforeSubmit: false,
+        onStep: (m) => steps.push(m),
+      });
+      await page.close();
+      return { out, steps };
+    };
+
+    // First time: the usual fill is thrown away; typing works, and is learned.
+    const first = await run();
+    expect(first.out.status).toBe('applied');
+    expect(first.steps.join('\n')).toMatch(/needed another way to fill - learned for next time/);
+    expect(storage.get('SELECT method, ok FROM widget_recipes WHERE ok > 0')).toEqual(expect.objectContaining({ method: 'keys', ok: 1 }));
+
+    // Next time: straight to typing, no failed fill and no recovery.
+    const second = await run();
+    expect(second.out.status).toBe('applied');
+    expect(second.steps.join('\n')).not.toMatch(/another way|could not fill/);
+  });
+
+  it('asks the AI how to operate a field when no usual way works, and learns its answer', async () => {
+    const storage = new StorageService(':memory:');
+    const widgets = new WidgetRecipesService(storage);
+    const asked: string[] = [];
+    const llm = {
+      isAvailable: () => true,
+      acceptsImages: () => false,
+      json: async (prompt: string) => {
+        if (prompt.includes('did not take its answer')) {
+          asked.push(prompt);
+          return { method: 'keys', text: 'P. Sharma' };
+        }
+        return { answers: [], confirmed: false };
+      },
+    } as unknown as LlmService;
+    const runner = new FormRunnerService(
+      new AnswerEngineService(new AnswersService(storage), llm),
+      new RecipesService(storage),
+      llm,
+      new PlaybookService(storage),
+      undefined,
+      undefined,
+      widgets,
+    );
+    const page = await browser.newPage();
+    // A site that accepts only its own format ("P. Sharma"): anything else is wiped as it is typed.
+    await page.setContent(`<form onsubmit="return false"><label for="n">First name *</label><input id="n" required>
+      <button type="button" onclick="if(document.getElementById('n').value)document.body.innerHTML='<h1>Thank you for applying!</h1>'">Submit application</button></form>
+      <script>const n=document.getElementById('n');n.addEventListener('input',()=>{if(!'P. Sharma'.startsWith(n.value))n.value='';});</script>`);
+    const steps: string[] = [];
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx: {
+        profile: { ...EMPTY_PROFILE, firstName: 'Priya', lastName: 'Sharma', country: 'India' },
+        job: { id: 1, title: 'Backend', company: 'Acme', location: 'Noida', description: '' },
+        resumePath: null,
+        skillYears: () => null,
+      },
+      domain: 'careers.strict.example',
+      allowLlm: true,
+      pauseBeforeSubmit: false,
+      rescue: false,
+      onStep: (m) => steps.push(m),
+    });
+    await page.close();
+    expect(asked).toHaveLength(1);
+    expect(asked[0]).toMatch(/QUESTION: First name/);
+    expect(steps.join('\n')).toMatch(/learned for next time/);
+    expect(out.status).toBe('applied');
+  });
+
+  it('clicks a choice only within its own question, never another question\'s "Yes"', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'two-yes.html').replace(/\\/g, '/')}`);
+    const storage = new StorageService(':memory:');
+    const runner = new FormRunnerService(
+      new AnswerEngineService(new AnswersService(storage), noLlm),
+      new RecipesService(storage),
+      noLlm,
+      new PlaybookService(storage),
+    );
+    const snap = await runner.snapshot(page, null);
+    const visa = snap.fields.find((f) => /visa/i.test(f.label))!;
+    expect(await page.evaluate(clickChoiceNearFieldInPage, visa.id, 'Yes')).toBe(true);
+    const checked = await page.evaluate(() =>
+      Array.from(document.querySelectorAll('[role=radiogroup]')).map((g) => g.id + ':' + (g.querySelector('[aria-checked=true]')?.textContent ?? '-')),
+    );
+    expect(checked).toEqual(['rel:-', 'visa:Yes']);
+    await page.close();
+  });
+
+  it('answers "Experience working with X?" in a 20-character box with years, reading the counter as its limit (LinkedIn, AppGreat, 2026-10-01)', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'linkedin-short-answers.html').replace(/\\/g, '/')}`);
+    const storage = new StorageService(':memory:');
+    const runner = new FormRunnerService(
+      new AnswerEngineService(new AnswersService(storage), noLlm),
+      new RecipesService(storage),
+      noLlm,
+      new PlaybookService(storage),
+      undefined,
+      undefined,
+      new WidgetRecipesService(storage),
+    );
+    const snap = await runner.snapshot(page, null);
+    expect(snap.fields.map((f) => f.maxLength)).toEqual([20, 20]);
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx: {
+        profile: { ...EMPTY_PROFILE, country: 'India', totalYearsExperience: 5 },
+        job: { id: 1, title: 'Backend', company: 'AppGreat', location: 'Remote', description: '' },
+        resumePath: null,
+        skillYears: (s: string) => (/postgres|mysql|mongo/i.test(s) ? 5 : /github actions|circleci|ci\/cd/i.test(s) ? 3 : null),
+      },
+      domain: 'linkedin.com',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    expect(out.status).toBe('applied');
+    await page.close();
+  });
+});

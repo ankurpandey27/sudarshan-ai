@@ -25,6 +25,7 @@ import { Review } from './pages/review';
 import { Questions } from './pages/questions';
 import { Applications } from './pages/applications';
 import { AnswersPage } from './pages/answers';
+import { StoriesPage } from './pages/stories';
 import { ProfilePage } from './pages/profile';
 import { SettingsPage } from './pages/settings';
 import { ActivityPage } from './pages/activity';
@@ -85,6 +86,7 @@ createRoot(document.getElementById('root')!).render(
                 <Route path="questions" element={<Questions />} />
                 <Route path="applications" element={<Applications />} />
                 <Route path="answers" element={<AnswersPage />} />
+                <Route path="stories" element={<StoriesPage />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="settings" element={<SettingsPage />} />
                 <Route path="activity" element={<ActivityPage />} />

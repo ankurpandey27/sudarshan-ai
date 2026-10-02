@@ -28,6 +28,7 @@ import { HealthModule } from './modules/health/health.module';
 import { TasteModule } from './modules/taste/taste.module';
 import { AppliedSyncModule } from './modules/applied-sync/applied-sync.module';
 import { LearnersModule } from './modules/learners/learners.module';
+import { StoriesModule } from './modules/stories/stories.module';
 
 @Module({
   imports: [
@@ -43,6 +44,7 @@ import { LearnersModule } from './modules/learners/learners.module';
     JobsModule,
     AnalyticsModule,
     AnswersModule,
+    StoriesModule,
     BrowserModule,
     FormEngineModule,
     DiscoveryModule,

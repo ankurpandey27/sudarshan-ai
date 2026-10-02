@@ -4,15 +4,17 @@
 import { compressText } from '../../../common/utils/text.util';
 import { redactSensitive } from '../../answers/utils/sensitive.util';
 import { FormAction } from '../interfaces/form-field.interface';
+import { UNTRUSTED_RULE, untrusted } from '../../llm/utils/untrusted.util';
 
 export const NAVIGATE_SYSTEM_PROMPT =
-  'You operate a web browser to submit a job application. Pick the single control that moves the application forward. The page may be in any language (Dutch "Solliciteren", German "Bewerben", Japanese "応募する" all mean Apply): judge by meaning, never by English words alone. Never pick navigation to other jobs, login, or language switches.';
+  'You operate a web browser to submit a job application. Pick the single control that moves the application forward. The page may be in any language (Dutch "Solliciteren", German "Bewerben", Japanese "応募する" all mean Apply): judge by meaning, never by English words alone. Never pick navigation to other jobs, login, or language switches. ' +
+  UNTRUSTED_RULE;
 
 export function buildNavigatePrompt(goal: string, pageText: string, actions: FormAction[]): string {
   return `GOAL: ${goal}
 
 PAGE TEXT (excerpt):
-${compressText(redactSensitive(pageText), 1500)}
+${untrusted('page text', compressText(redactSensitive(pageText), 1500))}
 
 CLICKABLE CONTROLS:
 ${JSON.stringify(actions.filter((a) => !a.disabled).map((a) => ({ id: a.id, text: a.text })))}
@@ -23,12 +25,13 @@ Set "applicationDone": true only if the page clearly says the application was al
 }
 
 export const CONFIRM_SYSTEM_PROMPT =
-  'You check a web page right after a job application form was submitted. The page may be in any language. Answer only from what the page says.';
+  'You check a web page right after a job application form was submitted. The page may be in any language. Answer only from what the page says. ' +
+  UNTRUSTED_RULE;
 
 /** Asks whether the page (in any language) confirms that the application was sent. */
 export function buildConfirmPrompt(pageText: string): string {
   return `PAGE TEXT (excerpt):
-${compressText(redactSensitive(pageText), 1500)}
+${untrusted('page text', compressText(redactSensitive(pageText), 1500))}
 
 Does this page confirm that the job application was submitted or received (e.g. "thank you for your application", in any language)?
 An error, a missing-field message, a login page or the same form again is not a confirmation.

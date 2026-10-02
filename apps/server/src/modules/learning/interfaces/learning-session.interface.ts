@@ -17,5 +17,7 @@ export interface LearningSession {
   moves: LearnedMove[];
   answers: number;
   steps: number;
+  /** Kinds of field whose way of filling was learned from you (widget signatures). */
+  ways: Set<string>;
   done: boolean;
 }

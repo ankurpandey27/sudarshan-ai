@@ -6,6 +6,7 @@ import { useSaved } from '../lib/use-saved';
 import { NavLink, Outlet } from 'react-router';
 import {
   BookOpenCheck,
+  NotebookPen,
   Briefcase,
   Inbox,
   Menu,
@@ -83,6 +84,7 @@ export function Layout() {
       <Item rail={rail} to="/questions" icon={<MessageCircleQuestion className="size-4" />} label="Questions" count={agent?.openQuestions} tone="warn" />
       <Item rail={rail} to="/applications" icon={<Briefcase className="size-4" />} label="Applications" count={stats?.appliedTotal} />
       <Item rail={rail} to="/answers" icon={<BookOpenCheck className="size-4" />} label="Answer memory" />
+      <Item rail={rail} to="/stories" icon={<NotebookPen className="size-4" />} label="Story Bank" />
       <Item rail={rail} to="/activity" icon={<ScrollText className="size-4" />} label="Flight log" />
       <Item rail={rail} to="/profile" icon={<UserRound className="size-4" />} label="Profile" />
       <Item rail={rail} to="/settings" icon={<Settings2 className="size-4" />} label="Settings" />

@@ -1,0 +1,48 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Indeed-style questions</title>
+<style>.menu{border:1px solid #ccc}.menu li{padding:4px;list-style:none}</style></head>
+<body>
+<!-- TeamViewer on Indeed (2026-10-01): a required dropdown drawn as a button, showing "Select an option"
+     until something is picked; its options exist only while it is open. -->
+<form onsubmit="return false">
+  <p id="q1">How did you hear about this opportunity? *</p>
+  <div class="wrap">
+    <button type="button" id="hear" role="combobox" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="q1" aria-required="true">Select an option</button>
+  </div>
+  <fieldset>
+    <legend>Which gender do you identify with? *</legend>
+    <label><input type="radio" name="g" value="f" required> Female</label>
+    <label><input type="radio" name="g" value="m"> Male</label>
+    <label><input type="radio" name="g" value="n"> I do not wish to answer</label>
+  </fieldset>
+  <button type="button" id="continue">Continue</button>
+</form>
+<script>
+  const OPTIONS = ['Company website', 'Indeed', 'LinkedIn', 'Referral', 'Other'];
+  const hear = document.getElementById('hear');
+  window.__picked = null;
+  hear.addEventListener('click', () => {
+    const open = document.querySelector('.menu');
+    if (open) { open.remove(); hear.setAttribute('aria-expanded', 'false'); return; }
+    const menu = document.createElement('ul');
+    menu.className = 'menu';
+    menu.setAttribute('role', 'listbox');
+    for (const o of OPTIONS) {
+      const li = document.createElement('li');
+      li.setAttribute('role', 'option');
+      li.textContent = o;
+      li.addEventListener('click', () => { hear.textContent = o; window.__picked = o; menu.remove(); hear.setAttribute('aria-expanded', 'false'); });
+      menu.appendChild(li);
+    }
+    hear.parentElement.appendChild(menu);
+    hear.setAttribute('aria-expanded', 'true');
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') document.querySelectorAll('.menu').forEach((m) => m.remove()); });
+  document.getElementById('continue').addEventListener('click', () => {
+    if (!window.__picked || !document.querySelector('input[name=g]:checked')) return;
+    document.body.innerHTML = '<h1>Your application has been submitted</h1>';
+  });
+</script>
+</body>
+</html>

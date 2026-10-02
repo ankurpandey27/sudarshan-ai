@@ -25,3 +25,7 @@ export const MERGE_KEEP_ORDER: JobStatus[] = [
 
 /** Copies that may be dismissed as duplicates: only ones nothing has happened to yet. */
 export const MERGEABLE: JobStatus[] = [JobStatus.NEW, JobStatus.REVIEW, JobStatus.APPROVED, JobStatus.SKIPPED];
+
+/** Shown on a job whose application was stopped right after Submit was pressed: it may have gone through. */
+export const INTERRUPTED_AFTER_SEND =
+  'Sudarshan was stopped right after pressing Submit - check the site or your email to see whether it went through, then mark it Applied or queue it again';

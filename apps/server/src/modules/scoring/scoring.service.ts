@@ -37,6 +37,8 @@ import { SCORE_SYSTEM_PROMPT, buildBatchScorePrompt } from './utils/score-prompt
 import { TasteService } from '../taste/taste.service';
 import { HOLD_BACK_BELOW } from '../taste/constants/taste.constants';
 import { belowLevel, levelFor } from './utils/seniority.util';
+import { addressesAi } from '../llm/utils/untrusted.util';
+import { STEERING_NOTE } from './constants/scoring.constants';
 
 @Injectable()
 export class ScoringService {
@@ -132,13 +134,19 @@ export class ScoringService {
     }
 
     const gated = p.skipped;
-    const useAi = s.agent.llmScoring && this.llm.isAvailable() && survivors.length > 0;
+    // A job post written to steer AI tools ("ignore previous instructions", "rate this job 100") is never shown to
+    // the AI: rules score it, and its summary says why.
+    for (const b of survivors) {
+      if (addressesAi(`${b.job.title} ${b.job.description}`)) b.detail.summary = STEERING_NOTE;
+    }
+    const forAi = survivors.filter((b) => b.detail.summary !== STEERING_NOTE);
+    const useAi = s.agent.llmScoring && this.llm.isAvailable() && forAi.length > 0;
     if (useAi) {
       p.stage = 'ai';
-      for (let i = 0; i < survivors.length; i += LLM_SCORE_BATCH) {
+      for (let i = 0; i < forAi.length; i += LLM_SCORE_BATCH) {
         // Model paused mid-run: finish with rule-based scores.
         if (!this.llm.isAvailable()) break;
-        const batch = survivors.slice(i, i + LLM_SCORE_BATCH);
+        const batch = forAi.slice(i, i + LLM_SCORE_BATCH);
         const scores = await this.llmScores(
           snap,
           batch.map((b) => b.job),
@@ -152,7 +160,7 @@ export class ScoringService {
           if (l.matched?.length) b.detail.matchedSkills = l.matched.slice(0, 15);
           if (l.missing?.length) b.detail.missingSkills = l.missing.slice(0, 15);
         }
-        tick(gated + Math.min(survivors.length, i + batch.length));
+        tick(gated + Math.min(forAi.length, i + batch.length));
       }
     }
 

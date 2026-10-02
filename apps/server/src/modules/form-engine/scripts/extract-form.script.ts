@@ -120,6 +120,20 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     return text.length >= 2 ? text.slice(0, 300) : '';
   };
 
+  // A limit shown only as a counter under the field ("14/20", "64 / 20 characters" - LinkedIn, 2026-10-01).
+  const counterLimit = (el: Element): number | null => {
+    let node: Element | null = el.parentElement;
+    for (let depth = 0; node && depth < 3; depth++, node = node.parentElement) {
+      if (controlCount(node) > 1) break;
+      for (const t of Array.from(node.querySelectorAll('span, div, p, small'))) {
+        if (t.children.length) continue;
+        const m = /^\s*\d+\s*\/\s*(\d{1,5})(\s*(characters|chars))?\s*$/i.exec((t as HTMLElement).innerText || t.textContent || '');
+        if (m) return Number(m[1]);
+      }
+    }
+    return null;
+  };
+
   const labelFor = (el: Element, exclude: string[] = [], ownCount = 1): string => {
     const input = el as HTMLInputElement;
     const labelled = byIdText(el.getAttribute('aria-labelledby'));
@@ -367,7 +381,9 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       value = input.files && input.files.length ? input.files[0].name : '';
     } else if (el.getAttribute('role') === 'combobox' || el.getAttribute('aria-autocomplete') === 'list' || input.getAttribute('list') !== null) {
       kind = 'combobox';
-      value = input.value ?? textOf(el);
+      // A dropdown drawn as a button (Indeed) shows "Select an option" until something is picked: that is no answer.
+      const shown = tagName === 'INPUT' ? input.value : textOf(el);
+      value = /^(select|choose|pick|please (select|choose)|--)/i.test(clean(shown)) || clean(shown) === clean(el.getAttribute('aria-placeholder')) ? '' : shown;
     } else {
       kind = ['number', 'email', 'tel', 'url', 'date'].includes(type) ? type : 'text';
       value = input.value;
@@ -383,7 +399,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       options,
       optionIds: [],
       error: errorFor(el),
-      maxLength: input.maxLength && input.maxLength > 0 ? input.maxLength : null,
+      maxLength: input.maxLength && input.maxLength > 0 ? input.maxLength : counterLimit(el),
       min: input.min || null,
       max: input.max || null,
       accept: type === 'file' ? input.accept || null : null,

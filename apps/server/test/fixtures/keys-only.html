@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Keyboard-only field</title></head>
+<body>
+<!-- A field that throws away any value not typed key by key (sites that guard inputs against pasting or
+     scripts): the usual fill does not take, typing does. -->
+<form onsubmit="return false">
+  <label for="first">First name *</label>
+  <input id="first" name="first" required>
+  <button type="button" id="next">Submit application</button>
+</form>
+<script>
+  window.__fills = 0;
+  const input = document.getElementById('first');
+  let typed = false;
+  input.addEventListener('keydown', () => { typed = true; });
+  input.addEventListener('input', () => {
+    window.__fills++;
+    // Not typed: thrown away, as some sites do.
+    if (!typed) input.value = '';
+    typed = false;
+  });
+  document.getElementById('next').addEventListener('click', () => {
+    if (input.value.trim()) document.body.innerHTML = '<h1>Thank you for applying!</h1>';
+  });
+</script>
+</body>
+</html>

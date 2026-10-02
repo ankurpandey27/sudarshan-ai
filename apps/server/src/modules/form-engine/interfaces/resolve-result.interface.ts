@@ -29,12 +29,16 @@ export interface ResolveResult {
   /** Required uploads other than the resume, e.g. a cover letter. */
   blockers: string[];
   stats: ResolveStats;
+  /** AI answers to save as yours once the form shows they took (deferMemory). */
+  toRemember?: { fieldId: string; question: string; answer: string; kind: string }[];
 }
 
 export interface ResolveOptions {
   allowLlm: boolean;
   /** Re-answer these even if filled (validation failed). */
   force?: Set<string>;
+  /** Save AI answers only after the caller saw them take in the form (never a lesson from a fill that failed). */
+  deferMemory?: boolean;
 }
 
 export interface LlmFieldAnswer {

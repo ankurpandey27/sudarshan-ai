@@ -3,7 +3,7 @@
 
 // Runs in the page via page.evaluate: every function must be self-contained.
 
-export function pickTypeaheadOptionInPage(value: string): string | null {
+export function pickTypeaheadOptionInPage(value: string, strict = false): string | null {
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
   const want = norm(value);
   const opts = Array.from(
@@ -20,8 +20,9 @@ export function pickTypeaheadOptionInPage(value: string): string | null {
       return { el, t, score };
     })
     .sort((a, b) => b.score - a.score);
-  // No textual match: the first suggestion is what a user would pick.
+  // No textual match: the first suggestion is what a user would pick - after typing a search, never in a plain list.
   const best = scored[0];
+  if (strict && best.score === 0) return null;
   best.el.scrollIntoView({ block: 'nearest' });
   best.el.click();
   return best.t;
