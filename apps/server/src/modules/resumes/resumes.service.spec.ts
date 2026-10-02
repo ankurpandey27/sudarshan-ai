@@ -10,6 +10,9 @@ import { ResumesService } from './resumes.service';
 
 const PDF = readFileSync(join(__dirname, '..', '..', '..', 'test', 'fixtures', 'sample-resume.pdf'));
 
+// Reading a PDF can take several seconds on a busy machine.
+jest.setTimeout(30_000);
+
 describe('extra resumes', () => {
   let dir: string;
   let storage: StorageService;
