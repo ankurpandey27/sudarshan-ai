@@ -257,9 +257,9 @@ export class AgentService implements OnApplicationShutdown {
     const s = this.settings.get().sources;
     const blocked: AgentStatus['blockedSources'] = [];
     const out: JobPlatform[] = [];
-    const check = async (platform: JobPlatform, cfg: SourceSettings, site?: SiteId) => {
+    const check = async (platform: JobPlatform, cfg: SourceSettings | undefined, site?: SiteId) => {
       const queued = this.jobs.queuedOn(platform);
-      if (!cfg.enabled) {
+      if (!cfg?.enabled) {
         // Approved jobs on a switched-off platform wait; they are not lost.
         if (queued > 0) blocked.push({ source: platform, reason: `switched off - ${queued} approved job(s) wait until you turn it on` });
         return;
@@ -290,6 +290,9 @@ export class AgentService implements OnApplicationShutdown {
     await check(JobPlatform.NAUKRI, s.naukri, 'naukri');
     await check(JobPlatform.INSTAHYRE, s.instahyre, 'instahyre');
     await check(JobPlatform.INDEED, s.indeed, 'indeed');
+    // No login check before applying: their sign-in is checked at the form.
+    await check(JobPlatform.FOUNDIT, s.foundit);
+    await check(JobPlatform.HIRIST, s.hirist);
     await check(JobPlatform.OTHER, s.links);
     const changed = JSON.stringify(blocked) !== JSON.stringify(this.blocked);
     this.blocked = blocked;

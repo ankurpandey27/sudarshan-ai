@@ -10,10 +10,12 @@ import { LinkedInSource } from './sources/linkedin.source';
 import { NaukriSource } from './sources/naukri.source';
 import { InstahyreSource } from './sources/instahyre.source';
 import { IndeedSource } from './sources/indeed.source';
+import { FounditSource } from './sources/foundit.source';
+import { HiristSource } from './sources/hirist.source';
 
 @Module({
   imports: [BrowserModule, JobsModule, ProfileModule],
-  providers: [DiscoveryService, LinkedInSource, NaukriSource, InstahyreSource, IndeedSource],
+  providers: [DiscoveryService, LinkedInSource, NaukriSource, InstahyreSource, IndeedSource, FounditSource, HiristSource],
   exports: [DiscoveryService],
 })
 export class DiscoveryModule {}

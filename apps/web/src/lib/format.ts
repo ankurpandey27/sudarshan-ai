@@ -39,6 +39,8 @@ export const PLATFORMS = [
   { key: 'naukri', label: 'Naukri', setting: 'naukri' },
   { key: 'indeed', label: 'Indeed', setting: 'indeed' },
   { key: 'instahyre', label: 'Instahyre', setting: 'instahyre' },
+  { key: 'foundit', label: 'Foundit', setting: 'foundit' },
+  { key: 'hirist', label: 'Hirist', setting: 'hirist' },
   { key: 'other', label: 'Other sites', setting: 'links' },
 ] as const;
 

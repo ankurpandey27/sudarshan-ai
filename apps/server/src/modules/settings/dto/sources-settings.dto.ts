@@ -24,6 +24,16 @@ export class SourcesSettingsDto {
   @IsOptional()
   @ValidateNested()
   @Type(() => SourceSettingsDto)
+  foundit?: SourceSettingsDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SourceSettingsDto)
+  hirist?: SourceSettingsDto;
+
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SourceSettingsDto)
   indeed?: SourceSettingsDto;
 
   @IsOptional()

@@ -240,6 +240,8 @@ export function SettingsPage() {
                   ['naukri', 'Naukri', 'Apply + Naukri chat questions'],
                   ['indeed', 'Indeed', 'Search and "Easily apply" on Indeed - keep this low, Indeed restricts automation'],
                   ['instahyre', 'Instahyre', 'Search and one-click apply on Instahyre'],
+                  ['foundit', 'Foundit', 'Search Foundit (Monster India) - log in to it first; listings that only point to LinkedIn are left to LinkedIn'],
+                  ['hirist', 'Hirist', 'Search Hirist tech jobs - log in to it first (Site logins)'],
                   ['links', 'Other career sites', 'Any other job link from Excel or pasted'],
                   ['externalSites', 'Company career sites', 'Follow "Apply on company site" into Greenhouse, Lever, Workday...'],
                 ] as const

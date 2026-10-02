@@ -7,6 +7,8 @@ import { JobPlatform } from '../enums/job-platform.enum';
 export const PLATFORM_SQL = `(CASE
   WHEN source <> 'web' THEN source
   WHEN url LIKE '%instahyre.com/%' OR apply_url LIKE '%instahyre.com/%' THEN '${JobPlatform.INSTAHYRE}'
+  WHEN url LIKE '%foundit.in/%' THEN '${JobPlatform.FOUNDIT}'
+  WHEN url LIKE '%hirist.tech/%' OR url LIKE '%hirist.com/%' THEN '${JobPlatform.HIRIST}'
   ELSE '${JobPlatform.OTHER}' END)`;
 
 export const PLATFORM_LABEL: Record<JobPlatform, string> = {
@@ -14,5 +16,7 @@ export const PLATFORM_LABEL: Record<JobPlatform, string> = {
   [JobPlatform.NAUKRI]: 'Naukri',
   [JobPlatform.INDEED]: 'Indeed',
   [JobPlatform.INSTAHYRE]: 'Instahyre',
+  [JobPlatform.FOUNDIT]: 'Foundit',
+  [JobPlatform.HIRIST]: 'Hirist',
   [JobPlatform.OTHER]: 'Other sites',
 };

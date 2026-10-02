@@ -11,6 +11,8 @@ export const SAFE_DAILY: Record<SourceKey, number> = {
   naukri: 50,
   indeed: 20,
   instahyre: 40,
+  foundit: 30,
+  hirist: 30,
   links: 40,
   externalSites: 30,
 };
@@ -22,6 +24,8 @@ const SITE_NAMES: Record<SourceKey, string> = {
   naukri: 'Naukri',
   indeed: 'Indeed',
   instahyre: 'Instahyre',
+  foundit: 'Foundit',
+  hirist: 'Hirist',
   links: 'Other career sites',
   externalSites: 'Company career sites',
 };

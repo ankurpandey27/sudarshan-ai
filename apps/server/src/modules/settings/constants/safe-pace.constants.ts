@@ -9,6 +9,8 @@ export const SAFE_DAILY: Record<keyof SourcesSettings, number> = {
   naukri: 50,
   indeed: 20,
   instahyre: 40,
+  foundit: 30,
+  hirist: 30,
   links: 40,
   externalSites: 30,
 };
@@ -22,6 +24,8 @@ export const SOURCE_SETTING_NAMES: Record<keyof SourcesSettings, string> = {
   naukri: 'Naukri',
   indeed: 'Indeed',
   instahyre: 'Instahyre',
+  foundit: 'Foundit',
+  hirist: 'Hirist',
   links: 'Other career sites',
   externalSites: 'Company career sites',
 };

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
 import { jitter } from '../../common/utils/sleep.util';
@@ -15,6 +15,8 @@ import { DiscoveryRunResult, DiscoverySource } from './interfaces/discovery-sour
 import { LinkedInSource } from './sources/linkedin.source';
 import { NaukriSource } from './sources/naukri.source';
 import { InstahyreSource } from './sources/instahyre.source';
+import { FounditSource } from './sources/foundit.source';
+import { HiristSource } from './sources/hirist.source';
 import { IndeedSource } from './sources/indeed.source';
 import { JobPlatform } from '../jobs/enums/job-platform.enum';
 import { sourceLabel } from '../jobs/utils/source-label.util';
@@ -35,8 +37,11 @@ export class DiscoveryService {
     private readonly profile: ProfileService,
     private readonly browser: BrowserService,
     private readonly events: EventsService,
+    @Optional() foundit?: FounditSource,
+    @Optional() hirist?: HiristSource,
   ) {
-    this.sources = [linkedin, naukri, instahyre, indeed];
+    const all: (DiscoverySource | undefined)[] = [linkedin, naukri, instahyre, indeed, foundit, hirist];
+    this.sources = all.filter((src): src is DiscoverySource => !!src);
   }
 
   isRunning(): boolean {
@@ -67,6 +72,8 @@ export class DiscoveryService {
         [JobPlatform.NAUKRI]: s.sources.naukri.enabled,
         [JobPlatform.INSTAHYRE]: s.sources.instahyre.enabled,
         [JobPlatform.INDEED]: s.sources.indeed.enabled,
+        [JobPlatform.FOUNDIT]: s.sources.foundit?.enabled === true,
+        [JobPlatform.HIRIST]: s.sources.hirist?.enabled === true,
         [JobPlatform.OTHER]: false,
       };
       const enabled = this.sources.filter((src) => (!only || only.includes(src.platform)) && on[src.platform]);

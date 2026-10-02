@@ -26,6 +26,8 @@ const SOURCES: { id: string; label: string }[] = [
   { id: 'naukri', label: 'Naukri' },
   { id: 'indeed', label: 'Indeed' },
   { id: 'instahyre', label: 'Instahyre' },
+  { id: 'foundit', label: 'Foundit' },
+  { id: 'hirist', label: 'Hirist' },
   { id: 'web', label: 'Other sites' },
 ];
 

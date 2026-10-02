@@ -28,6 +28,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
     instahyre: { enabled: true, dailyLimit: 30 },
     // Indeed is the strictest about automation: keep it low.
     indeed: { enabled: false, dailyLimit: 15 },
+    // Off until you log in to them (Settings -> Site logins).
+    foundit: { enabled: false, dailyLimit: 20 },
+    hirist: { enabled: false, dailyLimit: 20 },
     links: { enabled: true, dailyLimit: 30 },
     externalSites: { enabled: false, dailyLimit: 15 },
   },

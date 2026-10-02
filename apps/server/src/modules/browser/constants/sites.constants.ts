@@ -38,6 +38,23 @@ export const SITES: SiteSession[] = [
     // Set only after sign-in; a logged-out visit has none of them.
     authCookies: ['PPID', 'SHOE', 'SOCK'],
   },
+  // Their login cookies are not known (no account to check them with): the login is checked at the form instead.
+  {
+    id: 'foundit',
+    label: 'Foundit',
+    loginUrl: 'https://www.foundit.in/rio/login',
+    homeUrl: 'https://www.foundit.in/seeker/dashboard',
+    cookieDomain: 'foundit.in',
+    authCookies: [],
+  },
+  {
+    id: 'hirist',
+    label: 'Hirist',
+    loginUrl: 'https://www.hirist.tech/login',
+    homeUrl: 'https://www.hirist.tech/',
+    cookieDomain: 'hirist.tech',
+    authCookies: [],
+  },
 ];
 
 // Avoid the automation banner and navigator.webdriver.

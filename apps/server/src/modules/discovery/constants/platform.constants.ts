@@ -49,3 +49,19 @@ export const INDEED_CHALLENGE_WAIT_MS = 45_000;
 export const MAX_COMBINED_PER_SEARCH = 150;
 /** Full descriptions fetched per search keyword; later ones are read when a job is opened. */
 export const MAX_ENRICH_PER_SEARCH = 40;
+
+// Foundit's own search data (what foundit.in/srp/results loads). Verified 2026-10-02: answers only inside a real
+// (visible) browser on foundit.in; 15 per page, paged by &start=; many listings only point to LinkedIn.
+export const FOUNDIT_ORIGIN = 'https://www.foundit.in';
+export const FOUNDIT_PAGE_SIZE = 15;
+export const FOUNDIT_MAX_PAGES = 5;
+export const FOUNDIT_PAGE_DELAY_MS: [number, number] = [3_000, 6_000];
+/** Foundit turned the browser away: one more try after this pause. */
+export const FOUNDIT_DENIED_RETRY_MS = 20_000;
+
+// Hirist's public job search API (what hirist.tech/search loads). Verified 2026-10-02: plain HTTP, 20 per page;
+// the place is part of the free-text query there, so Sudarshan searches by keyword and filters places itself.
+export const HIRIST_SEARCH_API = 'https://gladiator.hirist.tech/job/search';
+export const HIRIST_PAGE_SIZE = 20;
+export const HIRIST_MAX_PAGES = 5;
+export const HIRIST_PAGE_DELAY_MS: [number, number] = [1_500, 3_500];

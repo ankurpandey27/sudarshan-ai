@@ -10,4 +10,5 @@ export const SITE_OF_PLATFORM: Partial<Record<JobPlatform, SiteId>> = {
   [JobPlatform.NAUKRI]: 'naukri',
   [JobPlatform.INDEED]: 'indeed',
   [JobPlatform.INSTAHYRE]: 'instahyre',
+  // Not Foundit or Hirist: their login cannot be checked, so a sign-in page hands the job to you with the tab open.
 };

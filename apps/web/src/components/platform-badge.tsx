@@ -11,6 +11,8 @@ export const PLATFORM_COLOR: Record<JobPlatform, string> = {
   naukri: 'var(--p-naukri)',
   indeed: 'var(--p-indeed)',
   instahyre: 'var(--p-instahyre)',
+  foundit: 'var(--p-foundit)',
+  hirist: 'var(--p-hirist)',
   other: 'var(--p-other)',
 };
 const DOT = PLATFORM_COLOR;

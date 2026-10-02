@@ -43,6 +43,8 @@ export interface SourcesSettings {
   naukri: SourceSettings;
   instahyre: SourceSettings;
   indeed: SourceSettings;
+  foundit: SourceSettings;
+  hirist: SourceSettings;
   /** Every other career site (links from Excel or pasted). */
   links: SourceSettings;
   externalSites: SourceSettings;

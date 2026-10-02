@@ -7,5 +7,7 @@ export enum JobPlatform {
   NAUKRI = 'naukri',
   INDEED = 'indeed',
   INSTAHYRE = 'instahyre',
+  FOUNDIT = 'foundit',
+  HIRIST = 'hirist',
   OTHER = 'other',
 }

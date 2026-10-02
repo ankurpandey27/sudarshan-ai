@@ -32,6 +32,11 @@ export class BrowserService implements OnApplicationShutdown {
   private launching: Promise<Browser> | null = null;
   private launchedHeadless = false;
 
+  /** Whether the running browser is hidden (headless). */
+  isHeadless(): boolean {
+    return this.launchedHeadless;
+  }
+
   constructor(
     config: ConfigService,
     private readonly settings: SettingsService,
@@ -100,7 +105,8 @@ export class BrowserService implements OnApplicationShutdown {
       running: this.isRunning(),
       executable,
       headless: this.launchedHeadless,
-      sessions: SITES.map((s) => ({ id: s.id, label: s.label, loggedIn: loggedIn.has(s.id) })),
+      // A site whose login cookies are not known: null, "cannot tell" - never shown as logged out.
+      sessions: SITES.map((s) => ({ id: s.id, label: s.label, loggedIn: s.authCookies.length ? loggedIn.has(s.id) : null })),
     };
   }
 
