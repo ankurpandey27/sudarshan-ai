@@ -8,7 +8,7 @@
 # Run it again any time to update. Your data stays in ~/.job-apply-agent.
 set -euo pipefail
 
-REPO="https://github.com/ankurpandey27/sudarshan-ai.git"
+REPO="${SUDARSHAN_REPO:-https://github.com/ankurpandey27/sudarshan-ai.git}"
 TARBALL="https://github.com/ankurpandey27/sudarshan-ai/archive/refs/heads/master.tar.gz"
 DIR="${SUDARSHAN_HOME:-$HOME/sudarshan-ai}"
 

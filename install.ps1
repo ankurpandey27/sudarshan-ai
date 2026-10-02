@@ -8,7 +8,7 @@
 
 $ErrorActionPreference = 'Stop'
 $ProgressPreference = 'SilentlyContinue'
-$Repo = 'https://github.com/ankurpandey27/sudarshan-ai.git'
+$Repo = if ($env:SUDARSHAN_REPO) { $env:SUDARSHAN_REPO } else { 'https://github.com/ankurpandey27/sudarshan-ai.git' }
 $Zip = 'https://github.com/ankurpandey27/sudarshan-ai/archive/refs/heads/master.zip'
 $Dir = if ($env:SUDARSHAN_HOME) { $env:SUDARSHAN_HOME } else { Join-Path $env:LOCALAPPDATA 'Sudarshan' }
 
