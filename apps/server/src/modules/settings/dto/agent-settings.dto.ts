@@ -89,4 +89,14 @@ export class AgentSettingsDto {
   @IsString()
   @MaxLength(500)
   backupFolder?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(-1)
+  @Max(23)
+  dailySummaryHour?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  notifyNeedsYou?: boolean;
 }

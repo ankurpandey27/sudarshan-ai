@@ -189,6 +189,8 @@ export interface Settings {
     rescue: boolean;
     carefulAfterPause: boolean;
     backupFolder: string;
+    dailySummaryHour: number;
+    notifyNeedsYou: boolean;
   };
 }
 
@@ -205,6 +207,13 @@ export interface ProfileCheck {
   missing: SkillGap[];
   noYears: string[];
   tips: { id: string; text: string; to?: string }[];
+}
+
+export interface TelegramStatus {
+  connected: boolean;
+  bot: string | null;
+  chatId: string | null;
+  error: string | null;
 }
 
 export interface BackupStatus {

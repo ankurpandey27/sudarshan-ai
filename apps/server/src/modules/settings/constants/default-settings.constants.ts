@@ -50,6 +50,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
     rescue: true,
     carefulAfterPause: false,
     backupFolder: '',
+    dailySummaryHour: 21,
+    notifyNeedsYou: true,
   },
 };
 

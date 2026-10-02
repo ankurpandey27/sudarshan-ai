@@ -12,4 +12,4 @@ export const ACTIVITY_MAX_ROWS = 50_000;
 /** How often old lines are cleared out. */
 export const ACTIVITY_PRUNE_EVERY_MS = 60 * 60_000;
 /** Event types that appear in the flight log, and so are saved. */
-export const LOGGED_EVENT_TYPES: readonly AgentEventType[] = [AgentEventType.LOG, AgentEventType.APPLY_STEP, AgentEventType.QUESTION_PENDING];
+export const LOGGED_EVENT_TYPES: readonly AgentEventType[] = [AgentEventType.LOG, AgentEventType.APPLY_STEP, AgentEventType.QUESTION_PENDING, AgentEventType.NOTIFY];

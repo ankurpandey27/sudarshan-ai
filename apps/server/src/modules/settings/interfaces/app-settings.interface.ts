@@ -73,6 +73,10 @@ export interface AgentSettings {
   carefulAfterPause: boolean;
   /** A folder of yours (OneDrive, Google Drive, a USB disk) the daily backup is copied to; '' for none. */
   backupFolder: string;
+  /** Hour of the day (0-23) the daily summary is sent; -1 for none. */
+  dailySummaryHour: number;
+  /** Tell you (desktop and Telegram) when applications stop for you - a captcha, a question. */
+  notifyNeedsYou: boolean;
 }
 
 export interface AppSettings {

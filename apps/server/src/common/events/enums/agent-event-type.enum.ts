@@ -10,4 +10,6 @@ export enum AgentEventType {
   APPLY_STEP = 'apply.step',
   BROWSER_STATE = 'browser.state',
   PROFILE_UPDATED = 'profile.updated',
+  /** Something to tell you even when you are not watching: the daily summary, or applications that need you. */
+  NOTIFY = 'notify',
 }

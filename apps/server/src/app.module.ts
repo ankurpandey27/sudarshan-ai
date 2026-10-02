@@ -30,6 +30,7 @@ import { AppliedSyncModule } from './modules/applied-sync/applied-sync.module';
 import { LearnersModule } from './modules/learners/learners.module';
 import { StoriesModule } from './modules/stories/stories.module';
 import { BackupModule } from './modules/backup/backup.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { BackupModule } from './modules/backup/backup.module';
     LlmModule,
     ProfileModule,
     BackupModule,
+    NotificationsModule,
     HousekeepingModule,
     TasteModule,
     JobsModule,

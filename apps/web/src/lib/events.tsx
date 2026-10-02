@@ -5,6 +5,7 @@ import { createContext, useContext, useEffect, useRef, useState, type ReactNode 
 import { useQueryClient } from '@tanstack/react-query';
 import { api } from './api';
 import type { AgentEvent } from './types';
+import { showDesktop } from './desktop-notify';
 
 const MAX_EVENTS = 300;
 
@@ -50,6 +51,10 @@ export function EventsProvider({ children }: { children: ReactNode }) {
       if (e.type === 'agent.state') invalidate(['agent', 'insights']);
       if (e.type === 'log' && (e.level === 'warn' || e.level === 'error')) invalidate(['insights']);
       if (e.type === 'browser.state') invalidate(['browser']);
+      if (e.type === 'notify') {
+        const d = (e.data ?? {}) as { title?: string; body?: string };
+        showDesktop(d.title ?? e.message, d.body ?? '');
+      }
       if (e.type === 'log' && /Resume imported|Spreadsheet imported/.test(e.message)) invalidate(['profile', 'answers', 'settings', 'jobs', 'insights']);
     };
     return () => {
