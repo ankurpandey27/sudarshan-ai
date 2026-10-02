@@ -290,9 +290,8 @@ export class AgentService implements OnApplicationShutdown {
     await check(JobPlatform.NAUKRI, s.naukri, 'naukri');
     await check(JobPlatform.INSTAHYRE, s.instahyre, 'instahyre');
     await check(JobPlatform.INDEED, s.indeed, 'indeed');
-    // No login check before applying: their sign-in is checked at the form.
-    await check(JobPlatform.FOUNDIT, s.foundit);
-    await check(JobPlatform.HIRIST, s.hirist);
+    await check(JobPlatform.FOUNDIT, s.foundit, 'foundit');
+    await check(JobPlatform.HIRIST, s.hirist, 'hirist');
     await check(JobPlatform.OTHER, s.links);
     const changed = JSON.stringify(blocked) !== JSON.stringify(this.blocked);
     this.blocked = blocked;

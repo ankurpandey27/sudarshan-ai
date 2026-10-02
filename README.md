@@ -518,7 +518,6 @@ It fills most application forms by itself - LinkedIn Easy Apply, Naukri, Instahy
 - **Captchas** ("I'm not a robot", picture puzzles, type-the-code boxes) - Sudarshan never solves them. It fills everything else and hands the application to you.
 - **Sites that make you create an account or log in**, or **verify with a code sent to your email or phone (OTP)** - these become **"Do by hand"** in Applications.
 - **Indeed** - Sudarshan submits Indeed applications itself; when Indeed shows a real captcha, you solve it and press Submit in the open tab.
-- **Foundit and Hirist** - Sudarshan cannot tell from outside whether you are logged in to them. Log in once from **Settings -> Site logins**; if a form asks you to sign in, the job is handed to you with its tab open.
 
 ### What happens when a form has a captcha
 
@@ -536,7 +535,7 @@ When it gets stuck on a form, the tab stays open: finish it there and Sudarshan 
 
 - **Verified against live accounts:** LinkedIn Easy Apply (multi-page forms, screening questions), Naukri one-click apply, Instahyre one-click apply, and company career-site forms (Keka).
 - **Also verified:** resume parsing, Excel import, LinkedIn and Naukri discovery, scoring, the form engine in a real browser, learning from forms you finish, security and key encryption.
-- **Foundit and Hirist (2026-10-02):** search verified on live data (17 and 16 jobs for one profile's searches); applying while logged out hands the job over with "Log in to ...". Applying while logged in has not been verified yet - keep **Stop before the final Submit** on for your first ones. Foundit listings that only point to LinkedIn are left to the LinkedIn search.
+- **Foundit and Hirist (2026-10-02):** search verified on live data (17 and 16 jobs for one profile's searches); log in to each once from **Settings -> Site logins** (the login is checked like LinkedIn's). Applying while logged in has not been verified yet - keep **Stop before the final Submit** on for your first ones. Foundit listings that only point to LinkedIn are left to the LinkedIn search.
 - **Cutshort and Wellfound** are not searched: Cutshort shows results only to logged-in users, and Wellfound has almost no listings for Indian cities. Paste their job links under Applications -> Add job links instead.
 - **LinkedIn to company sites (2026-10-02):** "Apply" on a LinkedIn job follows to the company's site (for example SAP SuccessFactors) and hands the job to you when that site needs an account.
 - **Indeed:** search is verified. Indeed's review page uses invisible reCAPTCHA, which usually lets an application through; when it asks for a real captcha, Sudarshan never solves it - it hands the application over.
