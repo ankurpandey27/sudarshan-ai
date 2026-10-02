@@ -7,7 +7,7 @@ import { ChevronDown, ExternalLink, MapPin } from 'lucide-react';
 import { api } from '../lib/api';
 import { cn, timeAgo } from '../lib/format';
 import { PlatformBadge } from './platform-badge';
-import type { Attempt, Job } from '../lib/types';
+import type { Attempt, Job, JobReply } from '../lib/types';
 import { Badge, ScoreDial, StatusBadge } from './ui';
 
 export function JobRow({
@@ -16,8 +16,11 @@ export function JobRow({
   onSelect,
   actions,
   showStatus,
+  reply,
 }: {
   job: Job;
+  /** The latest reply from the employer, read from your mailbox. */
+  reply?: JobReply;
   selected?: boolean;
   onSelect?: (v: boolean) => void;
   actions?: ReactNode;
@@ -44,6 +47,7 @@ export function JobRow({
               {job.title}
             </button>
             {showStatus && <StatusBadge status={job.status} />}
+            {reply && <ReplyBadge reply={reply} />}
           </div>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[13px] text-ink-2">
             <span className="font-medium">{job.company || 'Unknown company'}</span>
@@ -196,5 +200,23 @@ function Replay({ jobId, attemptId, shots }: { jobId: number; attemptId: number;
         );
       })}
     </div>
+  );
+}
+
+const REPLY: Record<JobReply['kind'], { label: string; tone: 'good' | 'info' | 'bad' | 'neutral' }> = {
+  offer: { label: 'Offer', tone: 'good' },
+  interview: { label: 'Interview', tone: 'good' },
+  assessment: { label: 'Test to take', tone: 'info' },
+  rejected: { label: 'Not selected', tone: 'bad' },
+  received: { label: 'Received', tone: 'neutral' },
+};
+
+/** What the employer replied by email (hover for the email's subject). */
+function ReplyBadge({ reply }: { reply: JobReply }) {
+  const r = REPLY[reply.kind];
+  return (
+    <span title={`Email ${timeAgo(reply.at)}: "${reply.subject}" from ${reply.from}`}>
+      <Badge tone={r.tone}>{r.label}</Badge>
+    </span>
   );
 }

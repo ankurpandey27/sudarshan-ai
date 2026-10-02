@@ -11,6 +11,8 @@ export interface DaySummary {
   needsYou: number;
   questions: number;
   failed: number;
+  /** Employers' replies read from your mailbox today, by kind (when your mailbox is connected). */
+  replies: Record<string, number>;
 }
 
 export interface TelegramStatus {

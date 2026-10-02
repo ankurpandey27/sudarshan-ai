@@ -209,6 +209,25 @@ export interface ProfileCheck {
   tips: { id: string; text: string; to?: string }[];
 }
 
+export type ReplyKind = 'offer' | 'rejected' | 'interview' | 'assessment' | 'received';
+
+export interface JobReply {
+  jobId: number;
+  kind: ReplyKind;
+  subject: string;
+  from: string;
+  at: string;
+}
+
+export interface InboxStatus {
+  connected: boolean;
+  user: string | null;
+  host: string | null;
+  lastCheck: string | null;
+  error: string | null;
+  replies: Partial<Record<ReplyKind, number>>;
+}
+
 export interface Resume {
   id: number;
   label: string;

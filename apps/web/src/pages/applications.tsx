@@ -8,7 +8,7 @@ import { Briefcase, CheckCheck, Download, Link2, Play, RotateCcw, Search } from 
 import { api } from '../lib/api';
 import { cn } from '../lib/format';
 import { useJobs } from '../lib/queries';
-import type { AppliedSyncResult, JobPlatform } from '../lib/types';
+import type { AppliedSyncResult, JobPlatform, JobReply } from '../lib/types';
 import { PlatformFilter } from '../components/platform-filter';
 import { JobRow } from '../components/job-row';
 import { Button, Card, Empty, Input, PageTitle, Textarea } from '../components/ui';
@@ -38,6 +38,10 @@ export function Applications() {
   const [platform, setPlatform] = useState<JobPlatform | ''>('');
   const [adding, setAdding] = useState(false);
   const current = TABS.find((t) => t.id === tab)!;
+  // Employers' replies read from your mailbox, the newest per job.
+  const { data: replies } = useQuery({ queryKey: ['replies'], queryFn: () => api.get<JobReply[]>('/inbox/replies') });
+  const latestReply = new Map<number, JobReply>();
+  for (const r of replies ?? []) if (!latestReply.has(r.jobId)) latestReply.set(r.jobId, r);
   const { data, isLoading } = useJobs({
     status: current.status,
     platform,
@@ -183,6 +187,7 @@ export function Applications() {
               key={j.id}
               job={j}
               showStatus
+              reply={latestReply.get(j.id)}
               actions={
                 ['manual', 'failed', 'needs_input'].includes(j.status) ? (
                   <>

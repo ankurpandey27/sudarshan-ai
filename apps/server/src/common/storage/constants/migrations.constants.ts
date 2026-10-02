@@ -295,4 +295,16 @@ export const MIGRATIONS: string[] = [
     created_at TEXT NOT NULL
   );
   `,
+  // What employers replied, read from your mailbox: only sender, subject and meaning - never the email itself.
+  `
+  CREATE TABLE job_replies (
+    message_id TEXT PRIMARY KEY,
+    job_id     INTEGER NOT NULL REFERENCES jobs (id) ON DELETE CASCADE,
+    kind       TEXT NOT NULL,
+    subject    TEXT NOT NULL,
+    sender     TEXT NOT NULL,
+    at         TEXT NOT NULL
+  );
+  CREATE INDEX idx_job_replies_job ON job_replies (job_id);
+  `,
 ];

@@ -68,6 +68,9 @@ export class NotificationsService implements OnApplicationBootstrap, OnApplicati
       needsYou: count('SELECT COUNT(*) n FROM jobs WHERE status IN (?, ?)', [JobStatus.MANUAL, JobStatus.NEEDS_INPUT]),
       questions: count("SELECT COUNT(*) n FROM pending_questions WHERE status = 'open'"),
       failed: count('SELECT COUNT(*) n FROM jobs WHERE status = ? AND updated_at >= ?', [JobStatus.FAILED, since]),
+      replies: Object.fromEntries(
+        this.storage.all<{ kind: string; n: number }>('SELECT kind, COUNT(*) n FROM job_replies WHERE at >= ? GROUP BY kind', [since]).map((r) => [r.kind, Number(r.n)]),
+      ),
     };
   }
 

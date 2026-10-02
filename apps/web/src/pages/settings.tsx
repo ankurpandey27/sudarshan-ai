@@ -19,6 +19,7 @@ import { TagInput } from '../components/tag-input';
 import { LearnersCard } from '../components/learners-card';
 import { BackupCard } from '../components/backup-card';
 import { NotificationsCard } from '../components/notifications-card';
+import { InboxCard } from '../components/inbox-card';
 import { overSafeDaily, paceWarnings, safePace } from '../lib/safe-pace';
 
 type SettingsTab = 'ai' | 'search' | 'platforms' | 'agent' | 'notifications' | 'accounts' | 'data';
@@ -385,7 +386,12 @@ export function SettingsPage() {
             </div>
           </Card>
         )}
-        {tab === 'notifications' && <NotificationsCard agent={draft.agent} onAgent={agent} />}
+        {tab === 'notifications' && (
+          <>
+            <NotificationsCard agent={draft.agent} onAgent={agent} />
+            <InboxCard />
+          </>
+        )}
         {tab === 'data' && <BackupCard folder={draft.agent.backupFolder ?? ''} onFolder={(v) => agent('backupFolder', v)} />}
       </div>
     </>

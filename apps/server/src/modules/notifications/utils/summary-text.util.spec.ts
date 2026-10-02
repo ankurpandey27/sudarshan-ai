@@ -16,13 +16,14 @@ describe('notification texts', () => {
       needsYou: 2,
       questions: 1,
       failed: 1,
+      replies: { interview: 1, rejected: 2 },
     });
     expect(t.title).toBe('Sudarshan today: 12 applications sent');
-    expect(t.body).toBe('Applied: 12 (LinkedIn 5, Naukri 7)\nNeeds you: 2 applications and 1 question\nCould not apply: 1\nNew jobs found: 40');
+    expect(t.body).toBe('Applied: 12 (LinkedIn 5, Naukri 7)\nNeeds you: 2 applications and 1 question\nReplies: 1 interview, 2 not selected\nCould not apply: 1\nNew jobs found: 40');
   });
 
   it('says so on a quiet day', () => {
-    const t = summaryText({ day: '2026-10-02', found: 0, applied: [], needsYou: 0, questions: 0, failed: 0 });
+    const t = summaryText({ day: '2026-10-02', found: 0, applied: [], needsYou: 0, questions: 0, failed: 0, replies: {} });
     expect(t.body).toBe('Applied: none today\nNew jobs found: 0');
   });
 
