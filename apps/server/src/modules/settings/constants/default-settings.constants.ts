@@ -49,6 +49,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     pastAnswers: true,
     rescue: true,
     carefulAfterPause: false,
+    backupFolder: '',
   },
 };
 

@@ -3,10 +3,11 @@
 
 import { Module } from '@nestjs/common';
 import { ProfileModule } from '../profile/profile.module';
+import { BackupModule } from '../backup/backup.module';
 import { HousekeepingService } from './housekeeping.service';
 
 @Module({
-  imports: [ProfileModule],
+  imports: [ProfileModule, BackupModule],
   providers: [HousekeepingService],
 })
 export class HousekeepingModule {}

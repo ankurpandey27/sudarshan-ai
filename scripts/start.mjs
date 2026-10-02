@@ -123,42 +123,58 @@ if (haveModel()) {
 }
 
 // Start the server; the spinner runs until it answers, then its own log takes over.
-const boot = step('Starting the server');
-let booting = true;
-const server = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'dist/main.js', '--open'], {
-  cwd: p('apps', 'server'),
-  stdio: ['inherit', 'pipe', 'pipe'],
-  env: { ...process.env, FORCE_COLOR: tty ? '1' : '0' },
-});
-// Startup chatter (module and route lists) is held back until the server is up, and shown only if it fails.
-const held = [];
-const forward = (stream, target) =>
-  stream.on('data', (d) => {
-    if (booting) held.push(d);
-    else target.write(d);
-  });
-forward(server.stdout, process.stdout);
-forward(server.stderr, process.stderr);
-
-const poll = setInterval(async () => {
-  if (!booting || !(await healthy())) return;
-  booting = false;
-  clearInterval(poll);
-  boot.stop('Server started');
-  console.log(`\n  Ready in ${secs(Date.now() - started)} - open http://localhost:${port}\n  Press Ctrl + C to stop.\n`);
-}, 400);
-
-const stop = () => server.kill('SIGINT');
+// Exit code 75 asks for a fresh start (after restoring a backup): it is started again.
+const RESTART_EXIT_CODE = 75;
+let server;
+const stop = () => server?.kill('SIGINT');
 process.on('SIGINT', stop);
 process.on('SIGTERM', stop);
 // Windows does not kill child processes with the parent.
-process.on('exit', () => server.kill());
-server.on('exit', (code) => {
-  clearInterval(poll);
-  if (booting) {
-    boot.stop();
-    process.stdout.write(Buffer.concat(held));
-    console.error(`\n  ✗ The server stopped while starting (exit code ${code}). The log above says why.`);
-  }
-  process.exit(code ?? 0);
-});
+process.on('exit', () => server?.kill());
+
+function launch(label = 'Starting the server') {
+  const boot = step(label);
+  let booting = true;
+  server = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'dist/main.js', ...(label === 'Starting the server' ? ['--open'] : [])], {
+    cwd: p('apps', 'server'),
+    stdio: ['inherit', 'pipe', 'pipe'],
+    env: { ...process.env, FORCE_COLOR: tty ? '1' : '0' },
+  });
+  // Startup chatter (module and route lists) is held back until the server is up, and shown only if it fails.
+  const held = [];
+  const forward = (stream, target) =>
+    stream.on('data', (d) => {
+      if (booting) held.push(d);
+      else target.write(d);
+    });
+  forward(server.stdout, process.stdout);
+  forward(server.stderr, process.stderr);
+
+  const poll = setInterval(async () => {
+    if (!booting || !(await healthy())) return;
+    booting = false;
+    clearInterval(poll);
+    boot.stop('Server started');
+    console.log(`
+  Ready in ${secs(Date.now() - started)} - open http://localhost:${port}
+  Press Ctrl + C to stop.
+`);
+  }, 400);
+
+  server.on('exit', (code) => {
+    clearInterval(poll);
+    if (code === RESTART_EXIT_CODE) {
+      if (booting) boot.stop();
+      launch('Restarting to apply your backup');
+      return;
+    }
+    if (booting) {
+      boot.stop();
+      process.stdout.write(Buffer.concat(held));
+      console.error(`
+  ✗ The server stopped while starting (exit code ${code}). The log above says why.`);
+    }
+    process.exit(code ?? 0);
+  });
+}
+launch();

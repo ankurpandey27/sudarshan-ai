@@ -17,6 +17,7 @@ import { useLocation } from 'react-router';
 import { Tabs, useTab, type TabDef } from '../components/tabs';
 import { TagInput } from '../components/tag-input';
 import { LearnersCard } from '../components/learners-card';
+import { BackupCard } from '../components/backup-card';
 import { overSafeDaily, paceWarnings, safePace } from '../lib/safe-pace';
 
 type SettingsTab = 'ai' | 'search' | 'platforms' | 'agent' | 'accounts' | 'data';
@@ -26,7 +27,7 @@ const SETTINGS_TABS: readonly TabDef<SettingsTab>[] = [
   { id: 'platforms', label: 'Platforms & limits' },
   { id: 'agent', label: 'Agent' },
   { id: 'accounts', label: 'Site logins' },
-  { id: 'data', label: 'Spreadsheet' },
+  { id: 'data', label: 'Data & backups' },
 ];
 
 export function SettingsPage() {
@@ -382,6 +383,7 @@ export function SettingsPage() {
             </div>
           </Card>
         )}
+        {tab === 'data' && <BackupCard folder={draft.agent.backupFolder ?? ''} onFolder={(v) => agent('backupFolder', v)} />}
       </div>
     </>
   );

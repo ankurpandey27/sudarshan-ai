@@ -188,7 +188,22 @@ export interface Settings {
     pastAnswers: boolean;
     rescue: boolean;
     carefulAfterPause: boolean;
+    backupFolder: string;
   };
+}
+
+export interface BackupStatus {
+  last: { file: string; at: string } | null;
+  count: number;
+  dir: string;
+  folder: string;
+  folderError: string | null;
+}
+
+export interface BackupCheck {
+  jobs: number;
+  answers: number;
+  resume: boolean;
 }
 
 export interface LlmUsagePeriod {

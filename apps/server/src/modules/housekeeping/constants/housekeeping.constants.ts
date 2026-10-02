@@ -10,5 +10,3 @@ export const KEEP_LOGS_MS = 14 * DAY;
 export const KEEP_OLD_UPLOADS_MS = 30 * DAY;
 export const HOUSEKEEPING_EVERY_MS = DAY;
 
-/** Daily database backups kept. */
-export const KEEP_BACKUPS = 7;

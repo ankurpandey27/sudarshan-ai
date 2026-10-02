@@ -71,6 +71,8 @@ export interface AgentSettings {
    * one application goes through. Off: it simply resumes. Your choice (2026-09-30).
    */
   carefulAfterPause: boolean;
+  /** A folder of yours (OneDrive, Google Drive, a USB disk) the daily backup is copied to; '' for none. */
+  backupFolder: string;
 }
 
 export interface AppSettings {

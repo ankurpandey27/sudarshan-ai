@@ -29,6 +29,7 @@ import { TasteModule } from './modules/taste/taste.module';
 import { AppliedSyncModule } from './modules/applied-sync/applied-sync.module';
 import { LearnersModule } from './modules/learners/learners.module';
 import { StoriesModule } from './modules/stories/stories.module';
+import { BackupModule } from './modules/backup/backup.module';
 
 @Module({
   imports: [
@@ -39,6 +40,7 @@ import { StoriesModule } from './modules/stories/stories.module';
     SettingsModule,
     LlmModule,
     ProfileModule,
+    BackupModule,
     HousekeepingModule,
     TasteModule,
     JobsModule,

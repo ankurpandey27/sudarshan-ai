@@ -84,4 +84,9 @@ export class AgentSettingsDto {
   @IsOptional()
   @IsBoolean()
   carefulAfterPause?: boolean;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  backupFolder?: string;
 }

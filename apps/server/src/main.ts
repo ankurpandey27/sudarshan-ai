@@ -9,6 +9,7 @@ import { AppModule } from './app.module';
 import { configureApp } from './app.setup';
 import { createStructuredLogger } from './common/logging/structured-logger';
 import { configFactory } from './config/configuration';
+import { RESTART_EVENT, RESTART_EXIT_CODE } from './common/utils/restart.util';
 
 function openInBrowser(url: string): void {
   const cmd = process.platform === 'win32' ? 'cmd' : process.platform === 'darwin' ? 'open' : 'xdg-open';
@@ -28,6 +29,11 @@ async function bootstrap(): Promise<void> {
 
   configureApp(app);
   app.enableShutdownHooks();
+  // A restore (or anything else that needs a fresh start): close cleanly, and npm start starts it again.
+  process.once(RESTART_EVENT, () => {
+    logger.log('Restarting...');
+    void app.close().finally(() => process.exit(RESTART_EXIT_CODE));
+  });
 
   const host = config.get<string>('server.host', '127.0.0.1');
   const port = config.get<number>('server.port', 4747);
