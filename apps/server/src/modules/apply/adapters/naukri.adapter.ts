@@ -13,7 +13,6 @@ import { documentTextInPage } from '../../form-engine/scripts/page-helpers.scrip
 import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
 import {
-  CLOSED_TEXT,
   NAUKRI_APPLIED_URL,
   NAUKRI_DRAWER,
   NAUKRI_FILE_QUESTION,
@@ -22,6 +21,7 @@ import {
   NAUKRI_SUCCESS,
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
+import { looksClosed } from '../utils/closed.util';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { naukriDoneTypingInPage, naukriLastQuestionInPage, naukriSendInPage, naukriSendReadyInPage } from '../scripts/naukri-chat.script';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
@@ -55,9 +55,8 @@ export class NaukriApplyAdapter implements ApplyAdapter {
     await page.waitForSelector('#apply-button, #already-applied, #company-site-button, button', { timeout: 15_000 }).catch(() => undefined);
     await sleep(600);
     const text = await page.evaluate(documentTextInPage);
-    if (CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED, { detail: 'Job is no longer available' });
-
     const snap = await this.runner.snapshot(page, null);
+    if (looksClosed(text, snap)) return result(PrepareStatus.CLOSED, { detail: 'Job is no longer available' });
     const actions = snap.actions.filter((a) => !a.disabled);
     if (actions.some((a) => /^applied$/i.test(a.text)) || (await page.$('#already-applied'))) {
       return result(PrepareStatus.ALREADY_APPLIED);

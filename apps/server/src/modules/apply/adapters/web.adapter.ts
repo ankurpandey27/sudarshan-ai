@@ -16,8 +16,7 @@ import { LlmService } from '../../llm/llm.service';
 import { LlmPurpose } from '../../llm/enums/llm-purpose.enum';
 import {
   ALREADY_APPLIED_TEXT,
-  APPLIED_BUTTON,
-  CLOSED_TEXT,
+  APPLIED_BUTTON,
   GENERIC_DIALOG as DIALOG,
   GENERIC_SUCCESS,
   LOGIN_WALL,
@@ -29,6 +28,7 @@ import {
   MAX_APPLY_HOPS,
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
+import { looksClosed } from '../utils/closed.util';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 import { onJobBoard } from '../utils/offsite-url.util';
@@ -85,7 +85,7 @@ export class WebApplyAdapter implements ApplyAdapter {
       // A cookie banner is not the application dialog, and covers the Apply button.
       await this.runner.clearCookieBanner(current);
       const { snap, text, accountWall } = await this.readWhenReady(current);
-      if (CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED);
+      if (looksClosed(text, snap)) return result(PrepareStatus.CLOSED);
       if (hop === 0) {
         // The site's own button says it is done, e.g. Instahyre's "Application sent!".
         if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || ALREADY_APPLIED_TEXT.test(text)) {
@@ -155,9 +155,9 @@ export class WebApplyAdapter implements ApplyAdapter {
         const actionable =
           accountWall ||
           this.hasApplicationForm(snap) ||
-          this.looksLikeLogin(snap, text) ||
-          CLOSED_TEXT.test(text) ||
+          this.looksLikeLogin(snap, text) ||
           snap.actions.some((a) => !a.disabled && (a.kind === 'apply' || APPLIED_BUTTON.test(a.text.trim())));
+        // Closed-job wording does not end the wait: a footer or a "Job expired?" link is there before the Apply button.
         // Nothing to act on yet - no form, no Apply: many hiring systems draw them late (Workday's Apply comes 15-20
         // seconds after its menu and cookie banner, Stryker 2026-10-01), so such a page gets up to 30 seconds.
         const deadline = started + (snap.fields.length === 0 ? SLOW_RENDER_WAIT_MS : RENDER_WAIT_MS);

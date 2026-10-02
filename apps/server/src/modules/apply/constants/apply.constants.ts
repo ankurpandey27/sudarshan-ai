@@ -10,8 +10,9 @@ export const GENERIC_DIALOG = 'dialog[open], [role=dialog], [aria-modal=true], .
 export const LINKEDIN_SUCCESS = /your application was sent|application (was )?sent to|application submitted|you applied to/i;
 export const LINKEDIN_APPLIED = /\bapplied \d+ (second|minute|hour|day|week|month)s? ago\b|application submitted|see application/i;
 // Also Dutch, German, French and Spanish ("404 Vacature vervuld", Aethon, 2026-09-29).
+// Not as a question: "Job expired?" is a link to report one (Himalayas, 2026-10-03).
 export const CLOSED_TEXT =
-  /no longer accepting applications|job (has )?expired|this job is (no longer available|closed)|position has been filled|job is not available|vacature (is )?(vervuld|gesloten|verlopen)|vacature (is )?niet meer beschikbaar|stelle (ist )?(nicht mehr verfügbar|bereits besetzt|besetzt)|offre (n'est plus disponible|expirée|pourvue)|poste (a été )?pourvu|oferta (ya no está disponible|cerrada|caducada)/i;
+  /(?:no longer accepting applications|job (has )?expired|this job is (no longer available|closed)|position has been filled|job is not available|vacature (is )?(vervuld|gesloten|verlopen)|vacature (is )?niet meer beschikbaar|stelle (ist )?(nicht mehr verfügbar|bereits besetzt|besetzt)|offre (n'est plus disponible|expirée|pourvue)|poste (a été )?pourvu|oferta (ya no está disponible|cerrada|caducada))(?!\s*\?)/i;
 
 export const NAUKRI_DRAWER = '.chatbot_DrawerContentWrapper, [class*="chatbot_Drawer"], [class*="chatbot-drawer"]';
 // After a one-click apply Naukri opens a page headed: Applied to "<job title>".

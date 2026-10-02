@@ -10,7 +10,6 @@ import { JobSource } from '../../jobs/enums/job-source.enum';
 import { Job } from '../../jobs/interfaces/job.interface';
 import {
   APPLIED_BUTTON,
-  CLOSED_TEXT,
   INDEED_SUCCESS,
   INDEED_SUCCESS_URL,
   INDEED_APPLY_HOST,
@@ -21,6 +20,7 @@ import {
   NEW_TAB_WAIT_MS,
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
+import { looksClosed } from '../utils/closed.util';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 
@@ -62,9 +62,8 @@ export class IndeedApplyAdapter implements ApplyAdapter {
     if (INDEED_LOGIN_URL.test(page.url())) return result(PrepareStatus.LOGIN_REQUIRED, { detail: 'Log in to Indeed in the agent browser' });
 
     const text = await page.evaluate(documentTextInPage);
-    if (INDEED_CLOSED.test(text) || CLOSED_TEXT.test(text)) return result(PrepareStatus.CLOSED, { detail: 'This job has expired on Indeed' });
-
     const snap = await this.runner.snapshot(page, null);
+    if (looksClosed(text, snap, INDEED_CLOSED)) return result(PrepareStatus.CLOSED, { detail: 'This job has expired on Indeed' });
     if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim()))) return result(PrepareStatus.ALREADY_APPLIED);
 
     const companySite = snap.actions.find((a) => !a.disabled && /apply on company site/i.test(a.text));
