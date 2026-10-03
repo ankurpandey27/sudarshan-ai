@@ -1,0 +1,59 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Greenhouse-style searchable dropdowns</title>
+<style>.menu{border:1px solid #ccc;position:absolute;background:#fff}.menu div{padding:4px}.wrap{position:relative;margin:12px 0}</style></head>
+<body>
+<!-- Capco on Greenhouse (2026-10-03): react-select boxes are emptied after a pick and the choice is drawn beside them;
+     a school that is not in the list shows other schools as suggestions. -->
+<form onsubmit="return false">
+  <div class="wrap" data-q="city"><label for="city">Location (City)*</label>
+    <div class="select__control"><div class="select__value-container"><input id="city" role="combobox" aria-autocomplete="list" required></div></div></div>
+  <div class="wrap" data-q="school"><label for="school">School*</label>
+    <div class="select__control"><div class="select__value-container"><input id="school" role="combobox" aria-autocomplete="list" required></div></div></div>
+  <button type="button" id="submit">Submit application</button>
+</form>
+<script>
+  const LISTS = {
+    city: (q) => ['Noida, Uttar Pradesh, India', 'Noida Extension, Uttar Pradesh, India'].filter((o) => o.toLowerCase().includes(q.toLowerCase())),
+    // Any text brings suggestions - none of them the school typed.
+    school: () => ['Art Institute of Atlanta', 'Aalto University', 'Abilene Christian University'],
+  };
+  window.__chosen = {};
+  for (const wrap of document.querySelectorAll('.wrap')) {
+    const key = wrap.dataset.q;
+    const input = wrap.querySelector('input');
+    const container = wrap.querySelector('.select__value-container');
+    const close = () => wrap.querySelector('.menu')?.remove();
+    input.addEventListener('input', () => {
+      close();
+      const q = input.value.trim();
+      if (!q) return;
+      const menu = document.createElement('div');
+      menu.className = 'menu';
+      menu.setAttribute('role', 'listbox');
+      for (const o of LISTS[key](q)) {
+        const d = document.createElement('div');
+        d.setAttribute('role', 'option');
+        d.textContent = o;
+        d.addEventListener('mousedown', (e) => e.preventDefault());
+        d.addEventListener('click', () => {
+          window.__chosen[key] = o;
+          container.querySelector('.select__single-value')?.remove();
+          const shown = document.createElement('div');
+          shown.className = 'select__single-value';
+          shown.textContent = o;
+          container.prepend(shown);
+          input.value = '';
+          close();
+        });
+        menu.appendChild(d);
+      }
+      wrap.appendChild(menu);
+    });
+    input.addEventListener('keydown', (e) => {
+      const first = wrap.querySelector('.menu [role=option]');
+      if ((e.key === 'Enter' || e.key === 'ArrowDown') && first && e.key === 'Enter') first.click();
+      if (e.key === 'Escape') { close(); input.value = ''; }
+    });
+  }
+</script>
+</body></html>

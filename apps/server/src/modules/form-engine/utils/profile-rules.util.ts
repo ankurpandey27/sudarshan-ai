@@ -268,8 +268,14 @@ const RULES: ProfileRule[] = [
   },
   {
     key: 'graduationYear',
-    test: /graduat(ion|ed)\s*year|year\s*of\s*(passing|graduation)|passing\s*year|batch/,
+    // "Education - End date year" on Greenhouse (Capco, 2026-10-03) too.
+    test: /graduat(ion|ed)\s*year|year\s*of\s*(passing|graduation)|passing\s*year|batch|\beducation\b.*\b(end|to|completion)\b.*\byear\b/,
     answer: (c) => fact(c.profile.education[0]?.endYear),
+  },
+  {
+    key: 'educationStartYear',
+    test: /\beducation\b.*\b(start|from)\b.*\byear\b/,
+    answer: (c) => fact(c.profile.education[0]?.startYear),
   },
   { key: 'grade', test: /\b(cgpa|gpa|percentage|grade)\b/, answer: (c) => fact(c.profile.education[0]?.grade) },
   {

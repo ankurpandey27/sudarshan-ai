@@ -104,7 +104,13 @@ export class NotificationsService implements OnApplicationBootstrap, OnApplicati
     this.waiting.set(e.jobId, { label: `${job.title} @ ${job.company}`, why });
     this.gatherTimer ??= setTimeout(() => {
       this.gatherTimer = null;
-      const items = [...this.waiting.values()];
+      // Only jobs still waiting for you: one you already answered or finished is no news (Capco, 2026-10-03).
+      const items = [...this.waiting.entries()]
+        .filter(([id]) => {
+          const status = this.storage.get<{ status: string }>('SELECT status FROM jobs WHERE id = ?', [id])?.status;
+          return status === JobStatus.MANUAL || status === JobStatus.NEEDS_INPUT;
+        })
+        .map(([, item]) => item);
       this.waiting.clear();
       if (items.length) {
         const { title, body } = needsYouText(items);

@@ -66,10 +66,21 @@ export class FounditSource implements DiscoverySource {
   }
 
   private async fetchPage(page: Page, path: string): Promise<FounditSearchResponse> {
-    const res = await page.evaluate(async (p: string) => {
-      const r = await fetch(p, { headers: { accept: 'application/json' } });
-      return { status: r.status, body: r.ok ? ((await r.json()) as unknown) : null };
-    }, path);
+    let res: { status: number; body: unknown } | null = null;
+    // Foundit sometimes redirects the tab while it is being read ("Execution context was destroyed", 2026-10-03):
+    // once it has settled, read again.
+    for (let attempt = 0; !res; attempt++) {
+      try {
+        res = await page.evaluate(async (p: string) => {
+          const r = await fetch(p, { headers: { accept: 'application/json' } });
+          return { status: r.status, body: r.ok ? ((await r.json()) as unknown) : null };
+        }, path);
+      } catch (err) {
+        if (attempt >= 2 || !/context was destroyed|navigation|detached/i.test((err as Error).message)) throw err;
+        await page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: 15_000 }).catch(() => undefined);
+        if (!page.url().startsWith(FOUNDIT_ORIGIN)) await this.open(page);
+      }
+    }
     if (res.status !== 200) throw new Error(`Foundit search answered ${res.status}`);
     return res.body as FounditSearchResponse;
   }

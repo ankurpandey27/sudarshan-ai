@@ -36,7 +36,7 @@ import { PlatformHealthService } from '../platform-health/platform-health.servic
 import { REFUSED_COOLDOWN_MS } from '../platform-health/constants/platform-health.constants';
 import { AttemptShot } from '../jobs/interfaces/attempt.interface';
 import { LearnersTrainerService } from '../learners/learners-trainer.service';
-import { CONTINUE_IDLE_MS, NEW_QUESTIONS, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
+import { CONTINUE_IDLE_MS, NEW_QUESTIONS, TAB_CLOSED, TAB_CLOSED_ENDING, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
 import { OpenTab } from './interfaces/open-tab.interface';
 import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
@@ -185,8 +185,10 @@ export class ApplyService {
       const msg = (err as Error).message;
       this.logger.warn(`Apply failed for job ${job.id}: ${msg}`);
       // A few network failures are the connection; more on the same job is the site (a dead domain).
-      final =
-        NETWORK_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
+      final = TAB_CLOSED.test(msg)
+        ? // You closed its tab (or the browser) while it was applying: you stopped it - not a failed try.
+          { status: JobStatus.MANUAL, detail: 'You closed its tab while Sudarshan was applying - approve it again to start over', ended: TAB_CLOSED_ENDING }
+        : NETWORK_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
           ? // The connection, not the job: it keeps its tries and its place in the queue.
             { status: JobStatus.APPROVED, detail: `Network problem, will try again: ${msg.slice(0, 160)}`, ended: 'network' }
           : { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}`, ended: 'error' };
@@ -194,7 +196,7 @@ export class ApplyService {
     this.learnFromEnding(final, moves, outcome);
     // The site refused it for now (too many too fast): nothing wrong with this job - it keeps its tries
     // and its place in the queue, and the site is left alone for a few hours.
-    if (final.ended === 'network' || final.ended === NEW_QUESTIONS) this.jobs.forgetAttempt(job.id);
+    if (final.ended === 'network' || final.ended === NEW_QUESTIONS || final.ended === TAB_CLOSED_ENDING) this.jobs.forgetAttempt(job.id);
     if (final.ended === `prep:${PrepareStatus.REFUSED}` || final.ended === 'run:refused') {
       this.jobs.forgetAttempt(job.id);
       this.health.coolDown(job.platform, REFUSED_COOLDOWN_MS, final.detail);

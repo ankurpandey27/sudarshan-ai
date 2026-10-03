@@ -218,3 +218,50 @@ describe('Checking every fill, and learning how to operate a field (real browser
     await page.close();
   });
 });
+
+describe('Greenhouse-style searchable dropdowns (real browser, Capco 2026-10-03)', () => {
+  let browser: Browser;
+  beforeAll(async () => {
+    const executablePath = findBrowserExecutable();
+    if (!executablePath) throw new Error('Chrome/Edge not found - browser tests need one installed');
+    browser = await puppeteer.launch({ executablePath, headless: true, args: ['--allow-file-access-from-files'] });
+  });
+  afterAll(async () => {
+    await browser?.close();
+  });
+
+  it('reads the choice drawn beside an emptied box, and never picks a suggestion that does not match', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'react-select.html').replace(/\\/g, '/')}`);
+    const storage = new StorageService(':memory:');
+    const runner = new FormRunnerService(
+      new AnswerEngineService(new AnswersService(storage), noLlm),
+      new RecipesService(storage),
+      noLlm,
+      new PlaybookService(storage),
+      undefined,
+      undefined,
+      new WidgetRecipesService(storage),
+    );
+    const snap = await runner.snapshot(page, null);
+    const city = snap.fields.find((f) => /city/i.test(f.label))!;
+    const school = snap.fields.find((f) => /school/i.test(f.label))!;
+    const steps: string[] = [];
+    const ins = [
+      { id: city.id, kind: city.kind, value: 'Noida', optionIndexes: [], optionIds: [] },
+      { id: school.id, kind: school.kind, value: 'Dr. A.P.J. Abdul Kalam Technical University', optionIndexes: [], optionIds: [] },
+    ];
+    const held = await runner.fillAndCheck(page, snap, ins, { scopeSelector: null, successPattern: GENERIC_SUCCESS, ctx: {} as never, domain: 'job-boards.greenhouse.io', allowLlm: false, pauseBeforeSubmit: true, onStep: (m) => steps.push(m) }, 1);
+    const chosen = await page.evaluate(() => (window as unknown as { __chosen: Record<string, string> }).__chosen);
+    // The city is picked and seen as filled at once - no second, third... way tried.
+    expect(chosen.city).toBe('Noida, Uttar Pradesh, India');
+    expect(held.has(city.id)).toBe(true);
+    expect(steps.join('\n')).not.toMatch(/Location \(City\)/);
+    // The school is not in the list: nothing is picked rather than the first school shown.
+    expect(chosen.school).toBeUndefined();
+    expect(held.has(school.id)).toBe(false);
+    const after = await runner.snapshot(page, null);
+    expect(after.fields.find((f) => f.id === city.id)!.value).toBe('Noida, Uttar Pradesh, India');
+    await page.close();
+  });
+});

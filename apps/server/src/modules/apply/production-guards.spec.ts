@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { ApplyService } from './apply.service';
-import { MAX_OPEN_TABS, NETWORK_ERROR } from './constants/apply.constants';
+import { MAX_OPEN_TABS, NETWORK_ERROR, TAB_CLOSED } from './constants/apply.constants';
 
 describe('running all day (2026-10-01)', () => {
   it('keeps at most a dozen handed-over tabs open, closing the oldest', () => {
@@ -33,4 +33,12 @@ describe('running all day (2026-10-01)', () => {
     expect(NETWORK_ERROR.test('Execution context was destroyed')).toBe(false);
     expect(NETWORK_ERROR.test('No apply button found')).toBe(false);
   });
+});
+
+describe('a tab you close mid-application (Capco, 2026-10-03)', () => {
+  it.each(['Protocol error (Runtime.callFunctionOn): Target closed', 'Session closed. Most likely the page has been closed.', 'Navigating frame was detached Frame'])(
+    'reads "%s" as you closing it, not as a failure',
+    (msg) => expect(TAB_CLOSED.test(msg)).toBe(true),
+  );
+  it('does not mistake other errors for it', () => expect(TAB_CLOSED.test('No apply button found')).toBe(false));
 });

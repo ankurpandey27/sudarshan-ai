@@ -155,5 +155,11 @@ export const LATE_CAPTCHA_WAIT_MS = 12_000;
 /** Submits that land back on the same form before Sudarshan stops and asks you. */
 export const MAX_SAME_FORM_SENDS = 2;
 
+/**
+ * Presses of Submit in one application, whatever the form looks like after each: a form that changes a little every
+ * time (Capco on Greenhouse, 2026-10-03: five rounds) is not progress. After this many, the tab is handed to you.
+ */
+export const MAX_SENDS_PER_RUN = 3;
+
 /** Searchable dropdowns opened per step to read their options, at most. */
 export const MAX_PROBED_COMBOBOXES = 20;

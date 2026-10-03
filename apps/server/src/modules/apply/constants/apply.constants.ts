@@ -132,3 +132,7 @@ export const BOT_CHECK_TEXT =
 /** How long a bot-shield page may take to clear by itself before it is handed to you. */
 export const BOT_CHECK_WAIT_MS = 45_000;
 export const BOT_CHECK_DETAIL = 'The site is checking you are not a robot (a captcha) - tick it in the open tab; Sudarshan carries on by itself after';
+
+/** The tab or the browser went away mid-application: you closed it (Capco, 2026-10-03: "Target closed"). */
+export const TAB_CLOSED = /Target closed|Session closed|Browser has disconnected|page has been closed|detached Frame/i;
+export const TAB_CLOSED_ENDING = 'closed-by-you';

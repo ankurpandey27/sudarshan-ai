@@ -130,7 +130,7 @@ export class DiscoveryService {
       const seen = result.found - result.added;
       this.log(
         'success',
-        `${sourceLabel(src.platform)}: ${result.found} unique jobs, ${result.added} new` + (seen ? ` (${seen} already in your list)` : ''),
+        `${sourceLabel(src.platform)}: ${result.found} unique jobs, ${result.added} new` + (seen ? ` (${seen} already in your list, or the same job found on another site)` : ''),
         src.platform,
       );
       this.events.emit({ type: AgentEventType.JOBS_DISCOVERED, message: `${result.added} new jobs`, source: src.platform, data: { ...result } });

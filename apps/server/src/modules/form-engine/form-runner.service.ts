@@ -28,6 +28,7 @@ import {
   SLOW_STEP_RENDER_WAIT_MS,
   LATE_CAPTCHA_WAIT_MS,
   MAX_SAME_FORM_SENDS,
+  MAX_SENDS_PER_RUN,
   MAX_PROBED_COMBOBOXES,
   NAVIGATED,
   SEND_WAIT_MS,
@@ -189,16 +190,20 @@ export class FormRunnerService {
           await page.keyboard.press('Backspace');
           await page.keyboard.type(text, { delay: 30 });
           await sleep(800);
-          if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) {
-            await page.keyboard.press('ArrowDown');
-            await page.keyboard.press('Enter');
-          }
+          // Only a suggestion that matches the answer: the first one when none does was a wrong school (Capco on
+          // Greenhouse, 2026-10-03: "Art Institute of Atlanta"). A blank field is asked about; a wrong one is sent.
+          if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) await page.keyboard.press('Escape');
           return;
         case FillMethod.TYPE_ENTER:
           await page.click(sel, { count: 3 });
           await page.keyboard.press('Backspace');
           await page.keyboard.type(text, { delay: 30 });
           await sleep(600);
+          // With a list of suggestions open, Enter takes the first one, whatever it is: only a matching one is picked.
+          if ((await page.evaluate(visibleOptionsInPage).catch(() => [] as string[])).length) {
+            if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) await page.keyboard.press('Escape');
+            return;
+          }
           await page.keyboard.press('Enter');
           return;
         case FillMethod.LABEL_CLICK:
@@ -337,6 +342,8 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     let beforeSend = '';
     // Submits that came back to the same form: twice is a loop (Sony on Greenhouse, 2026-10-01: four rounds of the same fill).
     let sentSameForm = 0;
+    // Every Submit pressed in this run.
+    let sendsThisRun = 0;
     // Typed answers of this step, checked again just before a button is pressed.
     let typedThisStep: FillInstruction[] = [];
 
@@ -476,6 +483,11 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
       }
       // "Apply now" at the end of a form with fields sends it too; on a bare job page it only opens the form.
       const sends = action.kind === 'submit' || (action.kind === 'apply' && snap.fields.length > 0);
+      if (sends && sendsThisRun >= MAX_SENDS_PER_RUN) {
+        const why = snap.errors.slice(0, 3).join('; ');
+        return { ...out, status: 'stuck', detail: `Pressed Submit ${sendsThisRun} times and the site did not take it${why ? ` (${why})` : ''} - finish it in the open tab` };
+      }
+      if (sends) sendsThisRun++;
       if (sends && opts.pauseBeforeSubmit) {
         return { ...out, status: 'ready_to_submit', detail: 'Filled and waiting for you to press Submit' };
       }
@@ -614,11 +626,9 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
         await page.keyboard.press('Backspace');
         await input.type(ins.value, { delay: 35 });
         await sleep(900);
-        const picked = await page.evaluate(pickTypeaheadOptionInPage, ins.value);
-        if (!picked) {
-          await page.keyboard.press('ArrowDown');
-          await page.keyboard.press('Enter');
-        }
+        // A suggestion that matches the answer, never just the first one (see TYPE_PICK).
+        const picked = await page.evaluate(pickTypeaheadOptionInPage, ins.value, true).catch(() => null);
+        if (!picked) await page.keyboard.press('Escape');
         await sleep(300);
       }
     }

@@ -20,7 +20,7 @@ export function pickTypeaheadOptionInPage(value: string, strict = false): string
       return { el, t, score };
     })
     .sort((a, b) => b.score - a.score);
-  // No textual match: the first suggestion is what a user would pick - after typing a search, never in a plain list.
+  // No textual match: the first suggestion, only where the caller allows it (strict: never - it was a wrong school).
   const best = scored[0];
   if (strict && best.score === 0) return null;
   best.el.scrollIntoView({ block: 'nearest' });

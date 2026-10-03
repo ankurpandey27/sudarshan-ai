@@ -47,6 +47,27 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     return stand.some((s) => !!s && s !== el && visible(s));
   };
   const textOf = (el: Element | null): string => clean((el as HTMLElement | null)?.innerText ?? el?.textContent ?? '');
+  // A label that means nothing on its own ("Start date year", "Month", "From") gets the heading of its section in front
+  // ("Education - Start date year"): Greenhouse asks the same words under Education and under Employment (Capco,
+  // 2026-10-03), and an answer saved for one must never fill the other.
+  const vagueLabel = (l: string): boolean => {
+    const words = l.replace(/[*:]/g, ' ').trim().toLowerCase().split(/\s+/).filter(Boolean);
+    return words.length > 0 && words.length <= 4 && words.every((w) => /^(start|end|date|month|year|from|to|day|current|present)$/.test(w));
+  };
+  const sectionOf = (el: Element): string => {
+    for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
+      const heads = Array.from(n.querySelectorAll('h1, h2, h3, h4, h5, h6, legend, [role=heading]')).filter(
+        (h) => !h.contains(el) && (h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 && textOf(h),
+      );
+      if (heads.length) return textOf(heads[heads.length - 1]).slice(0, 60);
+    }
+    return '';
+  };
+  const withSection = (label: string, el: Element): string => {
+    if (!vagueLabel(label)) return label;
+    const section = sectionOf(el);
+    return section ? `${section} - ${label}` : label;
+  };
 
   // Topmost visible match wins when dialogs are stacked.
   // No body yet while a page is navigating away.
@@ -359,7 +380,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       continue;
     }
 
-    const label = labelFor(el);
+    const label = withSection(labelFor(el), el);
     let kind: string;
     let options: string[] = [];
     let value = '';
@@ -384,6 +405,14 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       // A dropdown drawn as a button (Indeed) shows "Select an option" until something is picked: that is no answer.
       const shown = tagName === 'INPUT' ? input.value : textOf(el);
       value = /^(select|choose|pick|please (select|choose)|--)/i.test(clean(shown)) || clean(shown) === clean(el.getAttribute('aria-placeholder')) ? '' : shown;
+      // react-select (Greenhouse): after a pick the box is emptied and the choice is drawn beside it - that is the
+      // answer. Reading only the box made every picked dropdown look empty, and each was tried 5 more ways (2026-10-03).
+      if (!value.trim()) {
+        for (let n: Element | null = el.parentElement, i = 0; n && i < 4 && !value; n = n.parentElement, i++) {
+          const chosen = n.querySelector('[class*="singleValue"], [class*="single-value"], [class*="multiValue__label"], [class*="multi-value__label"]');
+          if (chosen) value = textOf(chosen);
+        }
+      }
     } else {
       kind = ['number', 'email', 'tel', 'url', 'date'].includes(type) ? type : 'text';
       value = input.value;

@@ -307,4 +307,9 @@ export const MIGRATIONS: string[] = [
   );
   CREATE INDEX idx_job_replies_job ON job_replies (job_id);
   `,
+  // Ways of filling learned on Greenhouse while its picked dropdowns were misread as empty (2026-10-03): forgotten,
+  // to be learned again from correct readings.
+  `
+  DELETE FROM widget_recipes WHERE domain LIKE '%greenhouse.io';
+  `,
 ];
