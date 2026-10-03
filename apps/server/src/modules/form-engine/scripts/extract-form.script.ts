@@ -56,9 +56,18 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   };
   const sectionOf = (el: Element): string => {
     for (let n = el.parentElement; n && n !== document.body; n = n.parentElement) {
-      const heads = Array.from(n.querySelectorAll('h1, h2, h3, h4, h5, h6, legend, [role=heading]')).filter(
-        (h) => !h.contains(el) && (h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 && textOf(h),
-      );
+      // Greenhouse's "Education" is a plain bold line, not a heading (Capco, 2026-10-03): title-like elements count too.
+      // A field group's own title (the "Phone" legend) is only for the fields inside that group.
+      const heads = Array.from(
+        n.querySelectorAll('h1, h2, h3, h4, h5, h6, legend, [role=heading], [class*="title" i], [class*="heading" i], [class*="section-header" i]'),
+      ).filter((h) => {
+        if (h.contains(el) || (h.compareDocumentPosition(el) & Node.DOCUMENT_POSITION_FOLLOWING) === 0) return false;
+        if (h.querySelector('input, select, textarea, button') || h.closest('label')) return false;
+        const group = h.closest('fieldset, [role=group], [role=radiogroup]');
+        if (group && !group.contains(el)) return false;
+        const t = textOf(h);
+        return !!t && t.length <= 60 && t.split(/\s+/).length <= 6;
+      });
       if (heads.length) return textOf(heads[heads.length - 1]).slice(0, 60);
     }
     return '';

@@ -46,6 +46,24 @@ function accepted(a: LlmFieldAnswer, field: FormField): boolean {
   return a.confident !== false;
 }
 
+/**
+ * A field that already shows an answer your profile clearly disagrees with: Greenhouse restored a draft with a wrong
+ * school from an earlier try, and it was sent (Capco, 2026-10-03). Only facts from your profile count, and only a
+ * plain mismatch - "Noida, Uttar Pradesh, India" holds "Noida", "+91 98..." holds your number.
+ */
+const IDENTITY_KEYS = new Set(['institution', 'city', 'country', 'firstName', 'lastName', 'fullName', 'email', 'phone', 'graduationYear', 'educationStartYear']);
+
+function contradictsProfile(ctx: AnswerContext, field: FormField): boolean {
+  if (![FieldKind.COMBOBOX, FieldKind.SELECT, FieldKind.TEXT].includes(field.kind) || !field.value.trim()) return false;
+  const rule = answerFromProfile(ctx, field);
+  // Plain facts only - a degree or a discipline is mapped onto the site's own categories ("B.Tech." is "Bachelor's Degree").
+  if (!rule?.confident || !rule.key || !IDENTITY_KEYS.has(rule.key) || !String(rule.value).trim()) return false;
+  const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '');
+  const have = norm(field.value);
+  const want = norm(String(rule.value));
+  return !!have && !!want && !have.includes(want) && !want.includes(have);
+}
+
 /** Jobs whose AI answers are kept between tries. */
 const MAX_DRAFT_JOBS = 200;
 const draftKey = (f: FormField) => (f.label || f.placeholder || f.name).trim().toLowerCase();
@@ -91,7 +109,7 @@ export class AnswerEngineService {
     for (const field of fields) {
       const forced = opts.force?.has(field.id) === true;
       const consentBox = field.kind === FieldKind.CHECKBOX && field.value !== 'true';
-      if (!forced && !needsAnswer(field) && !consentBox) continue;
+      if (!forced && !needsAnswer(field) && !consentBox && !contradictsProfile(ctx, field)) continue;
 
       if (field.kind === FieldKind.FILE) {
         this.resolveFile(field, ctx, result, resumeFallback === field);

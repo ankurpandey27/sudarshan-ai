@@ -230,6 +230,38 @@ describe('Greenhouse-style searchable dropdowns (real browser, Capco 2026-10-03)
     await browser?.close();
   });
 
+  it('names the Education section on vague labels, and answers again a restored school that is not yours', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'greenhouse-education.html').replace(/\\/g, '/')}`);
+    const storage = new StorageService(':memory:');
+    const engine = new AnswerEngineService(new AnswersService(storage), noLlm);
+    const runner = new FormRunnerService(engine, new RecipesService(storage), noLlm, new PlaybookService(storage));
+    const snap = await runner.snapshot(page, null);
+    const labels = snap.fields.map((f) => f.label);
+    expect(labels).toEqual(expect.arrayContaining(['Education - Start date year', 'Education - End date year']));
+    expect(labels.some((l) => /^Phone - /.test(l))).toBe(false);
+    const school = snap.fields.find((f) => /school/i.test(f.label))!;
+    expect(school.value).toBe('Art Institute of Atlanta');
+    const ctx = {
+      profile: {
+        ...EMPTY_PROFILE,
+        country: 'India',
+        phone: '9876543210',
+        education: [{ degree: 'B.Tech.', field: 'Computer Science', institution: 'Dr. A.P.J. Abdul Kalam Technical University', startYear: 2016, endYear: 2020, grade: '' }],
+      },
+      job: { id: 1, title: 'Backend', company: 'Capco', location: 'Remote', description: '' },
+      resumePath: null,
+      skillYears: () => null,
+    };
+    const res = await engine.resolve(snap.fields, ctx, { allowLlm: false });
+    const value = (id: string) => res.instructions.find((i) => i.id === id)?.value;
+    // The restored wrong school is answered again with yours; the years come from your education, not your phone.
+    expect(value(school.id)).toBe('Dr. A.P.J. Abdul Kalam Technical University');
+    expect(value(snap.fields.find((f) => /start date year/i.test(f.label))!.id)).toBe('2016');
+    expect(value(snap.fields.find((f) => /end date year/i.test(f.label))!.id)).toBe('2020');
+    await page.close();
+  });
+
   it('reads the choice drawn beside an emptied box, and never picks a suggestion that does not match', async () => {
     const page = await browser.newPage();
     await page.goto(`file://${join(__dirname, 'fixtures', 'react-select.html').replace(/\\/g, '/')}`);

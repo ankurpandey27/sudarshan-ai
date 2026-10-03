@@ -1,0 +1,16 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Greenhouse-style education section</title></head>
+<body>
+<!-- Capco on Greenhouse (2026-10-03): "Education" is a plain bold line, the phone has its own group with a "Phone"
+     legend, and a draft restored from an earlier try left a wrong school in the School box. -->
+<form onsubmit="return false">
+  <fieldset><legend>Phone</legend><input id="phone" type="tel" aria-label="Phone number"></fieldset>
+  <div class="education">
+    <div class="section-title">Education</div>
+    <div class="field"><label for="school">School*</label>
+      <div class="select__control"><div class="select__value-container"><div class="select__single-value">Art Institute of Atlanta</div><input id="school" role="combobox" aria-autocomplete="list" required></div></div></div>
+    <div class="field"><label for="sy">Start date year*</label><input id="sy" type="number" required></div>
+    <div class="field"><label for="ey">End date year*</label><input id="ey" type="number" required></div>
+  </div>
+</form>
+</body></html>
