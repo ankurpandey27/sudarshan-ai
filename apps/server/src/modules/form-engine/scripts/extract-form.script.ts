@@ -507,7 +507,14 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       )
     )
       kind = 'next';
-    else if (/^(easy apply|apply|apply now|apply for this job|apply to this job|i'?m interested|quick apply)\b/.test(lower)) kind = 'apply';
+    else if (
+      /^(easy apply|apply|apply now|apply for this job|apply to this job|i['’]?m interested|quick apply)\b/.test(lower) ||
+      // A job board's step before the employer's form (Himalayas: "I'm ready to apply", A5 Labs 2026-10-03).
+      /^(i['’]?m ready to apply|ready to apply|(continue|proceed|go) to (apply|the application|application)|apply on (the )?(company|employer)['’]?s? (site|website)|apply externally)\b/.test(
+        lower,
+      )
+    )
+      kind = 'apply';
     else if (
       word(
         'solliciteer|solliciteren|nu solliciteren|direct solliciteren|solliciteer nu|solliciteer direct|reageer|reageren|reageer direct|bewerben|jetzt bewerben|bewerbung starten|hier bewerben|postuler|postulez|candidater|je postule|postular|postúlate|postulate|aplicar|inscribirse|candidatar-se|candidatura|candidati|candidati ora|invia la tua candidatura|aplikuj|aplikuj teraz|ansök|sök jobbet|ansøg|søk',
@@ -548,9 +555,17 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     .slice(0, 5);
 
   // A widget counts until its response token is filled in (the iframe stays after solving).
-  const widget = !!document.querySelector(
-    'iframe[src*="recaptcha"]:not([src*="invisible"]), iframe[src*="hcaptcha"], iframe[title*="challenge" i], #captcha-internal, iframe[src*="arkoselabs"], iframe[src*="funcaptcha"], iframe[src*="turnstile"]',
-  );
+  // Only a box you can see: Himalayas keeps reCAPTCHA's hidden helper frame (api2/aframe, no size) on every page, which
+  // made a pop-up with "I'm ready to apply" look like a captcha (A5 Labs, 2026-10-03).
+  const widget = Array.from(
+    document.querySelectorAll(
+      'iframe[src*="recaptcha"]:not([src*="invisible"]):not([src*="/aframe"]), iframe[src*="hcaptcha"], iframe[title*="challenge" i], #captcha-internal, iframe[src*="arkoselabs"], iframe[src*="funcaptcha"], iframe[src*="turnstile"]',
+    ),
+  ).some((el) => {
+    if (el.id === 'captcha-internal') return true;
+    const r = (el as HTMLElement).getBoundingClientRect();
+    return r.width >= 50 && r.height >= 50 && getComputedStyle(el).visibility !== 'hidden';
+  });
   const token = Array.from(
     document.querySelectorAll('textarea[name="g-recaptcha-response"], textarea[name="h-captcha-response"], input[name="cf-turnstile-response"]'),
   ).some((t) => ((t as HTMLTextAreaElement).value ?? '').length > 10);

@@ -212,7 +212,13 @@ export class WebApplyAdapter implements ApplyAdapter {
     return snap.fields.length >= 2 && signals >= 2;
   }
 
+  /**
+   * A login wall. Words alone are not one when the page offers its own Apply button and no password box: a menu's
+   * "Sign in" or a newsletter's email box sat next to Avenga's "Apply now" (2026-10-03). Apply is pressed; a site
+   * that does want an account then shows its password box, which hands the job to you.
+   */
   private looksLikeLogin(snap: FormSnapshot, text: string): boolean {
+    if (snap.actions.some((a) => !a.disabled && a.kind === 'apply' && !/sign|log ?in|register/i.test(a.text))) return false;
     const onlyAuth = snap.fields.length > 0 && snap.fields.length <= 3 && snap.fields.every((f) => /e-?mail|user|login|password/i.test(`${f.label} ${f.name}`));
     return LOGIN_WALL.test(text) || (onlyAuth && /sign in|log in|login/i.test(text));
   }

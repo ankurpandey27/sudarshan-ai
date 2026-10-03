@@ -1,0 +1,35 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Web app full stack - A5 Labs | Himalayas</title></head>
+<body>
+<!-- Himalayas (A5 Labs, 2026-10-03): "Apply now" opens a "Don't let your application get lost in the pile" pop-up
+     whose way on is "I'm ready to apply"; reCAPTCHA's hidden helper frame (api2/aframe, no size) is on the page. -->
+<iframe src="data:text/html,recaptcha/api2/aframe" title="reCAPTCHA" style="width:0;height:0;border:0;display:block"></iframe>
+<main>
+  <h1>Web app full stack</h1>
+  <p>A5 Labs is hiring a full stack developer. React, Node.js.</p>
+  <button type="button" id="apply">Apply now</button>
+</main>
+<script>
+  document.getElementById('apply').addEventListener('click', () => {
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<div role="dialog" id="pile"><h2>Don\'t let your application get lost in the pile</h2>' +
+        '<button type="button">Generate cover letter with AI</button>' +
+        '<button type="button">Generate resume with AI</button>' +
+        '<button type="button" id="ready">I\'m ready to apply</button>' +
+        '<button type="button" aria-label="Close">×</button></div>',
+    );
+    document.getElementById('ready').addEventListener('click', () => {
+      document.getElementById('pile').remove();
+      document.querySelector('main').insertAdjacentHTML(
+        'beforeend',
+        '<form id="form" onsubmit="return false">' +
+          '<label for="fn">First name</label><input id="fn" required>' +
+          '<label for="em">Email</label><input id="em" type="email" required>' +
+          '<label for="cv">Resume</label><input id="cv" type="file" required>' +
+          '<button type="submit">Submit application</button></form>',
+      );
+    });
+  });
+</script>
+</body></html>

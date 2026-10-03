@@ -455,6 +455,20 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     await page.setRequestInterception(false);
   });
 
+  it('presses the job\'s own Apply now rather than taking a menu "Sign in" for a login wall (Avenga, 2026-10-03)', async () => {
+    const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
+    const prep = await web.prepareUrl(page, `file://${join(__dirname, 'fixtures', 'apply-with-menu-login.html').replace(/\\/g, '/')}`);
+    expect(prep.status).toBe(PrepareStatus.READY);
+    expect(await page.$('#form')).not.toBeNull();
+  });
+
+  it('goes through Himalayas\' "I\'m ready to apply" pop-up, not calling its hidden reCAPTCHA frame a captcha (A5 Labs, 2026-10-03)', async () => {
+    const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
+    const prep = await web.prepareUrl(page, `file://${join(__dirname, 'fixtures', 'himalayas-ready-to-apply.html').replace(/\\/g, '/')}`);
+    expect(prep.status).toBe(PrepareStatus.READY);
+    expect(await page.$('#form')).not.toBeNull();
+  });
+
   it('recognises a one-click apply (Instahyre) instead of reporting "no apply button"', async () => {
     const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
     const url = `file://${join(__dirname, 'fixtures', 'one-click-apply.html').replace(/\\/g, '/')}`;

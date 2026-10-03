@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Senior Node.js Engineer - Careers</title></head>
+<body>
+<!-- Avenga careers (2026-10-03): a menu with "Sign in", a newsletter email box and "Please log in to save jobs", next
+     to the job's own "Apply now" - which opens the application form, no account needed. -->
+<nav><a href="#signin">Sign in</a> <span>Please log in to save jobs you like.</span>
+  <form><label for="nl">Email</label><input id="nl" type="email" placeholder="Your email"> <button type="button">Subscribe</button></form></nav>
+<main>
+  <h1>Senior Node.js Engineer</h1>
+  <button type="button" id="apply">Apply now</button>
+</main>
+<script>
+  // The form is drawn when Apply is pressed, as on the real page.
+  document.getElementById('apply').addEventListener('click', function () {
+    this.remove();
+    document.querySelector('main').insertAdjacentHTML(
+      'beforeend',
+      '<form id="form" onsubmit="return false">' +
+        '<label for="fn">First name</label><input id="fn" required>' +
+        '<label for="ln">Last name</label><input id="ln" required>' +
+        '<label for="em">Email</label><input id="em" type="email" required>' +
+        '<label for="cv">Resume</label><input id="cv" type="file" required>' +
+        '<button type="submit">Submit application</button></form>',
+    );
+  });
+</script>
+</body></html>
