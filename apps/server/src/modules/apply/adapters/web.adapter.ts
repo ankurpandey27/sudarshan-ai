@@ -29,6 +29,7 @@ import {
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { looksClosed } from '../utils/closed.util';
+import { BOT_CHECK_DETAIL, BOT_CHECK_TEXT, BOT_CHECK_WAIT_MS } from '../constants/apply.constants';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 import { onJobBoard } from '../utils/offsite-url.util';
@@ -83,6 +84,8 @@ export class WebApplyAdapter implements ApplyAdapter {
     // and always one more look at where the last one led.
     for (let hop = 0; hop < MAX_APPLY_HOPS; hop++) {
       // A cookie banner is not the application dialog, and covers the Apply button.
+      // A bot shield (Cloudflare) in front of the page: wait for it to clear by itself, else it is yours to tick.
+      if (!(await this.passBotCheck(current))) return result(PrepareStatus.CAPTCHA, { page: current, detail: BOT_CHECK_DETAIL });
       await this.runner.clearCookieBanner(current);
       const { snap, text, accountWall } = await this.readWhenReady(current);
       if (looksClosed(text, snap)) return result(PrepareStatus.CLOSED);
@@ -145,6 +148,23 @@ export class WebApplyAdapter implements ApplyAdapter {
    * draw their Apply button seconds after the network goes quiet, and may swap the page out while it
    * is read ("detached Frame") - so wait for a form, a login or an apply button, and read again.
    */
+  /**
+   * Waits while a bot-shield page ("Performing security verification", "Just a moment...") stands in front of the
+   * site - in a real browser most clear in seconds. False when it is still there: one that wants a click.
+   * Only a short page counts, so a job description that says "just a moment" is never mistaken for one.
+   */
+  private async passBotCheck(page: Page): Promise<boolean> {
+    for (const until = Date.now() + BOT_CHECK_WAIT_MS; ; ) {
+      const shown = await page
+        .evaluate(() => ({ title: document.title, text: (document.body?.innerText ?? '').slice(0, 2000) }))
+        .catch(() => ({ title: '', text: '' }));
+      const check = BOT_CHECK_TEXT.test(shown.title) || (shown.text.length < 1500 && BOT_CHECK_TEXT.test(shown.text));
+      if (!check) return true;
+      if (Date.now() >= until) return false;
+      await sleep(1500);
+    }
+  }
+
   private async readWhenReady(page: Page): Promise<{ snap: FormSnapshot; text: string; accountWall: boolean }> {
     const started = Date.now();
     for (;;) {

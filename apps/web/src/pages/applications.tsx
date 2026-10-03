@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Briefcase, CheckCheck, Download, Link2, Play, RotateCcw, Search } from 'lucide-react';
+import { Briefcase, CheckCheck, Download, Link2, Play, RotateCcw, Search, Undo2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { cn } from '../lib/format';
 import { useJobs } from '../lib/queries';
@@ -60,6 +60,20 @@ export function Applications() {
     mutationFn: (id: number) => api.post('/jobs/approve', { ids: [id] }),
     onSuccess: () => {
       toast('ok', 'Back in the queue');
+      refresh();
+    },
+  });
+  const toReview = useMutation({
+    mutationFn: (id: number) => api.post('/jobs/unqueue', { ids: [id] }),
+    onSuccess: () => {
+      toast('ok', 'Back in Review');
+      refresh();
+    },
+  });
+  const dismiss = useMutation({
+    mutationFn: (id: number) => api.post('/jobs/dismiss', { ids: [id] }),
+    onSuccess: () => {
+      toast('ok', 'Dismissed');
       refresh();
     },
   });
@@ -211,8 +225,14 @@ export function Applications() {
                     <Button size="sm" variant="ghost" icon={<CheckCheck className="size-3.5" />} onClick={() => markApplied.mutate(j.id)}>
                       I applied
                     </Button>
-                    <Button size="sm" icon={<RotateCcw className="size-3.5" />} onClick={() => retry.mutate(j.id)}>
-                      Retry
+                    <Button size="sm" icon={<RotateCcw className="size-3.5" />} title="Queue it again - Sudarshan applies on its next turn" onClick={() => retry.mutate(j.id)}>
+                      Approve again
+                    </Button>
+                    <Button size="sm" variant="ghost" icon={<Undo2 className="size-3.5" />} title="Out of here and back to Review, to decide later" onClick={() => toReview.mutate(j.id)}>
+                      Back to Review
+                    </Button>
+                    <Button size="sm" variant="ghost" icon={<X className="size-3.5" />} title="Not interested - drop it" onClick={() => dismiss.mutate(j.id)}>
+                      Dismiss
                     </Button>
                   </>
                 ) : null

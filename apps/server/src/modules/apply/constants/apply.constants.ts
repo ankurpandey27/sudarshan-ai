@@ -125,3 +125,10 @@ export const APPLY_ACTION = /easy apply|^apply\b/i;
 
 /** How an attempt ended when it stopped to ask you questions it had never asked for that job - not a failed try. */
 export const NEW_QUESTIONS = 'run:new_questions';
+
+/** A bot-shield page standing in front of the site (Cloudflare on Himalayas, 2026-10-03: "Performing security verification"). */
+export const BOT_CHECK_TEXT =
+  /performing security verification|just a moment|checking (your browser|if the site connection is secure)|verify (you are|you're) (a )?human|attention required|ddos protection|security check to access/i;
+/** How long a bot-shield page may take to clear by itself before it is handed to you. */
+export const BOT_CHECK_WAIT_MS = 45_000;
+export const BOT_CHECK_DETAIL = 'The site is checking you are not a robot (a captcha) - tick it in the open tab; Sudarshan carries on by itself after';

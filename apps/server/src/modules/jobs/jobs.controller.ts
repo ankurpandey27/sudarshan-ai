@@ -72,11 +72,19 @@ export class JobsController {
     return { updated: this.jobs.approveStrong(dto.minScore, dto.platform) };
   }
 
-  /** Out of the queue and back to review; a job being applied to right now is not touched. */
+  /** Back to review - out of the queue, or from "needs attention"; a job being applied to right now is not touched. */
   @Post('unqueue')
   @HttpCode(200)
   unqueue(@Body() dto: JobIdsDto): { updated: number } {
-    return { updated: this.jobs.setStatusMany(dto.ids, JobStatus.REVIEW, 'Moved back to review by you', [JobStatus.APPROVED, JobStatus.SKIPPED], true) };
+    return {
+      updated: this.jobs.setStatusMany(
+        dto.ids,
+        JobStatus.REVIEW,
+        'Moved back to review by you',
+        [JobStatus.APPROVED, JobStatus.SKIPPED, JobStatus.MANUAL, JobStatus.FAILED, JobStatus.NEEDS_INPUT],
+        true,
+      ),
+    };
   }
 
   @Post('skip')
