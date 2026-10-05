@@ -469,6 +469,28 @@ describe('FormRunner on a LinkedIn-style Easy Apply dialog (real browser)', () =
     expect(await page.$('#form')).not.toBeNull();
   });
 
+  it('presses the Apply button itself when an ad is drawn over it (HighLevel on Himalayas, 2026-10-05)', async () => {
+    const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
+    const prep = await web.prepareUrl(page, `file://${join(__dirname, 'fixtures', 'apply-under-ad.html').replace(/\\/g, '/')}`, {
+      title: 'Software Development Engineer III - Users',
+      company: 'HighLevel',
+    });
+    expect(page.url()).toMatch(/apply-under-ad\.html$/);
+    expect(prep.status).toBe(PrepareStatus.READY);
+    expect(await page.$('#form')).not.toBeNull();
+  });
+
+  it("stops on an advertiser's page and fills nothing there (Mesa School, 2026-10-05)", async () => {
+    const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
+    const prep = await web.prepareUrl(page, `file://${join(__dirname, 'fixtures', 'apply-to-ad.html').replace(/\\/g, '/')}`, {
+      title: 'Backend Engineer',
+      company: 'Acme',
+    });
+    expect(prep.status).toBe(PrepareStatus.NO_APPLY_BUTTON);
+    expect(prep.detail).toMatch(/advert/);
+    expect(await page.$eval('#n', (el) => (el as HTMLInputElement).value)).toBe('');
+  });
+
   it('recognises a one-click apply (Instahyre) instead of reporting "no apply button"', async () => {
     const web = new WebApplyAdapter(runner, new RecipesService(storage), noLlm);
     const url = `file://${join(__dirname, 'fixtures', 'one-click-apply.html').replace(/\\/g, '/')}`;

@@ -192,7 +192,8 @@ const RULES: ProfileRule[] = [
   { key: 'headline', test: /headline/, answer: (c) => fact(c.profile.headline || c.profile.currentTitle) },
   {
     key: 'noticePeriod',
-    test: /notice\s*period/,
+    // "How soon can you join?" asks the same (CodeChavo, 2026-10-05).
+    test: /notice\s*period|how soon can you (join|start)|how early can you join|when can you (join|start)|joining time|time to join/,
     // "Are you serving your notice? When is your LWD?" asks for a yes and a date, not the notice length.
     not: /currently serving|serving (your |the )?notice|\blwd\b|last working/,
     answer: (c, f) => noticePeriod(c.profile.noticePeriodDays, f),

@@ -29,6 +29,8 @@ import {
   LATE_CAPTCHA_WAIT_MS,
   MAX_SAME_FORM_SENDS,
   MAX_SENDS_PER_RUN,
+  MAX_ERROR_ROUNDS,
+  AD_LANDING,
   MAX_PROBED_COMBOBOXES,
   NAVIGATED,
   SEND_WAIT_MS,
@@ -325,6 +327,8 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     };
     const maxSteps = opts.maxSteps ?? 15;
     let repeats = 0;
+    // The errors of the last round on this step, to tell a new problem from the same one again.
+    let lastErrors = '';
     // Buttons that did nothing on a kind of step during this run, so another one is tried.
     const tried = new Map<string, Set<string>>();
     let otherMoves = 0;
@@ -353,6 +357,10 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
       if (cookies) opts.onStep(`Step ${step}: closed the cookie banner ("${cookies}")`);
       const snap = await this.snapshot(page, opts.scopeSelector);
       await opts.onShot?.(page, `Step ${step}`);
+      // An advertiser's page is never filled in, whatever led there (Mesa School, 2026-10-05).
+      if (AD_LANDING.test(snap.url)) {
+        return { ...out, status: 'stuck', detail: `This is an advert's page (${new URL(snap.url).hostname}), not the job's application - nothing was filled in; apply by hand from the job page` };
+      }
 
       // A confirmation only counts after Sudarshan pressed something, and never on a page that is
       // still a form waiting to be sent (fields plus a Submit button, or an unsolved captcha) -
@@ -539,7 +547,13 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
       }
       if (errored.length && sameStep) {
         repeats++;
-        if (repeats >= 2) {
+        const errorsNow = errored
+          .map((f) => `${f.id}:${f.error}`)
+          .sort()
+          .join('|');
+        const sameAgain = errorsNow === lastErrors;
+        lastErrors = errorsNow;
+        if ((repeats >= 2 && sameAgain) || repeats >= MAX_ERROR_ROUNDS) {
           const why = [...errored.map((f) => `${f.label}: ${f.error}`), ...after.errors].slice(0, 3).join('; ');
           const stuckAt: LearnedMove = { domain: opts.domain, kind: 'advance', signature, text: action.text, by: this.aiPicks.has(action) ? 'ai' : 'rules' };
           return { ...out, status: 'stuck', detail: why || 'The form did not move forward', stuckAt };
@@ -557,6 +571,7 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
         // Moved on - but only learned once the application is confirmed, never just because the page changed.
         moves.push({ domain: opts.domain, kind: 'advance', signature, text: action.text, by: this.aiPicks.has(action) ? 'ai' : 'rules' });
         repeats = 0;
+        lastErrors = '';
         force = new Set();
       }
     }
@@ -569,6 +584,19 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     const handle = await page.$(sel);
     if (!handle) return;
     await handle.scrollIntoView().catch(() => undefined);
+    // Something drawn over the button - a sticky ad, a chat bubble - would take a click at its spot: a Google ad over
+    // Himalayas' Apply opened an advertiser's page (Mesa School, 2026-10-05). Then the button itself is pressed.
+    const covered = await handle
+      .evaluate((el) => {
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !top || !(top === el || el.contains(top) || top.contains(el));
+      })
+      .catch(() => false);
+    if (covered) {
+      await handle.evaluate((el) => (el as HTMLElement).click()).catch(() => undefined);
+      return;
+    }
     await handle.click({ delay: 40 }).catch(async () => {
       await page.evaluate((s) => (document.querySelector(s) as HTMLElement | null)?.click(), sel);
     });

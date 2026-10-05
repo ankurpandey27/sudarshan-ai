@@ -135,7 +135,10 @@ export class AnswerEngineService {
           continue;
         }
       }
-      if (fromProfile && !forced) {
+      // The site emptied the box (LinkedIn redraws a step after Review, CodeChavo 2026-10-05): your detail was never
+      // turned down - it goes back as it was, not to the AI.
+      const emptied = forced && !field.value.trim() && !(field.error && FORMAT_ERROR.test(field.error));
+      if (fromProfile && (!forced || emptied)) {
         const ins = toInstruction(field, fromProfile.value);
         // Every field a rule fills with one of your details teaches the field learner that wording.
         if (ins && fromProfile.key && fromProfile.confident) this.fieldLearner?.observe(field.label || field.placeholder, fromProfile.key);

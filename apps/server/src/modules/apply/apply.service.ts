@@ -126,7 +126,7 @@ export class ApplyService {
           return this.finish(job, attemptId, final, outcome, trace, page, keepOpen);
         }
         step(`Company site: ${new URL(prep.externalUrl).hostname}`);
-        prep = await this.web.prepareUrl(page, prep.externalUrl);
+        prep = await this.web.prepareUrl(page, prep.externalUrl, job);
         moves.push(...(prep.moves ?? []));
         if (prep.page) page = prep.page;
         active = this.web;

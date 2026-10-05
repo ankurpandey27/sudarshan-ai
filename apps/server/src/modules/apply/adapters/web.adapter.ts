@@ -29,6 +29,8 @@ import {
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { looksClosed } from '../utils/closed.util';
+import { mentionsJob } from '../utils/job-page-match.util';
+import { AD_LANDING } from '../../form-engine/constants/form-runner.constants';
 import { BOT_CHECK_DETAIL, BOT_CHECK_TEXT, BOT_CHECK_WAIT_MS } from '../constants/apply.constants';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
@@ -53,11 +55,11 @@ export class WebApplyAdapter implements ApplyAdapter {
   }
 
   prepare(page: Page, job: Job): Promise<PrepareResult> {
-    return this.prepareUrl(page, job.applyUrl || job.url);
+    return this.prepareUrl(page, job.applyUrl || job.url, job);
   }
 
   // Also used when LinkedIn or Naukri hands off to a company site.
-  async prepareUrl(page: Page, url: string): Promise<PrepareResult> {
+  async prepareUrl(page: Page, url: string, job?: Pick<Job, 'title' | 'company'>): Promise<PrepareResult> {
     // Buttons pressed on the way to the form, handed back so a confirmed application can learn them.
     const moves: LearnedMove[] = [];
     const result = (status: PrepareStatus, extra: Partial<PrepareResult> = {}): PrepareResult => ({
@@ -88,6 +90,12 @@ export class WebApplyAdapter implements ApplyAdapter {
       if (!(await this.passBotCheck(current))) return result(PrepareStatus.CAPTCHA, { page: current, detail: BOT_CHECK_DETAIL });
       await this.runner.clearCookieBanner(current);
       const { snap, text, accountWall } = await this.readWhenReady(current);
+      // A press that landed on an advert (a Google ad over the Apply button, Mesa School 2026-10-05): stop there.
+      if (AD_LANDING.test(current.url()) && (hop > 0 || current.url() !== url)) {
+        return result(PrepareStatus.NO_APPLY_BUTTON, {
+          detail: `A press landed on an advert (${hostOf(current)}), not the application - nothing was filled in; apply by hand from the job page`,
+        });
+      }
       if (looksClosed(text, snap)) return result(PrepareStatus.CLOSED);
       if (hop === 0) {
         // The site's own button says it is done, e.g. Instahyre's "Application sent!".
@@ -110,6 +118,13 @@ export class WebApplyAdapter implements ApplyAdapter {
       }
       // A form with a captcha at the bottom is still a form: fill it, then hand the captcha over.
       if (this.hasApplicationForm(snap)) {
+        // A form on a page that names neither the company nor the job is someone else's: never filled with your details.
+        if (hop > 0 && job && !mentionsJob(`${await current.title().catch(() => '')} ${text}`, current.url(), job)) {
+          return result(PrepareStatus.NO_APPLY_BUTTON, {
+            detail: `The form at ${hostOf(current)} does not mention ${job.company} or this job - nothing was filled in; check it and apply by hand`,
+            page: current,
+          });
+        }
         // Only a dialog that holds the form counts - never a cookie banner that happens to be open.
         await this.runner.clearCookieBanner(current);
         const dialog = await current.evaluate(applicationDialogInPage, DIALOG).catch(() => false);

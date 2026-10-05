@@ -1,0 +1,29 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Software Development Engineer III - HighLevel | Himalayas</title>
+<style>
+  body { margin: 0; font-family: sans-serif; }
+  #apply { position: absolute; top: 200px; left: 40px; width: 240px; height: 48px; }
+  /* A sticky ad drawn over the Apply button, as Google's anchor ads are on Himalayas. */
+  #ad { position: fixed; top: 180px; left: 0; right: 0; height: 90px; background: #eee; z-index: 99; display: block; }
+  #form { position: absolute; top: 400px; left: 40px; }
+</style></head>
+<body>
+<!-- Himalayas (HighLevel, 2026-10-05): a click at the Apply button's spot hit the ad over it, which opened an
+     advertiser's sign-up page; Sudarshan then filled it with your details (Mesa School). -->
+<h1>Software Development Engineer III - Users</h1>
+<p>HighLevel is hiring. Node.js, TypeScript.</p>
+<button type="button" id="apply">Apply now</button>
+<a id="ad" href="ad-landing.html?utm_source=google-ads&amp;utm_medium=cpc&amp;gclid=test"></a>
+<script>
+  document.getElementById('apply').addEventListener('click', () => {
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<form id="form" onsubmit="return false">' +
+        '<label for="fn">First name</label><input id="fn" required>' +
+        '<label for="em">Email</label><input id="em" type="email" required>' +
+        '<label for="cv">Resume</label><input id="cv" type="file" required>' +
+        '<button type="submit">Submit application</button></form>',
+    );
+  });
+</script>
+</body></html>

@@ -10,7 +10,7 @@ import { LlmPurpose } from '../llm/enums/llm-purpose.enum';
 import { LlmService } from '../llm/llm.service';
 import { isContextTooLong } from '../llm/utils/llm-error.util';
 import { AnswerEngineService } from './answer-engine.service';
-import { NEVER_ADVANCE } from './constants/form-runner.constants';
+import { AD_LANDING, NEVER_ADVANCE } from './constants/form-runner.constants';
 import { HIGH_STAKES_QUESTION } from './constants/inference.constants';
 import { NOT_A_RESUME } from './constants/background.constants';
 import { RESCUE_MAX_ACTIONS, RESCUE_MAX_IDLE, RESCUE_MAX_STEPS, RESCUE_PAUSE_AFTER, RESCUE_SIZES } from './constants/rescue.constants';
@@ -90,6 +90,8 @@ export class RescueService {
   }
 
   async run(page: Page, opts: RunFormOptions, hands: RescueHands, before: FormRunOutcome): Promise<FormRunOutcome> {
+    // An advertiser's page is not the job's: the AI never takes over there (Mesa School, 2026-10-05).
+    if (AD_LANDING.test(page.url())) return before;
     const out: FormRunOutcome = { ...before, moves: [...(before.moves ?? [])] };
     const history: string[] = [`Ordinary automation stopped: ${before.detail}`];
     const goal = 'Get this job application submitted (or as far as possible without the person).';
@@ -106,6 +108,8 @@ export class RescueService {
 
     while (steps < RESCUE_MAX_STEPS) {
       const snap = await hands.snapshot(page, opts.scopeSelector);
+      if (AD_LANDING.test(snap.url))
+        return done({ ...out, status: 'stuck', detail: `A press led to an advert's page (${new URL(snap.url).hostname}) - stopped there; apply by hand from the job page` }, 'failed');
       if (pressed && (await hands.isConfirmed(page, snap, opts)))
         return done({ ...out, status: 'applied', detail: 'Application submitted (rescued)' }, 'applied');
       if (snap.captcha)

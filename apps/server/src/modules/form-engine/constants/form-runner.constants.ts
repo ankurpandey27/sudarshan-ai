@@ -161,5 +161,20 @@ export const MAX_SAME_FORM_SENDS = 2;
  */
 export const MAX_SENDS_PER_RUN = 3;
 
+/**
+ * Rounds of fixing the answers a step turned down, while its errors keep changing: LinkedIn first emptied the boxes it
+ * redrew ("required"), and only then said "Invalid input" for "30 days" - fixed by answering "30", had a round been
+ * left (CodeChavo, 2026-10-05). The same errors twice in a row stop it at once.
+ */
+export const MAX_ERROR_ROUNDS = 4;
+
 /** Searchable dropdowns opened per step to read their options, at most. */
 export const MAX_PROBED_COMBOBOXES = 20;
+
+/**
+ * An advertiser's page reached by clicking an ad: Google's click markers (gclid, gad_source, gbraid/wbraid), paid
+ * campaign tags, or an ad network's own address. A press on Himalayas landed on a Google ad over its Apply button and
+ * Sudarshan filled a business school's sign-up form with your details (Mesa School, 2026-10-05). Never filled.
+ */
+export const AD_LANDING =
+  /[?&](gclid|gad_source|gad_campaignid|gbraid|wbraid|dclid|msclkid|fbclid)=|[?&]utm_medium=(cpc|ppc|paid|paidsearch|display|banner)\b|[?&]utm_source=(google-?ads|adwords|googleadservices|facebook-?ads|meta-?ads)\b|\/\/[^/]*(doubleclick\.net|googleadservices\.com|googlesyndication\.com|adservice\.google\.)/i;

@@ -217,6 +217,38 @@ describe('Checking every fill, and learning how to operate a field (real browser
     expect(steps.filter((s) => /"Submit application"/.test(s)).length).toBeLessThanOrEqual(2);
     await page.close();
   });
+
+  it('gets another round when the errors change: emptied box first, then "Invalid input" for "30 days" (CodeChavo, 2026-10-05)', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'linkedin-errors-change.html').replace(/\\/g, '/')}`);
+    const storage = new StorageService(':memory:');
+    const runner = new FormRunnerService(
+      new AnswerEngineService(new AnswersService(storage), noLlm),
+      new RecipesService(storage),
+      noLlm,
+      new PlaybookService(storage),
+      undefined,
+      undefined,
+      new WidgetRecipesService(storage),
+    );
+    const out = await runner.run(page, {
+      scopeSelector: null,
+      successPattern: GENERIC_SUCCESS,
+      ctx: {
+        profile: { ...EMPTY_PROFILE, country: 'India', noticePeriodDays: 30 },
+        job: { id: 1, title: 'Node js Developer', company: 'CodeChavo', location: 'Bengaluru', description: '' },
+        resumePath: null,
+        skillYears: () => null,
+      },
+      domain: 'linkedin.com',
+      allowLlm: false,
+      pauseBeforeSubmit: false,
+      onStep: () => undefined,
+    });
+    expect(out.status).toBe('applied');
+    expect(await page.evaluate(() => (window as unknown as { __sent: string[] }).__sent)).toEqual(['30']);
+    await page.close();
+  });
 });
 
 describe('Greenhouse-style searchable dropdowns (real browser, Capco 2026-10-03)', () => {

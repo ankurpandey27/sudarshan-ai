@@ -1,0 +1,37 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Apply to CodeChavo</title></head>
+<body>
+<!-- CodeChavo on LinkedIn (2026-10-05): the first Review empties the redrawn box ("Enter a valid answer"); the next
+     one turns "30 days" down ("Invalid input"); a plain number goes through. -->
+<form id="form" onsubmit="return false">
+  <h3>Additional Questions</h3>
+  <label for="join">How soon can you join?</label>
+  <input id="join" type="text" maxlength="100" required aria-describedby="join-error">
+  <div id="join-error" class="artdeco-inline-feedback--error" role="alert"></div>
+  <button type="button" id="review">Review</button>
+</form>
+<script>
+  window.__sent = [];
+  let presses = 0;
+  const box = document.getElementById('join');
+  const err = document.getElementById('join-error');
+  document.getElementById('review').addEventListener('click', () => {
+    presses++;
+    const v = box.value.trim();
+    if (presses === 1) {
+      // LinkedIn redraws the step: the typed answer is gone.
+      box.value = '';
+      box.setAttribute('aria-invalid', 'true');
+      err.textContent = 'Enter a valid answer';
+      return;
+    }
+    if (!/^\d+$/.test(v)) {
+      box.setAttribute('aria-invalid', 'true');
+      err.textContent = v ? 'Invalid input' : 'Enter a valid answer';
+      return;
+    }
+    window.__sent.push(v);
+    document.body.innerHTML = '<h2>Your application was sent to CodeChavo</h2>';
+  });
+</script>
+</body></html>
