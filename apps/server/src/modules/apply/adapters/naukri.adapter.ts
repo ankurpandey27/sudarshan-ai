@@ -26,8 +26,28 @@ import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interfa
 import { naukriDoneTypingInPage, naukriLastQuestionInPage, naukriSendInPage, naukriSendReadyInPage } from '../scripts/naukri-chat.script';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 import { asChoiceQuestion, boxesToTick } from '../utils/naukri-choices.util';
+import { FormField } from '../../form-engine/interfaces/form-field.interface';
 
 const MAX_QUESTIONS = 20;
+/** A lone chip that only says yes - "Yes", "I agree", "Accept" - is the one way on: it is pressed. */
+const AFFIRMATIVE_CHIP = /^(yes|i agree|agree|accept|i accept|i consent|ok|okay|continue|proceed)\.?$/i;
+/** A chat question answered with chips, as a choice field for the answer engine. */
+const CHIP_FIELD: FormField = {
+  id: 'naukri-chip',
+  kind: FieldKind.RADIO,
+  label: '',
+  name: '',
+  placeholder: '',
+  required: true,
+  value: '',
+  options: [],
+  optionIds: [],
+  error: '',
+  maxLength: null,
+  min: null,
+  max: null,
+  accept: null,
+};
 const REFUSED_DETAIL = 'Naukri is refusing applications for now ("please try again later") - it stays in the queue';
 
 @Injectable()
@@ -117,7 +137,35 @@ export class NaukriApplyAdapter implements ApplyAdapter {
         ...(choice ? [choice] : []),
         ...shown.filter((f) => !choice || f.kind !== FieldKind.CHECKBOX).map((f) => ({ ...f, label: question || f.label, required: true, value: '' })),
       ];
+      // Answers offered as chips and no box to type in ("Please read and consent privacy Policy" with one "Yes" chip,
+      // 7-Eleven 2026-10-05): a choice question - answered the usual way, and its chip clicked.
       if (fields.length === 0) {
+        const chips: string[] = await page
+          .evaluate((drawer: string) => {
+            const groups = Array.from(document.querySelectorAll(`${drawer} .chatbot_Chips`));
+            const last = groups[groups.length - 1];
+            if (!last) return [];
+            return Array.from(last.querySelectorAll('.chatbot_Chip'))
+              .filter((c) => (c as HTMLElement).offsetWidth > 0)
+              .map((c, i) => {
+                c.setAttribute('data-jaa-chip', String(i));
+                return ((c as HTMLElement).innerText || '').trim();
+              });
+          }, NAUKRI_DRAWER)
+          .catch(() => []);
+        if (chips.length) {
+          const field = { ...CHIP_FIELD, label: question, options: chips };
+          const res = chips.length === 1 && AFFIRMATIVE_CHIP.test(chips[0]) ? null : await this.answers.resolve([field], opts.ctx, { allowLlm: opts.allowLlm });
+          if (res?.unresolved.length) return { ...out, status: 'needs_input', unresolved: res.unresolved, detail: `Naukri asks: "${question}"` };
+          const wanted = res ? (res.instructions[0]?.value ?? '') : chips[0];
+          const at = chips.findIndex((c) => c.toLowerCase() === wanted.toLowerCase());
+          if (at >= 0) {
+            opts.onStep(`Naukri: "${question.slice(0, 80)}" -> "${chips[at]}" (${res ? 'answered' : 'the only choice'})`);
+            await page.click(`${NAUKRI_DRAWER} [data-jaa-chip="${at}"]`).catch(() => undefined);
+            await jitter(1500, 2500);
+            continue;
+          }
+        }
         if (!(await page.evaluate(naukriSendInPage, NAUKRI_DRAWER))) await sleep(1500);
         await jitter(1200, 2000);
         continue;

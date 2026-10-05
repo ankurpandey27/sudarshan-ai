@@ -51,10 +51,26 @@ function accepted(a: LlmFieldAnswer, field: FormField): boolean {
  * school from an earlier try, and it was sent (Capco, 2026-10-03). Only facts from your profile count, and only a
  * plain mismatch - "Noida, Uttar Pradesh, India" holds "Noida", "+91 98..." holds your number.
  */
-const IDENTITY_KEYS = new Set(['institution', 'city', 'country', 'firstName', 'lastName', 'fullName', 'email', 'phone', 'graduationYear', 'educationStartYear']);
+// Salary and notice too: Hirist pre-fills its questions from your Hirist profile (8 LPA current, 2 months' notice
+// against your 12 LPA and 30 days, Babcom 2026-10-05) - your Sudarshan profile is the one that holds.
+const IDENTITY_KEYS = new Set([
+  'institution',
+  'city',
+  'country',
+  'firstName',
+  'lastName',
+  'fullName',
+  'email',
+  'phone',
+  'graduationYear',
+  'educationStartYear',
+  'currentCtc',
+  'expectedCtc',
+  'noticePeriod',
+]);
 
 function contradictsProfile(ctx: AnswerContext, field: FormField): boolean {
-  if (![FieldKind.COMBOBOX, FieldKind.SELECT, FieldKind.TEXT].includes(field.kind) || !field.value.trim()) return false;
+  if (![FieldKind.COMBOBOX, FieldKind.SELECT, FieldKind.TEXT, FieldKind.NUMBER, FieldKind.RADIO].includes(field.kind) || !field.value.trim()) return false;
   const rule = answerFromProfile(ctx, field);
   // Plain facts only - a degree or a discipline is mapped onto the site's own categories ("B.Tech." is "Bachelor's Degree").
   if (!rule?.confident || !rule.key || !IDENTITY_KEYS.has(rule.key) || !String(rule.value).trim()) return false;

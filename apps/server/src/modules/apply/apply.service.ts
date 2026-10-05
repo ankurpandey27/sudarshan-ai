@@ -36,7 +36,7 @@ import { PlatformHealthService } from '../platform-health/platform-health.servic
 import { REFUSED_COOLDOWN_MS } from '../platform-health/constants/platform-health.constants';
 import { AttemptShot } from '../jobs/interfaces/attempt.interface';
 import { LearnersTrainerService } from '../learners/learners-trainer.service';
-import { CONTINUE_IDLE_MS, NEW_QUESTIONS, TAB_CLOSED, TAB_CLOSED_ENDING, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
+import { CONTINUE_IDLE_MS, NEW_QUESTIONS, PAGE_SWAPPED_ERROR, TAB_CLOSED, TAB_CLOSED_ENDING, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
 import { OpenTab } from './interfaces/open-tab.interface';
 import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
@@ -185,10 +185,15 @@ export class ApplyService {
       const msg = (err as Error).message;
       this.logger.warn(`Apply failed for job ${job.id}: ${msg}`);
       // A few network failures are the connection; more on the same job is the site (a dead domain).
-      final = TAB_CLOSED.test(msg)
+      // Only a tab that is really gone was closed by you; a page replaced while it was read (Hirist's redirects,
+      // "detached Frame", 2026-10-05) is a passing hitch - the job keeps its tries and goes round again.
+      const tabGone = TAB_CLOSED.test(msg) && (!page || page.isClosed() || !this.browser.isRunning());
+      final = tabGone
         ? // You closed its tab (or the browser) while it was applying: you stopped it - not a failed try.
           { status: JobStatus.MANUAL, detail: 'You closed its tab while Sudarshan was applying - approve it again to start over', ended: TAB_CLOSED_ENDING }
-        : NETWORK_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
+        : PAGE_SWAPPED_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
+          ? { status: JobStatus.APPROVED, detail: `The page changed while Sudarshan read it, will try again: ${msg.slice(0, 120)}`, ended: 'network' }
+          : NETWORK_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
           ? // The connection, not the job: it keeps its tries and its place in the queue.
             { status: JobStatus.APPROVED, detail: `Network problem, will try again: ${msg.slice(0, 160)}`, ended: 'network' }
           : { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: `Error: ${msg.slice(0, 200)}`, ended: 'error' };
@@ -224,8 +229,21 @@ export class ApplyService {
     const ready: number[] = [];
     for (const [id, t] of this.tabs) {
       if (!t.captcha || t.page.isClosed() || this.learning.finished(t.page)) continue;
-      const idle = Date.now() - Math.max(t.since, this.learning.lastActivity(t.page) ?? 0);
+      // A captcha does not solve itself: only a tab you have worked in since it was handed over is carried on.
+      // Lever's hCaptcha has no answer box to read, and its job went round every 3 minutes (HighLevel, 2026-10-05).
+      const touched = this.learning.lastActivity(t.page) ?? 0;
+      if (touched <= t.since) continue;
+      const idle = Date.now() - Math.max(t.since, touched);
       if (idle < CONTINUE_IDLE_MS) continue;
+      // Solved means the captcha's answer is filled in - not merely that no box shows: Lever's hCaptcha only appears
+      // over Submit, so with it closed the job "looked solved" and was sent round again every 3 minutes (HighLevel, 2026-10-05).
+      const token = await t.page
+        .evaluate(() => {
+          const boxes = Array.from(document.querySelectorAll('textarea[name="g-recaptcha-response"], textarea[name="h-captcha-response"], input[name="cf-turnstile-response"]'));
+          return boxes.length === 0 ? null : boxes.some((b) => ((b as HTMLTextAreaElement).value ?? '').length > 10);
+        })
+        .catch(() => null);
+      if (token === false) continue;
       const snap = await this.runner.snapshot(t.page, t.prep.scopeSelector).catch(() => null);
       if (snap && !snap.captcha) ready.push(id);
     }
@@ -443,6 +461,7 @@ export class ApplyService {
       resumeLabel: chosen?.label,
       skillYears: experience.skillYears,
       stories: this.stories?.forJob(`${job.title} ${job.description}`) ?? [],
+      resumeText: this.profile.resumeText?.() ?? '',
     };
   }
 }

@@ -3,11 +3,19 @@
 
 // Runs in the page via page.evaluate: every function must be self-contained.
 
-export function pickTypeaheadOptionInPage(value: string, strict = false): string | null {
+/**
+ * The suggestion that matches `value`, picked. With `markOnly` it is only marked (data-jaa-pick) for a real mouse
+ * click: Lever ignores a script's click on its location list (HighLevel, 2026-10-05).
+ */
+export function pickTypeaheadOptionInPage(value: string, strict = false, markOnly = false): string | null {
+  for (const old of Array.from(document.querySelectorAll('[data-jaa-pick]'))) old.removeAttribute('data-jaa-pick');
   const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim();
   const want = norm(value);
   const opts = Array.from(
-    document.querySelectorAll('[role=option], [role=listbox] li, .basic-typeahead__selectable, .autocomplete-item, .pac-item, ul[class*=suggest] li'),
+    // Lever's location list is plain divs: .dropdown-results > .dropdown-location (HighLevel, 2026-10-05).
+    document.querySelectorAll(
+      '[role=option], [role=listbox] li, .basic-typeahead__selectable, .autocomplete-item, .pac-item, ul[class*=suggest] li, .dropdown-results > div, .dropdown-location, [class*="suggestion-item"], [class*="autocomplete"] li',
+    ),
   ).filter((el) => {
     const r = (el as HTMLElement).getBoundingClientRect();
     return r.width > 0 && r.height > 0;
@@ -24,7 +32,8 @@ export function pickTypeaheadOptionInPage(value: string, strict = false): string
   const best = scored[0];
   if (strict && best.score === 0) return null;
   best.el.scrollIntoView({ block: 'nearest' });
-  best.el.click();
+  if (markOnly) best.el.setAttribute('data-jaa-pick', '1');
+  else best.el.click();
   return best.t;
 }
 
@@ -63,7 +72,7 @@ export function pageQuietInPage(quietMs: number, maxMs: number): Promise<void> {
 /** The options of a dropdown that is open right now (its listbox), minus "No options" / "Loading...". */
 export function visibleOptionsInPage(): string[] {
   const seen = new Set<string>();
-  for (const el of Array.from(document.querySelectorAll('[role=option], [role=listbox] li, [class*="option"][id*="option"]'))) {
+  for (const el of Array.from(document.querySelectorAll('[role=option], [role=listbox] li, [class*="option"][id*="option"], .dropdown-results > div, .dropdown-location'))) {
     const r = (el as HTMLElement).getBoundingClientRect();
     if (r.width === 0 || r.height === 0) continue;
     const t = ((el as HTMLElement).innerText || el.textContent || '').replace(/\s+/g, ' ').trim();

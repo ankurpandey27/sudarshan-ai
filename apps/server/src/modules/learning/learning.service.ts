@@ -41,6 +41,8 @@ export class LearningService {
   private readonly logger = new Logger(LearningService.name);
   private readonly watched = new WeakSet<Page>();
   private readonly sessions = new WeakMap<Page, LearningSession>();
+  // What each watched tab is about, to read its form again when it is handed back to you.
+  private readonly targets = new WeakMap<Page, WatchTarget>();
 
   constructor(
     private readonly runner: FormRunnerService,
@@ -58,6 +60,7 @@ export class LearningService {
     this.watched.add(page);
     const session: LearningSession = { known: new Map(), pending: null, moves: [], answers: 0, steps: 0, ways: new Set(), done: false };
     this.sessions.set(page, session);
+    this.targets.set(page, target);
     try {
       // What is already filled (by the site or the agent) is not the user's answer.
       const start = await this.snapshot(page, target);
@@ -95,7 +98,18 @@ export class LearningService {
   /** While Sudarshan continues in the tab itself, what happens there is not learned as yours. */
   pause(page: Page, paused: boolean): void {
     const s = this.sessions.get(page);
-    if (s) s.paused = paused;
+    if (!s) return;
+    s.paused = paused;
+    if (paused || page.isClosed()) return;
+    // Handed back to you: what Sudarshan touched and filled meanwhile is not yours to learn.
+    void page.evaluate(() => (window as unknown as { __sudarshanForget?: () => void }).__sudarshanForget?.()).catch(() => undefined);
+    const target = this.targets.get(page);
+    if (target)
+      void this.snapshot(page, target)
+        .then((now) => {
+          for (const f of now.fields) if (f.value) s.known.set(f.label, f.value);
+        })
+        .catch(() => undefined);
   }
 
   /** When you last typed or clicked in this tab (0 if never); undefined when it is not watched. */

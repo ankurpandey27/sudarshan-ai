@@ -23,6 +23,8 @@ export interface AnswerContext {
   skillYears: (skill: string) => number | null;
   /** Your Story Bank stories that fit this job, for written answers. */
   stories?: string[];
+  /** Your resume as text: what you did in each role, your projects - more than the profile's lists. */
+  resumeText?: string;
 }
 
 export interface RuleAnswer {

@@ -1,0 +1,34 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>Senior Fullstack Developer @ Valerie Group</title></head>
+<body>
+<!-- Ashby (Valerie Group, 2026-10-05): yes/no questions are toggle buttons with a hidden tick-box behind them; a
+     "select all that apply" question is a fieldset of tick-boxes each named after its own label, its question in a
+     label above the fieldset; Submit stays greyed out until the yes/no questions are answered. -->
+<form onsubmit="return false">
+  <div class="fieldEntry">
+    <label class="question">Which of the following have you used extensively in production? (Select all that apply)</label>
+    <fieldset>
+      <div><input type="checkbox" id="c1" name="TypeScript"><label for="c1">TypeScript</label></div>
+      <div><input type="checkbox" id="c2" name="Prisma"><label for="c2">Prisma</label></div>
+      <div><input type="checkbox" id="c3" name="AWS"><label for="c3">AWS</label></div>
+    </fieldset>
+  </div>
+  <div class="fieldEntry">
+    <label class="question">Would you be open to relocate and work from Bangalore?</label>
+    <div class="container">
+      <input type="checkbox" name="relocate-hidden" style="display:none">
+      <button type="button" class="option" aria-pressed="false">Yes</button>
+      <button type="button" class="option" aria-pressed="false">No</button>
+    </div>
+  </div>
+  <button type="submit" id="submit" disabled>Submit Application</button>
+</form>
+<script>
+  for (const b of document.querySelectorAll('.option')) {
+    b.addEventListener('click', () => {
+      for (const o of b.parentElement.querySelectorAll('.option')) o.setAttribute('aria-pressed', String(o === b));
+      document.getElementById('submit').disabled = false;
+    });
+  }
+</script>
+</body></html>

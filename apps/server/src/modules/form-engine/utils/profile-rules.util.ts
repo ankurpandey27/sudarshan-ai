@@ -48,6 +48,19 @@ function jobInHomeCountry(c: AnswerContext): boolean {
   return [c.profile.country, c.profile.state, c.profile.city].some((place) => !!place && where.includes(place.toLowerCase()));
 }
 
+/**
+ * Your number - with your country's code in front when the box itself shows a dialling code ("+1" on an international
+ * phone box set to the United States, Curotec 2026-10-05): typed "+91 ..." it switches to India.
+ */
+function phoneFor(c: AnswerContext, f: FormField): RuleAnswer | null {
+  const phone = c.profile.phone.trim();
+  if (!phone) return null;
+  const shown = `${f.value} ${f.placeholder}`.trim();
+  if (!/^\+\d/.test(shown) || phone.startsWith('+')) return fact(phone);
+  const code = c.profile.phoneCountryCode.replace(/[^\d]/g, '');
+  return fact(code ? `+${code} ${phone.replace(new RegExp(`^(\\+?${code})?\\s*`), '')}` : phone);
+}
+
 // Forms want whole years: 4.9 is 5, 4.4 is 4.
 const wholeYears = (y: number): number => Math.max(0, Math.round(y));
 
@@ -117,7 +130,7 @@ const RULES: ProfileRule[] = [
   { key: 'fullName', test: FULL_NAME_WORLD, answer: (c) => fact(`${c.profile.firstName} ${c.profile.lastName}`.trim()) },
   { key: 'firstName', test: FIRST_NAME_WORLD, answer: (c) => fact(c.profile.firstName) },
   { key: 'lastName', test: LAST_NAME_WORLD, answer: (c) => fact(c.profile.lastName) },
-  { key: 'phone', test: PHONE_WORLD, not: /country\s*code|code/, answer: (c) => fact(c.profile.phone) },
+  { key: 'phone', test: PHONE_WORLD, not: /country\s*code|code/, answer: (c, f) => phoneFor(c, f) },
   { key: 'city', test: CITY_WORLD, answer: (c) => fact(c.profile.city) },
   { key: 'firstName', test: /\bfirst\s*name\b|\bgiven\s*name\b|\bforename\b/, answer: (c) => fact(c.profile.firstName) },
   { key: 'lastName', test: /\blast\s*name\b|\bsurname\b|\bfamily\s*name\b/, answer: (c) => fact(c.profile.lastName) },
@@ -132,7 +145,8 @@ const RULES: ProfileRule[] = [
   // One address per email box: a profile listing several ("a@x.com, b@y.com") sends the first.
   {
     key: 'email',
-    test: /e-?mail/,
+    // In other languages too: Toss Place's Korean form asked "이메일" and it was left empty (2026-10-05).
+    test: /e-?mail|이메일|メール|邮箱|电子邮件|電子郵件|correo( electr[oó]nico)?\b|courriel|البريد الإلكتروني|ईमेल|электронн\S* почт|почта\b/,
     not: /manager|reference|referr/,
     answer: (c) => fact(c.profile.email.split(/[\s,;]+/).find((e) => e.includes('@')) ?? c.profile.email),
   },
@@ -145,7 +159,7 @@ const RULES: ProfileRule[] = [
     key: 'phone',
     test: /\b(phone|mobile|contact number|cell|whatsapp|telephone)\b/,
     not: /country\s*code|type|extension/,
-    answer: (c) => fact(c.profile.phone),
+    answer: (c, f) => phoneFor(c, f),
   },
   // "LinkedIn", and the misspellings people type: "LinkdeIn", "Linkdin".
   {
@@ -160,7 +174,8 @@ const RULES: ProfileRule[] = [
   { key: 'github', test: /git\s*hub/, answer: (c) => fact(c.profile.githubUrl) },
   {
     key: 'portfolio',
-    test: /portfolio|personal\s*(web)?site|^website$|blog/,
+    // "Provide us links to see some of your work" too (Bitontree, 2026-10-05).
+    test: /portfolio|personal\s*(web)?site|^website$|blog|links?\b.*\b(your|of your|some of your) (work|projects)|work samples/,
     answer: (c) => fact(c.profile.portfolioUrl || c.profile.githubUrl || c.profile.linkedinUrl),
   },
   { key: 'postalCode', test: /\b(pin\s*code|pincode|zip|postal\s*code)\b/, answer: (c) => fact(c.profile.postalCode) },
@@ -205,13 +220,14 @@ const RULES: ProfileRule[] = [
   },
   {
     key: 'expectedCtc',
-    test: /expected\s*(ctc|salary|compensation|package|pay)|salary\s*expectation|desired\s*(salary|compensation)|expected annual/,
+    test: /expected\s*(ctc|salary|compensation|package|pay)|salary\s*expectation|desired\s*(salary|compensation)|expected annual|(salary|ctc|compensation|package)\b.*\bexpecting|expecting\b.*\b(salary|ctc|compensation|package)/,
     answer: (c, f) => money(c.profile.expectedCtc, f),
   },
   {
     key: 'currentCtc',
     test: /current\s*(ctc|salary|compensation|package|pay)|present\s*(ctc|salary)|\bctc\b|annual\s*(salary|compensation)/,
-    not: /expected|desired/,
+    // "How much annual salary are you expecting?" is the expected one (Babcom on Hirist, 2026-10-05).
+    not: /expect|desired|hoping|looking for/,
     answer: (c, f) => money(c.profile.currentCtc, f),
   },
   {

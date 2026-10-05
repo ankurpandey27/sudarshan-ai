@@ -179,11 +179,21 @@ export class FormRunnerService {
           await page.click(sel, { count: 3 });
           await page.keyboard.press('Backspace');
           await page.keyboard.type(text, { delay: 25 });
+          // Typing opened a list of suggestions (Lever's location, HighLevel 2026-10-05): the typed words alone are not
+          // an answer there - the matching suggestion is picked; none matching, the list is closed.
+          // Lever looks its suggestions up on a server: they come 1-2 seconds after the typing.
+          for (const until = Date.now() + 2500; Date.now() < until; ) {
+            await sleep(300);
+            if ((await page.evaluate(visibleOptionsInPage).catch(() => [] as string[])).length) {
+              if (!(await this.pickSuggestion(page, text).catch(() => null))) await page.keyboard.press('Escape');
+              break;
+            }
+          }
           return;
         case FillMethod.OPEN_PICK:
           await page.click(sel);
           await sleep(500);
-          if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) {
+          if (!(await this.pickSuggestion(page, text))) {
             if (!(await page.evaluate(clickChoiceNearFieldInPage, ins.id, text))) await page.keyboard.press('Escape');
           }
           return;
@@ -194,7 +204,7 @@ export class FormRunnerService {
           await sleep(800);
           // Only a suggestion that matches the answer: the first one when none does was a wrong school (Capco on
           // Greenhouse, 2026-10-03: "Art Institute of Atlanta"). A blank field is asked about; a wrong one is sent.
-          if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) await page.keyboard.press('Escape');
+          if (!(await this.pickSuggestion(page, text))) await page.keyboard.press('Escape');
           return;
         case FillMethod.TYPE_ENTER:
           await page.click(sel, { count: 3 });
@@ -203,7 +213,7 @@ export class FormRunnerService {
           await sleep(600);
           // With a list of suggestions open, Enter takes the first one, whatever it is: only a matching one is picked.
           if ((await page.evaluate(visibleOptionsInPage).catch(() => [] as string[])).length) {
-            if (!(await page.evaluate(pickTypeaheadOptionInPage, text, true))) await page.keyboard.press('Escape');
+            if (!(await this.pickSuggestion(page, text))) await page.keyboard.press('Escape');
             return;
           }
           await page.keyboard.press('Enter');
@@ -413,7 +423,13 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
 
       // Searchable dropdowns show their options only when opened: read them first, so an answer becomes one of them.
       await this.readComboboxOptions(page, snap);
-      const fillable = snap.fields.filter((f) => f.kind !== FieldKind.FILE || needsUpload(f));
+      // A form whose Next/Submit is greyed out wants every question it shows: Hirist does not mark them, and left
+      // "Willing to work in hybrid setup?" empty as optional (Delta6Labs, 2026-10-05).
+      const advances = snap.actions.filter((a) => a.kind === 'next' || a.kind === 'submit');
+      const allGreyed = advances.length > 0 && advances.every((a) => a.disabled);
+      const fillable = snap.fields
+        .filter((f) => f.kind !== FieldKind.FILE || needsUpload(f))
+        .map((f) => (allGreyed && f.kind !== FieldKind.FILE && !f.required && needsAnswer(f) ? { ...f, required: true } : f));
       const resolved = await this.answers.resolve(fillable, opts.ctx, { allowLlm: opts.allowLlm, force, deferMemory: true });
       out.fields += resolved.stats.fields;
       out.memoryHits += resolved.stats.memoryHits;
@@ -457,7 +473,17 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
 
       const signature = stepSignature(snap);
       const triedHere = tried.get(signature) ?? new Set<string>();
-      const action = await this.chooseAction(page, snap, opts, signature, triedHere);
+      // A Next/Submit greyed out before the answers went in is looked at again: Hirist enables it a moment after the
+      // last answer, and its form was called stuck with everything filled (TechGlare, 2026-10-05).
+      let ready = snap;
+      if (allGreyed && resolved.instructions.length) {
+        for (const until = Date.now() + 4000; Date.now() < until; ) {
+          await sleep(500);
+          ready = await this.snapshot(page, opts.scopeSelector).catch(() => ready);
+          if (ready.actions.some((a) => (a.kind === 'next' || a.kind === 'submit') && !a.disabled)) break;
+        }
+      }
+      const action = await this.chooseAction(page, ready, opts, signature, triedHere);
       if (!action) {
         // Submit greyed out until something is done - usually a captcha that loads late (Indeed's review page).
         if (snap.actions.some((a) => a.disabled && (a.kind === 'submit' || a.kind === 'apply'))) {
@@ -579,6 +605,30 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
   }
 
   // Trusted CDP click; some forms ignore synthetic clicks.
+  /** Picks the suggestion matching `value` with a real mouse click (a script's click is ignored by some lists), else null. */
+  private async pickSuggestion(page: Page, value: string): Promise<string | null> {
+    const picked = await page.evaluate(pickTypeaheadOptionInPage, value, true, true).catch(() => null);
+    if (!picked) return null;
+    // Something drawn over the list (the next field) would take a mouse click: then the suggestion itself is clicked.
+    const covered = await page
+      .evaluate(() => {
+        const el = document.querySelector('[data-jaa-pick="1"]');
+        if (!el) return true;
+        const r = el.getBoundingClientRect();
+        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        return !top || !(top === el || el.contains(top));
+      })
+      .catch(() => true);
+    if (covered) {
+      await page.evaluate(() => (document.querySelector('[data-jaa-pick="1"]') as HTMLElement | null)?.click()).catch(() => undefined);
+      return picked;
+    }
+    await page.click('[data-jaa-pick="1"]').catch(async () => {
+      await page.evaluate(() => (document.querySelector('[data-jaa-pick="1"]') as HTMLElement | null)?.click()).catch(() => undefined);
+    });
+    return picked;
+  }
+
   async click(page: Page, actionId: string): Promise<void> {
     const sel = `[data-jaa-act="${actionId}"]`;
     const handle = await page.$(sel);
@@ -646,7 +696,7 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
         if (!(await input.evaluate((el) => el.tagName === 'INPUT').catch(() => true))) {
           await input.click().catch(() => undefined);
           await sleep(500);
-          if (!(await page.evaluate(pickTypeaheadOptionInPage, ins.value, true).catch(() => null))) await page.keyboard.press('Escape');
+          if (!(await this.pickSuggestion(page, ins.value).catch(() => null))) await page.keyboard.press('Escape');
           await sleep(300);
           continue;
         }
@@ -655,7 +705,7 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
         await input.type(ins.value, { delay: 35 });
         await sleep(900);
         // A suggestion that matches the answer, never just the first one (see TYPE_PICK).
-        const picked = await page.evaluate(pickTypeaheadOptionInPage, ins.value, true).catch(() => null);
+        const picked = await this.pickSuggestion(page, ins.value).catch(() => null);
         if (!picked) await page.keyboard.press('Escape');
         await sleep(300);
       }

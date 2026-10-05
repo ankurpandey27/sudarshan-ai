@@ -333,12 +333,11 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
 
     if (tagName === 'INPUT' && type === 'checkbox') {
       const fieldset = el.closest('fieldset');
+      const byName = input.name ? (Array.from(scope.querySelectorAll(`input[type=checkbox][name="${CSS.escape(input.name)}"]`)) as HTMLInputElement[]) : [];
+      // Ashby names each box after its own label ("TypeScript", "React"): the fieldset holding them is the question
+      // (Valerie Group, 2026-10-05 - each was read alone, without its question, and none was ticked).
       const peers = (
-        input.name
-          ? Array.from(scope.querySelectorAll(`input[type=checkbox][name="${CSS.escape(input.name)}"]`))
-          : fieldset
-            ? Array.from(fieldset.querySelectorAll('input[type=checkbox]'))
-            : [el]
+        byName.length > 1 ? byName : fieldset ? Array.from(fieldset.querySelectorAll('input[type=checkbox]')) : [el]
       ) as HTMLInputElement[];
       if (peers.length > 1) {
         const groupEl = fieldset ?? el.parentElement?.parentElement ?? scope;
@@ -347,7 +346,18 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
         seenGroups.add(key);
         const optionIds = peers.map((p) => tag(p, 'data-jaa-opt', 'o'));
         const options = peers.map((p) => labelFor(p) || p.value);
-        const label = textOf(groupEl.querySelector('legend')) || questionInside(peers, options) || containerText(groupEl, peers.length, options) || input.name;
+        // The question: the group's legend, or (Ashby) the label just above a fieldset that has none.
+        const above = fieldset?.parentElement
+          ? Array.from(fieldset.parentElement.querySelectorAll('label, [class*="title" i], [class*="question" i]')).find(
+              (q) => !fieldset.contains(q) && (q.compareDocumentPosition(fieldset) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 && textOf(q),
+            )
+          : undefined;
+        const label =
+          textOf(groupEl.querySelector('legend')) ||
+          (above ? textOf(above) : '') ||
+          questionInside(peers, options) ||
+          containerText(groupEl, peers.length, options) ||
+          input.name;
         fields.push({
           id: groupEl.getAttribute('data-jaa-id')!,
           kind: 'checkbox-group' as FieldKind,
@@ -444,6 +454,57 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     });
   }
 
+  // A question answered with toggle buttons ("Yes" / "No", aria-pressed) is a choice, like radios: Ashby draws its
+  // yes/no questions so, and left unanswered they kept Submit greyed out (Valerie Group, 2026-10-05).
+  const toggleGroups = new Map<Element, HTMLElement[]>();
+  // Pills too: Hirist's notice period is button.pill-option in div.pill-answer-options (Babcom, 2026-10-05).
+  for (const b of Array.from(
+    scope.querySelectorAll('button[aria-pressed], [role=button][aria-pressed], button[class*="pill" i], button[class*="chip" i], button[class*="option" i]'),
+  ) as HTMLElement[]) {
+    if (!visible(b) || !b.parentElement) continue;
+    const peers = toggleGroups.get(b.parentElement) ?? [];
+    peers.push(b);
+    toggleGroups.set(b.parentElement, peers);
+  }
+  for (const [group, buttons] of toggleGroups) {
+    const options = buttons.map((b) => clean(b.innerText || b.getAttribute('aria-label')));
+    if (buttons.length < 2 || buttons.length > 8 || options.some((o) => !o || o.length > 40)) continue;
+    // Only a group that is the whole of its box: a toolbar of "option" buttons beside other things is not a question.
+    // (A hidden input storing the answer beside them does not count - Ashby keeps one there.)
+    if (Array.from(group.children).filter((c) => c.tagName !== 'INPUT' && visible(c)).length !== buttons.length) continue;
+    // The question: the nearest text above the buttons that is not one of them - a label, or the line just above.
+    let label = '';
+    const above = clean((group.previousElementSibling as HTMLElement | null)?.innerText);
+    if (above && above.length <= 300 && !options.includes(above)) label = above.replace(/^\d+[.)]\s*/, '');
+    for (let n: Element | null = group; n && n !== scope.parentElement && !label; n = n.parentElement) {
+      const own = n.querySelector('label, legend, [class*="title" i], [class*="question" i]');
+      const text = own && !group.contains(own) ? textOf(own) : '';
+      if (text && !options.includes(text)) label = text.slice(0, 300);
+    }
+    if (!label) continue;
+    const box = group.parentElement ?? group;
+    // The hidden tick-box that stores the answer behind the buttons is not a question of its own.
+    const hidden = new Set(Array.from(box.querySelectorAll('input[type=checkbox], input[type=radio]')).map((i) => i.getAttribute('data-jaa-id')));
+    for (let i = fields.length - 1; i >= 0; i--) if (hidden.has(fields[i].id)) fields.splice(i, 1);
+    const chosen = buttons.find((b) => b.getAttribute('aria-pressed') === 'true' || /\b(selected|active|checked|is-selected|is-active)\b/i.test(b.className));
+    fields.push({
+      id: tag(group, 'data-jaa-id', 'f'),
+      kind: 'radio' as FieldKind,
+      label: label.replace(/\s*\*\s*$/, ''),
+      name: '',
+      placeholder: '',
+      required: /\*\s*$/.test(label) || isRequired(box, label),
+      value: chosen ? clean(chosen.innerText || chosen.getAttribute('aria-label')) : '',
+      options,
+      optionIds: buttons.map((b) => tag(b, 'data-jaa-opt', 'o')),
+      error: errorFor(box),
+      maxLength: null,
+      min: null,
+      max: null,
+      accept: null,
+    });
+  }
+
   const actions: FormSnapshot['actions'] = [];
 
   const links: FormSnapshot['links'] = [];
@@ -472,6 +533,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   };
   for (const el of clickables) {
     if (isAd(el)) continue;
+    // A question's answer button (see toggle groups above) is not a way forward.
+    if (el.hasAttribute('data-jaa-opt')) continue;
     const text = clean((el as HTMLElement).innerText || el.getAttribute('aria-label') || (el as HTMLInputElement).value || el.getAttribute('title')).slice(
       0,
       80,
@@ -497,7 +560,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     )
       kind = 'submit';
     else if (/^review\b|review (your )?application/.test(lower)) kind = 'review';
-    else if (/^(next|continue|proceed|save and continue|save & continue|save & next|next step)\b/.test(lower)) kind = 'next';
+    // "Next.js" is a technology tag, not a way forward (Crewfare on Himalayas, 2026-10-05).
+    else if (/^(next|continue|proceed|save and continue|save & continue|save & next|next step)\b(?![.-]?js\b)/.test(lower)) kind = 'next';
     else if (
       word(
         'volgende|verder|ga verder|weiter|nächste|fortfahren|suivant|continuer|siguiente|continuar|próximo|avanti|successivo|continua|dalej|nästa|fortsätt|næste|neste|videre',
@@ -507,6 +571,10 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       )
     )
       kind = 'next';
+    // "Apply with Indeed / LinkedIn / Google" is another site's sign-in, not the application: SmartRecruiters shows it
+    // above its own form and it led to an Indeed login (Nagarro, 2026-10-05).
+    else if (/^(apply|sign in|log ?in|continue|sign up) (with|using|via|through) (indeed|linkedin|google|seek|xing|glassdoor|facebook|apple|github|microsoft)\b/.test(lower))
+      kind = 'other';
     else if (
       /^(easy apply|apply|apply now|apply for this job|apply to this job|i['’]?m interested|quick apply)\b/.test(lower) ||
       // A job board's step before the employer's form (Himalayas: "I'm ready to apply", A5 Labs 2026-10-03).

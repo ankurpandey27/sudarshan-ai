@@ -31,3 +31,15 @@ export function mentionsJob(pageText: string, url: string, job: { title: string;
   const seen = title.filter((w) => text.includes(` ${w} `)).length;
   return title.length >= 2 && seen / title.length >= 0.6;
 }
+
+/**
+ * Whether a job page's main heading is about another job: it shares no word with the job's title. Atlassian's page for
+ * "Principal Backend Software Engineer" had come to show "Senior Product Manager" (2026-10-05) - applying there would
+ * have been for that. An empty heading, or a title with nothing to compare, is never held against the page.
+ */
+export function headingIsAnotherJob(heading: string, title: string): boolean {
+  const want = words(title);
+  const have = words(heading);
+  if (want.length < 2 || have.length < 2) return false;
+  return !want.some((w) => have.includes(w));
+}

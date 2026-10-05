@@ -19,6 +19,7 @@ export function learnRecorderInPage(): void {
     __sudarshanExtract?: Extract;
     __sudarshanScope?: string | null;
     __sudarshanWidget?: (ids: string[]) => Record<string, string>;
+    __sudarshanForget?: () => void;
   };
   if (w.__sudarshanRecorder) return;
   w.__sudarshanRecorder = true;
@@ -95,6 +96,15 @@ export function learnRecorderInPage(): void {
     if (id && e.type === 'input') note(id, 'type');
     clearTimeout(timer);
     timer = setTimeout(() => report({ type: 'edit' }), 500);
+  };
+  // Sudarshan worked in this tab (its clicks are trusted too): what it touched is not yours (Valerie Group,
+  // 2026-10-05: the AI's tick on "I have built this myself" was saved as your answer when the tab closed).
+  w.__sudarshanForget = () => {
+    touchedEls.clear();
+    ops.clear();
+    clearTimeout(timer);
+    timer = undefined;
+    current = null;
   };
   document.addEventListener('change', onEdit, true);
   document.addEventListener('input', onEdit, true);

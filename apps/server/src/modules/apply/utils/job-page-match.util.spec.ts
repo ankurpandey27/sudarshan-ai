@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { AD_LANDING } from '../../form-engine/constants/form-runner.constants';
-import { mentionsJob } from './job-page-match.util';
+import { headingIsAnotherJob, mentionsJob } from './job-page-match.util';
 
 const job = { title: 'Software Development Engineer III - Users', company: 'HighLevel' };
 
@@ -39,4 +39,15 @@ describe('an advertiser\'s page, by its address', () => {
     'https://jobs.smartrecruiters.com/oneclick-ui/company/Nagarro1/publication/1?utm_source=himalayas.app&utm_medium=himalayas.app',
     'https://www.linkedin.com/jobs/view/4474250204/',
   ])('%s is not', (url) => expect(AD_LANDING.test(url)).toBe(false));
+});
+
+describe('a job page that has come to show another job (Atlassian, 2026-10-05)', () => {
+  it('is caught when its heading shares no word with the title', () => {
+    expect(headingIsAnotherJob('Senior Product Manager', 'Principal Backend Software Engineer')).toBe(true);
+  });
+  it('is not, for the same job worded differently, or with nothing to compare', () => {
+    expect(headingIsAnotherJob('Backend Engineer (Node.js)', 'Senior Node.js Backend Engineer')).toBe(false);
+    expect(headingIsAnotherJob('Careers', 'Backend Engineer')).toBe(false);
+    expect(headingIsAnotherJob('', 'Backend Engineer')).toBe(false);
+  });
 });

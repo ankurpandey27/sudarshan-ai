@@ -23,6 +23,12 @@ export const NEVER_ADVANCE = new RegExp(
     /^(save|don'?t save|do not save|save job|go back|back|previous|cancel|close|discard|help|verify|skip)$/.source,
     /\bpreview\b|\bnew (update|message|notification)s?\b|\bnotifications?\b|\breport\b|feedback|skip to|not interested/.source,
     /\b(search|find) jobs?\b|view (full )?job description|cv options|challenge|captcha|\bedit\b/.source,
+    // Buttons that change an answer or a file, never a way forward: with Submit greyed out, "Upload file", "Replace"
+    // and a question's "No" were pressed one after another (Valerie Group on Ashby, 2026-10-05).
+    /^(apply|sign in|log ?in|continue|sign up) (with|using|via|through) (indeed|linkedin|google|seek|xing|glassdoor|facebook|apple|github|microsoft)\b/
+      .source,
+    /^(yes|no|true|false|maybe|n\/a)$|\bupload\b|\breplace\b|\bremove\b|\bdelete\b|\battach\b|\bbrowse\b|choose (a )?file|select (a )?file|add another|drop (a )?file/
+      .source,
   ].join('|'),
   'i',
 );

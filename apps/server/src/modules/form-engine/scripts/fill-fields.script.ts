@@ -60,7 +60,8 @@ export function fillFieldsInPage(instructions: FillInstruction[]): FillResult[] 
           for (const optId of ins.optionIds) {
             const opt = document.querySelector(`[data-jaa-opt="${optId}"]`);
             if (!opt) throw new Error('option missing');
-            const checked = (opt as HTMLInputElement).checked === true || opt.getAttribute('aria-checked') === 'true';
+            const checked =
+              (opt as HTMLInputElement).checked === true || opt.getAttribute('aria-checked') === 'true' || opt.getAttribute('aria-pressed') === 'true';
             if (!checked) clickOption(opt);
           }
           break;

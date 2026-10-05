@@ -42,6 +42,8 @@ export class AgentService implements OnApplicationShutdown {
   private lastDiscoveryAt: number | null = null;
   private blocked: AgentStatus['blockedSources'] = [];
   private applying: Promise<ApplyResult> | null = null;
+  // Jobs given one more go because their page showed no Apply while searches ran.
+  private readonly retriedWhileBusy = new Set<number>();
 
   constructor(
     private readonly health: PlatformHealthService,
@@ -187,6 +189,7 @@ export class AgentService implements OnApplicationShutdown {
         if (!this.applying) this.setPhase(AgentPhase.WAITING);
         return;
       }
+      this.jobs.requeueOrphanedQuestions();
       const platforms = await this.eligiblePlatforms();
       // Something may have started while platforms were checked (Apply now).
       if (this.applying) return;
@@ -211,7 +214,15 @@ export class AgentService implements OnApplicationShutdown {
         }
         return;
       }
-      await this.runApply(job);
+      // A job page that showed no Apply while searches loaded in the same browser gets one more go, later: at start the
+      // first job kept failing so, and worked when tried again on its own (Crewfare, Zoftify, Babcom - 2026-10-05).
+      const searching = this.discovery.isRunning();
+      const result = await this.runApply(job);
+      if (searching && !this.retriedWhileBusy.has(job.id) && result.status === JobStatus.MANUAL && /^No apply button found/.test(result.detail)) {
+        this.retriedWhileBusy.add(job.id);
+        this.jobs.forgetAttempt(job.id);
+        this.jobs.setStatus(job.id, JobStatus.APPROVED, 'Its page was slow while Sudarshan searched for jobs - trying it again');
+      }
       const gap = s.agent.minDelaySeconds + Math.random() * Math.max(0, s.agent.maxDelaySeconds - s.agent.minDelaySeconds);
       this.nextApplyAt = Date.now() + gap * 1000;
     } catch (err) {

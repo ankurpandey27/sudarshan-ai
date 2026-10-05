@@ -7,6 +7,7 @@ import { sleep } from '../../../common/utils/sleep.util';
 import { FormRunnerService } from '../../form-engine/form-runner.service';
 import { RecipesService } from '../../form-engine/recipes.service';
 import { FormAction, FormSnapshot } from '../../form-engine/interfaces/form-field.interface';
+import { FieldKind } from '../../form-engine/enums/field-kind.enum';
 import { documentTextInPage, visiblePasswordInPage } from '../../form-engine/scripts/page-helpers.script';
 import { LearnedMove } from '../../form-engine/interfaces/learned-move.interface';
 import { buildNavigatePrompt, NAVIGATE_SYSTEM_PROMPT } from '../../form-engine/utils/navigate-prompt.util';
@@ -16,7 +17,7 @@ import { LlmService } from '../../llm/llm.service';
 import { LlmPurpose } from '../../llm/enums/llm-purpose.enum';
 import {
   ALREADY_APPLIED_TEXT,
-  APPLIED_BUTTON,
+  APPLIED_BUTTON,
   GENERIC_DIALOG as DIALOG,
   GENERIC_SUCCESS,
   LOGIN_WALL,
@@ -29,9 +30,9 @@ import {
 } from '../constants/apply.constants';
 import { PrepareStatus } from '../enums/prepare-status.enum';
 import { looksClosed } from '../utils/closed.util';
-import { mentionsJob } from '../utils/job-page-match.util';
-import { AD_LANDING } from '../../form-engine/constants/form-runner.constants';
-import { BOT_CHECK_DETAIL, BOT_CHECK_TEXT, BOT_CHECK_WAIT_MS } from '../constants/apply.constants';
+import { headingIsAnotherJob, mentionsJob } from '../utils/job-page-match.util';
+import { AD_LANDING, NEVER_ADVANCE } from '../../form-engine/constants/form-runner.constants';
+import { BOT_CHECK_DETAIL, BOT_CHECK_TEXT, BOT_CHECK_WAIT_MS, PROFILE_NAG, PROFILE_NAG_SKIP } from '../constants/apply.constants';
 import { ApplyAdapter, PrepareResult } from '../interfaces/apply-adapter.interface';
 import { clickCatchingNewTab } from '../utils/new-tab.util';
 import { onJobBoard } from '../utils/offsite-url.util';
@@ -82,6 +83,10 @@ export class WebApplyAdapter implements ApplyAdapter {
     let confirmedBefore = false;
     // Buttons already pressed on the way: Workday's "Apply" opens a pop-up but stays on the page behind it.
     const pressed = new Set<string>();
+    // A "complete your profile" page is skipped once; the job page is loaded again after it.
+    let skippedNag = false;
+    // The job page is loaded once more when its Apply has not shown.
+    let reloaded = false;
     // Up to 4 presses on the way (Stryker: its own Apply, Workday's Apply, "Apply Manually", then the account page)
     // and always one more look at where the last one led.
     for (let hop = 0; hop < MAX_APPLY_HOPS; hop++) {
@@ -96,7 +101,22 @@ export class WebApplyAdapter implements ApplyAdapter {
           detail: `A press landed on an advert (${hostOf(current)}), not the application - nothing was filled in; apply by hand from the job page`,
         });
       }
+      if (!skippedNag && PROFILE_NAG.test(text) && !this.hasApplicationForm(snap)) {
+        skippedNag = true;
+        const skip = [...snap.actions, ...(snap.links ?? [])].find((a) => PROFILE_NAG_SKIP.test(a.text.trim()));
+        if (skip) await this.runner.click(current, skip.id).catch(() => undefined);
+        await current.goto(url, { waitUntil: 'domcontentloaded' }).catch(() => undefined);
+        await this.runner.settle(current);
+        continue;
+      }
       if (looksClosed(text, snap)) return result(PrepareStatus.CLOSED);
+      // The posting now shows another job (Atlassian, 2026-10-05): never applied to in its place.
+      if (hop === 0 && job) {
+        const heading = await current.evaluate(() => (document.querySelector('h1') as HTMLElement | null)?.innerText ?? '').catch(() => '');
+        if (headingIsAnotherJob(heading, job.title)) {
+          return result(PrepareStatus.CLOSED, { detail: `The job page now shows another job ("${heading.trim().slice(0, 60)}") - this posting has probably closed` });
+        }
+      }
       if (hop === 0) {
         // The site's own button says it is done, e.g. Instahyre's "Application sent!".
         if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || ALREADY_APPLIED_TEXT.test(text)) {
@@ -104,8 +124,15 @@ export class WebApplyAdapter implements ApplyAdapter {
         }
         confirmedBefore = ONE_CLICK_SUCCESS.test(text);
       } else if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (!confirmedBefore && ONE_CLICK_SUCCESS.test(text))) {
-        // One-click apply: the confirmation appeared after our click.
-        return result(PrepareStatus.APPLIED, { detail: 'Applied in one click', page: current });
+        // One-click apply: the confirmation appeared after our click. Words alone are checked on the job page itself:
+        // BairesDev's Apply led to its sign-in page and was taken for a confirmation (2026-10-05).
+        if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || (await this.confirmedOnJobPage(current, url, pressed))) {
+          return result(PrepareStatus.APPLIED, { detail: 'Applied in one click', page: current });
+        }
+        return result(PrepareStatus.NO_APPLY_BUTTON, {
+          detail: `Pressed Apply on ${hostOf(current)}, but the job page still offers Apply - not counted as applied; check it in the open tab`,
+          page: current,
+        });
       }
       // A password box means the site wants an account first (Workday's "Create Account / Sign In").
       // Sudarshan never creates accounts or types passwords: this one is yours, with the page left open.
@@ -117,7 +144,7 @@ export class WebApplyAdapter implements ApplyAdapter {
         });
       }
       // A form with a captcha at the bottom is still a form: fill it, then hand the captcha over.
-      if (this.hasApplicationForm(snap)) {
+      if (this.hasApplicationForm(snap, hop > 0)) {
         // A form on a page that names neither the company nor the job is someone else's: never filled with your details.
         if (hop > 0 && job && !mentionsJob(`${await current.title().catch(() => '')} ${text}`, current.url(), job)) {
           return result(PrepareStatus.NO_APPLY_BUTTON, {
@@ -149,6 +176,15 @@ export class WebApplyAdapter implements ApplyAdapter {
       const action = await this.findApplyAction(snap, domain, text, pressed);
       if (action) moves.push({ domain, kind: 'apply', signature: null, text: action.text, by: this.aiPicks.has(action) ? 'ai' : 'rules' });
       if (action) pressed.add(action.text.trim().toLowerCase());
+      // The job page without its Apply yet: loaded once more before giving up. With seven searches loading in the same
+      // browser it had not drawn it in time (Zoftify, Babcom - the first job after a start, 2026-10-05).
+      if (!action && hop === 0 && !reloaded && !snap.captcha) {
+        reloaded = true;
+        await current.reload({ waitUntil: 'domcontentloaded' }).catch(() => undefined);
+        await this.runner.settle(current);
+        hop--;
+        continue;
+      }
       if (!action) return result(snap.captcha ? PrepareStatus.CAPTCHA : PrepareStatus.NO_APPLY_BUTTON, { page: current });
       const tab = await clickCatchingNewTab(current, () => this.runner.click(current, action.id));
       if (tab) current = tab;
@@ -180,6 +216,22 @@ export class WebApplyAdapter implements ApplyAdapter {
     }
   }
 
+  /**
+   * After a one-click apply, the job page itself must agree: it says "Applied" (Hirist, Instahyre) or offers Apply no
+   * more. Still offering the Apply that was pressed, it was not sent.
+   */
+  private async confirmedOnJobPage(page: Page, url: string, pressed: Set<string>): Promise<boolean> {
+    try {
+      await page.goto(url, { waitUntil: 'domcontentloaded' });
+      await this.runner.settle(page);
+      const { snap, text } = await this.readWhenReady(page);
+      if (snap.actions.some((a) => APPLIED_BUTTON.test(a.text.trim())) || ALREADY_APPLIED_TEXT.test(text)) return true;
+      return !snap.actions.some((a) => !a.disabled && a.kind === 'apply' && pressed.has(a.text.trim().toLowerCase()));
+    } catch {
+      return false;
+    }
+  }
+
   private async readWhenReady(page: Page): Promise<{ snap: FormSnapshot; text: string; accountWall: boolean }> {
     const started = Date.now();
     for (;;) {
@@ -190,7 +242,7 @@ export class WebApplyAdapter implements ApplyAdapter {
         const actionable =
           accountWall ||
           this.hasApplicationForm(snap) ||
-          this.looksLikeLogin(snap, text) ||
+          this.looksLikeLogin(snap, text) ||
           snap.actions.some((a) => !a.disabled && (a.kind === 'apply' || APPLIED_BUTTON.test(a.text.trim())));
         // Closed-job wording does not end the wait: a footer or a "Job expired?" link is there before the Apply button.
         // Nothing to act on yet - no form, no Apply: many hiring systems draw them late (Workday's Apply comes 15-20
@@ -215,7 +267,7 @@ export class WebApplyAdapter implements ApplyAdapter {
     return null;
   }
 
-  private hasApplicationForm(snap: FormSnapshot): boolean {
+  private hasApplicationForm(snap: FormSnapshot, afterApply = false): boolean {
     const labels = snap.fields.map((f) => `${f.label} ${f.name} ${f.kind}`.toLowerCase());
     // In other languages too: Naam, Name, Nom, Nombre, Nome, Imię, Namn/Navn; Telefoon, Téléphone...; Lebenslauf, Curriculum.
     const signals = [
@@ -224,7 +276,13 @@ export class WebApplyAdapter implements ApplyAdapter {
       /phone|mobile|telefo|téléphone|teléfono|m[oó]vil|handy|celular|cellulare/,
       /resume|cv|file|lebenslauf|curriculum/,
     ].filter((re) => labels.some((l) => re.test(l))).length;
-    return snap.fields.length >= 2 && signals >= 2;
+    if (snap.fields.length >= 2 && signals >= 2) return true;
+    // Questions only - "tell the recruiter more about yourself": salary, notice, location, and Next (Hirist's second
+    // step after Apply, Babcom 2026-10-05; its * marks are drawn apart, and Next stays greyed out until all are answered).
+    const questions = snap.fields.filter((f) => f.kind !== FieldKind.FILE).length;
+    const required = snap.fields.filter((f) => f.required && f.kind !== FieldKind.FILE).length;
+    const send = snap.actions.some((a) => a.kind === 'submit' || a.kind === 'next');
+    return send && (required >= 2 || (afterApply && questions >= 2));
   }
 
   /**
@@ -240,7 +298,10 @@ export class WebApplyAdapter implements ApplyAdapter {
 
   private async findApplyAction(snap: FormSnapshot, domain: string, text: string, pressed = new Set<string>()): Promise<FormAction | null> {
     // Links in words Sudarshan does not know are candidates too: "Apply" may be in any language.
-    const usable = [...snap.actions, ...(snap.links ?? [])].filter((a) => !a.disabled && !pressed.has(a.text.trim().toLowerCase()));
+    // Never another site's sign-in ("Apply with Indeed") or an answer button - the AI navigator included.
+    const usable = [...snap.actions, ...(snap.links ?? [])].filter(
+      (a) => !a.disabled && !pressed.has(a.text.trim().toLowerCase()) && !NEVER_ADVANCE.test(a.text.trim()),
+    );
     const recipe = this.recipes.get(domain);
     const learned = usable.find((a) => recipe.applyTexts.includes(a.text.toLowerCase()));
     if (learned) return learned;

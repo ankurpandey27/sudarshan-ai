@@ -329,3 +329,46 @@ describe('Greenhouse-style searchable dropdowns (real browser, Capco 2026-10-03)
     await page.close();
   });
 });
+
+describe('Ashby yes/no buttons and "select all that apply" boxes (real browser, Valerie Group 2026-10-05)', () => {
+  let browser: Browser;
+  beforeAll(async () => {
+    const executablePath = findBrowserExecutable();
+    if (!executablePath) throw new Error('Chrome/Edge not found - browser tests need one installed');
+    browser = await puppeteer.launch({ executablePath, headless: true, args: ['--allow-file-access-from-files'] });
+  });
+  afterAll(async () => {
+    await browser?.close();
+  });
+
+  it('reads them as the questions they are, answers the yes/no from your profile, and never offers them as a way forward', async () => {
+    const page = await browser.newPage();
+    await page.goto(`file://${join(__dirname, 'fixtures', 'ashby-toggles.html').replace(/\\/g, '/')}`);
+    const storage = new StorageService(':memory:');
+    const engine = new AnswerEngineService(new AnswersService(storage), noLlm);
+    const runner = new FormRunnerService(engine, new RecipesService(storage), noLlm, new PlaybookService(storage), undefined, undefined, new WidgetRecipesService(storage));
+    const snap = await runner.snapshot(page, null);
+    const tech = snap.fields.find((f) => f.kind === 'checkbox-group');
+    expect(tech?.label).toMatch(/^Which of the following have you used extensively in production/);
+    expect(tech?.options).toEqual(['TypeScript', 'Prisma', 'AWS']);
+    const relocate = snap.fields.find((f) => f.kind === 'radio');
+    expect(relocate?.label).toBe('Would you be open to relocate and work from Bangalore?');
+    expect(relocate?.options).toEqual(['Yes', 'No']);
+    // No stray "Yes No" box from the hidden input, and the answer buttons are not ways forward.
+    expect(snap.fields).toHaveLength(2);
+    expect(snap.actions.map((a) => a.text)).not.toEqual(expect.arrayContaining(['Yes']));
+    expect(snap.actions.map((a) => a.text)).not.toEqual(expect.arrayContaining(['No']));
+
+    const ctx = {
+      profile: { ...EMPTY_PROFILE, country: 'India', willingToRelocate: false },
+      job: { id: 1, title: 'Senior Fullstack Developer', company: 'Valerie Group', location: 'Remote', description: '' },
+      resumePath: null,
+      skillYears: () => null,
+    };
+    const res = await engine.resolve(snap.fields, ctx, { allowLlm: false });
+    await runner.fillAndCheck(page, snap, res.instructions, { scopeSelector: null, successPattern: GENERIC_SUCCESS, ctx, domain: 'jobs.ashbyhq.com', allowLlm: false, pauseBeforeSubmit: true, onStep: () => undefined }, 1);
+    expect(await page.$$eval('.option', (bs) => bs.map((b) => `${b.textContent}:${b.getAttribute('aria-pressed')}`))).toEqual(['Yes:false', 'No:true']);
+    expect(await page.$eval('#submit', (b) => (b as HTMLButtonElement).disabled)).toBe(false);
+    await page.close();
+  });
+});

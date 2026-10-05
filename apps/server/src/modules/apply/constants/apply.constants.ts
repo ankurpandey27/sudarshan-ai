@@ -12,7 +12,7 @@ export const LINKEDIN_APPLIED = /\bapplied \d+ (second|minute|hour|day|week|mont
 // Also Dutch, German, French and Spanish ("404 Vacature vervuld", Aethon, 2026-09-29).
 // Not as a question: "Job expired?" is a link to report one (Himalayas, 2026-10-03).
 export const CLOSED_TEXT =
-  /(?:no longer accepting applications|job (has )?expired|this job is (no longer available|closed)|position has been filled|job is not available|vacature (is )?(vervuld|gesloten|verlopen)|vacature (is )?niet meer beschikbaar|stelle (ist )?(nicht mehr verfügbar|bereits besetzt|besetzt)|offre (n'est plus disponible|expirée|pourvue)|poste (a été )?pourvu|oferta (ya no está disponible|cerrada|caducada))(?!\s*\?)/i;
+  /(?:no longer accepting applications|\b404\b.{0,20}not found|page not found|job (posting )?(was )?not found|this job does not exist|not currently accepting applications|not accepting applications|(the )?job posting has been removed|job (posting )?(is )?no longer (available|active|open)|this job (has been|was) (removed|taken down|deleted)|job (has )?expired|this job is (no longer available|closed)|position has been filled|job is not available|vacature (is )?(vervuld|gesloten|verlopen)|vacature (is )?niet meer beschikbaar|stelle (ist )?(nicht mehr verfügbar|bereits besetzt|besetzt)|offre (n'est plus disponible|expirée|pourvue)|poste (a été )?pourvu|oferta (ya no está disponible|cerrada|caducada))(?!\s*\?)/i;
 
 export const NAUKRI_DRAWER = '.chatbot_DrawerContentWrapper, [class*="chatbot_Drawer"], [class*="chatbot-drawer"]';
 // After a one-click apply Naukri opens a page headed: Applied to "<job title>".
@@ -48,7 +48,7 @@ export const ONE_CLICK_SUCCESS =
  * pages say "Already have an account?".
  */
 export const ALREADY_APPLIED_TEXT =
-  /you('ve| have) already applied|already applied (to|for) this|application (was |has been )?already (submitted|sent|received)/i;
+  /you('ve| have) already applied|already applied (to|for) this|application (was |has been )?already (submitted|sent|received)|applied just now|application sent \(\d|applied \(\d{1,2} [a-z]{3}/i;
 /** Indeed's own confirmation after Submit - its forms mention "applied" everywhere else. */
 // "Your application was submitted to SAMMAAN Capital Finance" (2026-09-29), "...has been submitted".
 export const INDEED_SUCCESS =
@@ -128,7 +128,7 @@ export const NEW_QUESTIONS = 'run:new_questions';
 
 /** A bot-shield page standing in front of the site (Cloudflare on Himalayas, 2026-10-03: "Performing security verification"). */
 export const BOT_CHECK_TEXT =
-  /performing security verification|just a moment|checking (your browser|if the site connection is secure)|verify (you are|you're) (a )?human|attention required|ddos protection|security check to access/i;
+  /performing security verification|just a moment|checking (your browser|if the site connection is secure)|verify (you are|you're) (a )?human|attention required|ddos protection|security check to access|verification required|slide (right )?to (secure|verify|continue)|detected unusual activity/i;
 /** How long a bot-shield page may take to clear by itself before it is handed to you. */
 export const BOT_CHECK_WAIT_MS = 45_000;
 export const BOT_CHECK_DETAIL = 'The site is checking you are not a robot (a captcha) - tick it in the open tab; Sudarshan carries on by itself after';
@@ -136,3 +136,13 @@ export const BOT_CHECK_DETAIL = 'The site is checking you are not a robot (a cap
 /** The tab or the browser went away mid-application: you closed it (Capco, 2026-10-03: "Target closed"). */
 export const TAB_CLOSED = /Target closed|Session closed|Browser has disconnected|page has been closed|detached Frame/i;
 export const TAB_CLOSED_ENDING = 'closed-by-you';
+
+/**
+ * A job board's "complete your profile" page standing in for the job (Hirist, 2026-10-05: "Let's take a moment to
+ * update your profile", shown on job pages and right after Apply). It is skipped and the job page loaded again.
+ */
+export const PROFILE_NAG = /(take a moment to|please|let'?s) (update|complete|finish) your profile|complete your profile (to|and|for)|your profile is incomplete/i;
+/** Its way past: "Skip to Jobfeed", "Skip for now", "Maybe later". */
+export const PROFILE_NAG_SKIP = /^(skip( to [a-z ]+| for now)?|maybe later|not now|remind me later|do it later)$/i;
+/** The page was replaced while it was being read (a redirect mid-read): not the job's fault, nor yours. */
+export const PAGE_SWAPPED_ERROR = /detached Frame|Execution context was destroyed|Cannot find context with specified id|frame got detached/i;

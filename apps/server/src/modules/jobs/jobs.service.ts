@@ -289,7 +289,11 @@ export class JobsService implements OnApplicationBootstrap {
     if (platforms.length === 0) return null;
     const row = this.storage.get<JobRow>(
       `SELECT * FROM jobs WHERE status = ? AND ${PLATFORM_SQL} IN (${platforms.map(() => '?').join(',')})
-       ORDER BY (origin = 'link') DESC, CAST(COALESCE(score, 0) / 10 AS INTEGER) DESC, COALESCE(success_chance, 0.5) DESC,
+       ORDER BY (origin = 'link') DESC,
+         -- A job whose site did not answer waits behind the others: an unreachable site (chiletrabajos.cl, 2026-10-05)
+         -- was tried four times in a row, two minutes each, ahead of every other approved job.
+         (SELECT COUNT(*) FROM attempts a WHERE a.job_id = jobs.id AND a.result = 'network') ASC,
+         CAST(COALESCE(score, 0) / 10 AS INTEGER) DESC, COALESCE(success_chance, 0.5) DESC,
          COALESCE(score, 0) DESC, discovered_at LIMIT 1`,
       [JobStatus.APPROVED, ...platforms],
     );
@@ -308,6 +312,20 @@ export class JobsService implements OnApplicationBootstrap {
 
   countByStatus(status: JobStatus): number {
     return Number(this.storage.get<{ n: number }>('SELECT COUNT(*) n FROM jobs WHERE status = ?', [status])?.n ?? 0);
+  }
+
+  /**
+   * Jobs waiting for your answer with no question left open go back in the queue: one waited with nothing to answer
+   * after its question was cleared (Toss Securities, 2026-10-05). Returns how many.
+   */
+  requeueOrphanedQuestions(): number {
+    return Number(
+      this.storage.run(
+        `UPDATE jobs SET status = ?, reason = 'Nothing left to answer - back in the queue', updated_at = ?
+         WHERE status = ? AND NOT EXISTS (SELECT 1 FROM pending_questions q WHERE q.job_id = jobs.id AND q.status = 'open')`,
+        [JobStatus.APPROVED, new Date().toISOString(), JobStatus.NEEDS_INPUT],
+      ).changes ?? 0,
+    );
   }
 
   queuedCount(): number {

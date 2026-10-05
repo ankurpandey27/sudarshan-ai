@@ -64,5 +64,6 @@ export function toInstruction(field: FormField, raw: string): FillInstruction | 
 export function needsAnswer(field: FormField): boolean {
   if (field.error) return true;
   if (field.kind === FieldKind.CHECKBOX) return field.required && field.value !== 'true';
-  return field.value.trim() === '';
+  // A phone box that holds only its dialling code ("+1", "+91") is still empty (Curotec, 2026-10-05).
+  return field.value.trim() === '' || /^\+\d{1,4}$/.test(field.value.trim());
 }
