@@ -9,6 +9,6 @@ export const FORMAT_ERROR = /\binvalid\b|\bformat\b|\bnumeric\b|\bnumber\b|\bdig
  * takes numbers only. Null when there is no number, or the answer is a number already (nothing different to try).
  */
 export function bareNumber(answer: string): string | null {
-  const m = /^\s*(\d+(?:\.\d+)?)\s*\+?\s*[a-z]/i.exec(answer);
-  return m ? m[1] : null;
+  const match = /^\s*(\d+(?:\.\d+)?)\s*\+?\s*[a-z]/i.exec(answer);
+  return match ? match[1] : null;
 }

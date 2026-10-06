@@ -67,9 +67,9 @@ function InsightCard({ insight: i }: { insight: Insight }) {
     },
     onError: (e: Error) => toast('error', e.message),
   });
-  const t = tone[i.severity];
+  const toneOf = tone[i.severity];
   return (
-    <article className={cn('relative rounded-2xl border px-5 py-3.5 pr-11', t.box)}>
+    <article className={cn('relative rounded-2xl border px-5 py-3.5 pr-11', toneOf.box)}>
       <button
         type="button"
         onClick={() => dismiss.mutate()}
@@ -81,7 +81,7 @@ function InsightCard({ insight: i }: { insight: Insight }) {
         <X className="size-4" />
       </button>
       <div className="flex flex-wrap items-start gap-x-3 gap-y-2">
-        <span className="mt-0.5">{t.icon}</span>
+        <span className="mt-0.5">{toneOf.icon}</span>
         <div className="min-w-0 flex-1">
           <p className="text-[14px] font-semibold leading-snug">{i.title}</p>
           <p className="mt-0.5 text-[13px] text-ink-2">{i.detail}</p>

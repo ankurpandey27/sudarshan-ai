@@ -14,8 +14,8 @@ export function indeedAppliedKeysInPage(): { keys: string[]; cards: number } {
     const attr = el.getAttribute('data-jk') ?? el.getAttribute('data-jobkey');
     if (attr && /^[a-f0-9]{16}$/i.test(attr)) return attr.toLowerCase();
     const href = el instanceof HTMLAnchorElement ? el.href : '';
-    const m = /[?&](?:jk|vjk)=([a-f0-9]{16})\b/i.exec(href);
-    return m ? m[1].toLowerCase() : null;
+    const match = /[?&](?:jk|vjk)=([a-f0-9]{16})\b/i.exec(href);
+    return match ? match[1].toLowerCase() : null;
   };
   const carriers = Array.from(document.querySelectorAll('a[href], [data-jk], [data-jobkey]')).filter((el) => keyOf(el));
   const keys = new Set<string>();
@@ -46,9 +46,9 @@ export function indeedPageStateInPage(): 'list' | 'signin' | 'loading' {
   const text = document.body?.innerText ?? '';
   if (/\bapplied\b[^\n]{0,60}\bon indeed\b/i.test(text) || /no (applications|jobs) (yet|found)|you haven.t applied/i.test(text)) return 'list';
   const shown = (el: Element) => {
-    const r = (el as HTMLElement).getBoundingClientRect();
-    const s = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none';
+    const rect = (el as HTMLElement).getBoundingClientRect();
+    const style = getComputedStyle(el);
+    return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none';
   };
   // A password box on screen, or an email box on Indeed's sign-in address. Hidden login forms do not count.
   const password = Array.from(document.querySelectorAll('input[type=password]')).some(shown);

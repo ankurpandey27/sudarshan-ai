@@ -9,11 +9,11 @@ import { Story } from '../interfaces/story.interface';
  * once more for a specific ("by how much? which month? which tool?"), then accepts what it gets.
  */
 export function needsSpecifics(text: string): boolean {
-  const t = (text ?? '').trim();
-  if (t.length < 20) return true;
-  const hasNumber = /\d/.test(t);
+  const trimmed = (text ?? '').trim();
+  if (trimmed.length < 20) return true;
+  const hasNumber = /\d/.test(trimmed);
   // A name in mid-sentence: "at Acme", "in NestJS", "with Kafka".
-  const hasName = /\s[A-Z][A-Za-z0-9.+#-]{1,}/.test(t.slice(1));
+  const hasName = /\s[A-Z][A-Za-z0-9.+#-]{1,}/.test(trimmed.slice(1));
   return !hasNumber && !hasName;
 }
 

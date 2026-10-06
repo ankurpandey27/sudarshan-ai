@@ -58,8 +58,8 @@ export class IndeedSource implements DiscoverySource {
     const state = await page
       .waitForFunction(
         () => {
-          const w = window as unknown as { mosaic?: { providerData?: Record<string, unknown> } };
-          if (w.mosaic?.providerData?.['mosaic-provider-jobcards']) return 'results';
+          const win = window as unknown as { mosaic?: { providerData?: Record<string, unknown> } };
+          if (win.mosaic?.providerData?.['mosaic-provider-jobcards']) return 'results';
           if (/secure\.indeed\.com\/auth|\/account\/login/.test(location.href)) return 'login';
           // A security check ("Just a moment...") usually clears by itself in a visible browser: keep waiting.
           return false;
@@ -81,8 +81,8 @@ export class IndeedSource implements DiscoverySource {
       throw new Error(`Indeed search did not load (stuck at ${page.url()})`);
     }
     return page.evaluate(() => {
-      const w = window as unknown as { mosaic?: { providerData?: Record<string, { metaData?: { mosaicProviderJobCardsModel?: { results?: unknown[] } } }> } };
-      return (w.mosaic?.providerData?.['mosaic-provider-jobcards']?.metaData?.mosaicProviderJobCardsModel?.results ?? []) as IndeedCard[];
+      const win = window as unknown as { mosaic?: { providerData?: Record<string, { metaData?: { mosaicProviderJobCardsModel?: { results?: unknown[] } } }> } };
+      return (win.mosaic?.providerData?.['mosaic-provider-jobcards']?.metaData?.mosaicProviderJobCardsModel?.results ?? []) as IndeedCard[];
     });
   }
 }

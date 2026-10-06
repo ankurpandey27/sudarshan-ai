@@ -96,29 +96,29 @@ export class PendingQuestionsService {
        WHERE q.status = 'open' ORDER BY q.created_at`,
     );
     const groups = new Map<string, PendingQuestionGroup>();
-    for (const r of rows) {
-      let g = groups.get(r.key);
-      if (!g) {
-        g = {
-          key: r.key,
-          question: r.question,
-          fieldType: r.field_type,
-          options: usableOptions(JSON.parse(r.options) as string[]),
-          suggestion: r.suggestion,
-          questionEn: r.question_en,
-          optionsEn: r.options_en ? (JSON.parse(r.options_en) as string[]) : null,
-          foreign: !!r.question_en || looksNonEnglish(`${r.question} ${r.options}`),
+    for (const row of rows) {
+      let group = groups.get(row.key);
+      if (!group) {
+        group = {
+          key: row.key,
+          question: row.question,
+          fieldType: row.field_type,
+          options: usableOptions(JSON.parse(row.options) as string[]),
+          suggestion: row.suggestion,
+          questionEn: row.question_en,
+          optionsEn: row.options_en ? (JSON.parse(row.options_en) as string[]) : null,
+          foreign: !!row.question_en || looksNonEnglish(`${row.question} ${row.options}`),
           jobIds: [],
           jobs: [],
-          firstAskedAt: r.created_at,
+          firstAskedAt: row.created_at,
         };
-        groups.set(r.key, g);
+        groups.set(row.key, group);
       }
-      g.jobIds.push(r.job_id);
-      g.jobs.push({ id: r.job_id, title: r.title, company: r.company });
+      group.jobIds.push(row.job_id);
+      group.jobs.push({ id: row.job_id, title: row.title, company: row.company });
     }
     // Questions asked before translation existed (or while the AI was away) get theirs now.
-    for (const g of groups.values()) if (!g.questionEn) void this.translate(g.key);
+    for (const group of groups.values()) if (!group.questionEn) void this.translate(group.key);
     return [...groups.values()].sort((a, b) => b.jobIds.length - a.jobIds.length);
   }
 

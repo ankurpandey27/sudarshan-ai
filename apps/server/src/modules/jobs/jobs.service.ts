@@ -113,9 +113,9 @@ export class JobsService implements OnApplicationBootstrap {
       [since],
     );
     const groups = new Map<string, typeof rows>();
-    for (const r of rows) {
-      const key = `${r.company.trim().toLowerCase()}|${roleKey(r.title)}`;
-      groups.set(key, [...(groups.get(key) ?? []), r]);
+    for (const row of rows) {
+      const key = `${row.company.trim().toLowerCase()}|${roleKey(row.title)}`;
+      groups.set(key, [...(groups.get(key) ?? []), row]);
     }
     const rank = (s: JobStatus) => MERGE_KEEP_ORDER.indexOf(s);
     const now = new Date().toISOString();
@@ -125,15 +125,15 @@ export class JobsService implements OnApplicationBootstrap {
         if (group.length < 2) continue;
         const keep = [...group].sort((a, b) => rank(a.status) - rank(b.status) || (b.score ?? 0) - (a.score ?? 0) || a.id - b.id)[0];
         let location = keep.location;
-        for (const r of group) {
-          if (r.id === keep.id || !MERGEABLE.includes(r.status)) continue;
+        for (const row of group) {
+          if (row.id === keep.id || !MERGEABLE.includes(row.status)) continue;
           this.storage.run('UPDATE jobs SET status = ?, reason = ?, updated_at = ? WHERE id = ?', [
             JobStatus.DISMISSED,
             `Same job as #${keep.id} (another listing)`,
             now,
-            r.id,
+            row.id,
           ]);
-          if (r.location && !location.toLowerCase().includes(r.location.toLowerCase())) location = `${location} / ${r.location}`.slice(0, 200);
+          if (row.location && !location.toLowerCase().includes(row.location.toLowerCase())) location = `${location} / ${row.location}`.slice(0, 200);
           merged++;
         }
         if (location !== keep.location) this.storage.run('UPDATE jobs SET location = ? WHERE id = ?', [location, keep.id]);
@@ -298,8 +298,8 @@ export class JobsService implements OnApplicationBootstrap {
     // Counts per platform use every filter except the platform itself.
     const base = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const platforms: Record<string, number> = {};
-    for (const r of this.storage.all<{ p: string; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs ${base} GROUP BY p`, params)) {
-      platforms[r.p] = Number(r.n);
+    for (const row of this.storage.all<{ p: string; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs ${base} GROUP BY p`, params)) {
+      platforms[row.p] = Number(row.n);
     }
     if (q.platform) {
       where.push(`${PLATFORM_SQL} = ?`);
@@ -394,13 +394,13 @@ export class JobsService implements OnApplicationBootstrap {
     const ctx = { country: home.country, places, abroad: learnAbroadPlaces(home.country, places, listings) };
     let changed = 0;
     this.storage.transaction(() => {
-      for (const r of rows) {
-        if (!all && r.region !== null && r.work_mode !== null) continue;
-        const l = listing(r);
-        const mode = workModeOf(l);
-        const region = regionOf(l, ctx);
-        if (mode === r.work_mode && region === r.region) continue;
-        this.storage.run('UPDATE jobs SET work_mode = ?, region = ? WHERE id = ?', [mode, region, r.id]);
+      for (const row of rows) {
+        if (!all && row.region !== null && row.work_mode !== null) continue;
+        const place = listing(row);
+        const mode = workModeOf(place);
+        const region = regionOf(place, ctx);
+        if (mode === row.work_mode && region === row.region) continue;
+        this.storage.run('UPDATE jobs SET work_mode = ?, region = ? WHERE id = ?', [mode, region, row.id]);
         changed++;
       }
     });
@@ -601,29 +601,29 @@ export class JobsService implements OnApplicationBootstrap {
 
   stats(): JobStats {
     const byStatus: Record<string, number> = {};
-    for (const r of this.storage.all<{ status: string; n: number }>('SELECT status, COUNT(*) n FROM jobs GROUP BY status')) {
-      byStatus[r.status] = Number(r.n);
+    for (const row of this.storage.all<{ status: string; n: number }>('SELECT status, COUNT(*) n FROM jobs GROUP BY status')) {
+      byStatus[row.status] = Number(row.n);
     }
     const since = localDayStartIso();
     const appliedTodayBySource: Record<string, number> = {};
-    for (const r of this.storage.all<{ source: string; n: number }>(
+    for (const row of this.storage.all<{ source: string; n: number }>(
       'SELECT source, COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ? GROUP BY source',
       [JobStatus.APPLIED, since],
     )) {
-      appliedTodayBySource[r.source] = Number(r.n);
+      appliedTodayBySource[row.source] = Number(row.n);
     }
     const appliedTodayByPlatform: Record<string, number> = {};
-    for (const r of this.storage.all<{ p: string; n: number }>(
+    for (const row of this.storage.all<{ p: string; n: number }>(
       `SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ? GROUP BY p`,
       [JobStatus.APPLIED, since],
     )) {
-      appliedTodayByPlatform[r.p] = Number(r.n);
+      appliedTodayByPlatform[row.p] = Number(row.n);
     }
     const queuedByPlatform: Record<string, number> = {};
-    for (const r of this.storage.all<{ p: string; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE status = ? GROUP BY p`, [
+    for (const row of this.storage.all<{ p: string; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE status = ? GROUP BY p`, [
       JobStatus.APPROVED,
     ])) {
-      queuedByPlatform[r.p] = Number(r.n);
+      queuedByPlatform[row.p] = Number(row.n);
     }
     const recent = this.storage.all<{ duration_ms: number; fields: number; memory_hits: number }>(
       `SELECT duration_ms, fields, memory_hits FROM attempts WHERE outcome = 'applied' AND duration_ms IS NOT NULL ORDER BY id DESC LIMIT 50`,

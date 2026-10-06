@@ -27,8 +27,8 @@ function errorBody(err: unknown): { status?: number; text: string; param?: strin
   }
   if (err instanceof AxiosError && err.response) {
     const raw = err.response.data as unknown;
-    const data = (Array.isArray(raw) ? raw[0] : raw) as { error?: { param?: string } } | undefined;
-    return { status: err.response.status, text: JSON.stringify(raw ?? ''), param: data?.error?.param ?? undefined };
+    const body = (Array.isArray(raw) ? raw[0] : raw) as { error?: { param?: string } } | undefined;
+    return { status: err.response.status, text: JSON.stringify(raw ?? ''), param: body?.error?.param ?? undefined };
   }
   return { text: '' };
 }

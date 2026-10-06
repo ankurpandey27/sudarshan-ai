@@ -36,8 +36,8 @@ export function DropUpload({
       onDrop={(e) => {
         e.preventDefault();
         setOver(false);
-        const f = e.dataTransfer.files[0];
-        if (f && !busy) onFile(f);
+        const file = e.dataTransfer.files[0];
+        if (file && !busy) onFile(file);
       }}
       className={cn(
         'flex cursor-pointer flex-col items-center rounded-xl border-2 border-dashed px-6 py-8 text-center transition-colors',
@@ -54,8 +54,8 @@ export function DropUpload({
         accept={accept}
         className="hidden"
         onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) onFile(f);
+          const file = e.target.files?.[0];
+          if (file) onFile(file);
           e.target.value = '';
         }}
       />

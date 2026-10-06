@@ -15,8 +15,8 @@ export function linkedinCompanyApplyUrlInPage(): string | null {
       .replace(/\\\//g, '/')
       .replace(/&amp;/g, '&');
   const html = document.documentElement.innerHTML;
-  const data = /"companyApplyUrl"\s*:\s*"([^"]+)"/.exec(html) ?? /companyApplyUrl&quot;:&quot;(.+?)&quot;/.exec(html);
-  if (data) return unescape(data[1]);
+  const match = /"companyApplyUrl"\s*:\s*"([^"]+)"/.exec(html) ?? /companyApplyUrl&quot;:&quot;(.+?)&quot;/.exec(html);
+  if (match) return unescape(match[1]);
   const link = Array.from(document.querySelectorAll('a[href]')).find(
     (a) => /^apply\b/i.test((a as HTMLElement).innerText.trim()) && !/linkedin\.com\/(jobs\/view\/\d+\/?$|login|signup)/.test((a as HTMLAnchorElement).href),
   ) as HTMLAnchorElement | undefined;
@@ -26,13 +26,13 @@ export function linkedinCompanyApplyUrlInPage(): string | null {
 /** LinkedIn's own pop-up between Apply and the company site ("Continue", "Continue to apply"): its button, clicked. */
 export function continueLinkedinInterstitialInPage(): string | null {
   const dialogs = Array.from(document.querySelectorAll('[role=dialog], .artdeco-modal')).filter((d) => (d as HTMLElement).offsetParent !== null);
-  for (const d of dialogs) {
-    const b = Array.from(d.querySelectorAll('button, a')).find((x) =>
+  for (const dialog of dialogs) {
+    const button = Array.from(dialog.querySelectorAll('button, a')).find((x) =>
       /^(continue|continue to apply|apply|go to (site|website)|proceed)\b/i.test((x as HTMLElement).innerText.trim()),
     );
-    if (b) {
-      (b as HTMLElement).click();
-      return (b as HTMLElement).innerText.trim();
+    if (button) {
+      (button as HTMLElement).click();
+      return (button as HTMLElement).innerText.trim();
     }
   }
   return null;

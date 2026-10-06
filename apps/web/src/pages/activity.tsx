@@ -151,9 +151,9 @@ export function ActivityPage() {
         )}
         <ol className="bg-surface-2/40 px-4 py-2 font-mono text-[12.5px] leading-6">
           {items.map((e) => {
-            const d = new Date(e.at).toDateString();
-            const heading = !day && d !== lastDay;
-            lastDay = d;
+            const dayLabel = new Date(e.at).toDateString();
+            const heading = !day && dayLabel !== lastDay;
+            lastDay = dayLabel;
             return (
               <li key={e.id}>
                 {heading && (

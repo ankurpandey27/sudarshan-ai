@@ -11,12 +11,12 @@ import { FieldKind } from '../enums/field-kind.enum';
  * "Give details of any convictions" -> "Not applicable ...". null when it is not such a question.
  */
 export function cleanRecordAnswer(question: string, kind: FieldKind): string | null {
-  const q = question.toLowerCase();
+  const lower = question.toLowerCase();
   // Only a question about your record - never one about your work that mentions such a word ("fraud detection").
-  if (!BACKGROUND_QUESTION.test(q) || ABOUT_WORK.test(q)) return null;
+  if (!BACKGROUND_QUESTION.test(lower) || ABOUT_WORK.test(lower)) return null;
   if (kind === FieldKind.TEXT || kind === FieldKind.TEXTAREA) return NOTHING_TO_DECLARE;
-  if (CONSENT.test(q)) return 'Yes';
+  if (CONSENT.test(lower)) return 'Yes';
   // A statement to tick ("I have no pending cases") or a question that already says "no" ("Are you free of ...").
-  if (kind === FieldKind.CHECKBOX || CLEAN_STATEMENT.test(q)) return 'Yes';
+  if (kind === FieldKind.CHECKBOX || CLEAN_STATEMENT.test(lower)) return 'Yes';
   return 'No';
 }

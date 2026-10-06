@@ -20,14 +20,14 @@ const eta = (s: number | null) =>
 export function ScoringProgress() {
   const { data } = useAgent();
   const qc = useQueryClient();
-  const p = data?.scoring ?? null;
+  const progress = data?.scoring ?? null;
   // A run that finished between two status checks still shows its result (rule-based scoring takes seconds).
   const last = data?.lastScoring ?? null;
   const shown = useRef<string | null>(null);
   const [finished, setFinished] = useState<NonNullable<typeof last> | null>(null);
 
   useEffect(() => {
-    if (p) {
+    if (progress) {
       setFinished(null);
       return;
     }
@@ -36,11 +36,11 @@ export function ScoringProgress() {
     setFinished(last);
     // Fresh numbers everywhere once scoring ends.
     void qc.invalidateQueries();
-    const t = setTimeout(() => setFinished(null), 8000);
-    return () => clearTimeout(t);
-  }, [p, last, qc]);
+    const timer = setTimeout(() => setFinished(null), 8000);
+    return () => clearTimeout(timer);
+  }, [progress, last, qc]);
 
-  if (!p && finished) {
+  if (!progress && finished) {
     const parts = [
       finished.review && `${finished.review} to Review`,
       finished.queued && `${finished.queued} queued`,
@@ -54,27 +54,27 @@ export function ScoringProgress() {
       </div>
     );
   }
-  if (!p) return null;
-  const share = p.total ? Math.round((p.done / p.total) * 100) : 0;
+  if (!progress) return null;
+  const share = progress.total ? Math.round((progress.done / progress.total) * 100) : 0;
   return (
     <section className="mb-5 rounded-2xl border border-accent/30 bg-accent-soft/35 px-5 py-4" role="status" aria-live="polite">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p className="text-[14px] font-semibold">
           Scoring jobs{' '}
           <span className="font-normal text-ink-2 tabular">
-            - {p.done} of {p.total}
+            - {progress.done} of {progress.total}
           </span>
         </p>
         <p className="text-[12.5px] text-ink-3 tabular">
-          {share}% · {eta(p.etaSeconds)}
+          {share}% · {eta(progress.etaSeconds)}
         </p>
       </div>
       <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-surface/80">
         <div className="h-full rounded-full bg-accent transition-[width] duration-700 ease-out" style={{ width: `${Math.max(2, share)}%` }} />
       </div>
       <p className="mt-2 text-[12.5px] text-ink-2">
-        {STAGE[p.stage]}
-        {p.skipped > 0 && <span className="text-ink-3"> · {p.skipped} skipped by your rules so far</span>}
+        {STAGE[progress.stage]}
+        {progress.skipped > 0 && <span className="text-ink-3"> · {progress.skipped} skipped by your rules so far</span>}
       </p>
     </section>
   );

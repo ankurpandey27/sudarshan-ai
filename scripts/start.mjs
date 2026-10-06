@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { fetchModel, haveModel } from './fetch-model.mjs';
 
 const root = join(import.meta.dirname, '..');
-const p = (...parts) => join(root, ...parts);
+const fromRoot = (...parts) => join(root, ...parts);
 const port = Number(process.env.SUDARSHAN_PORT || process.env.JAA_PORT || 4747);
 const tty = process.stdout.isTTY;
 const started = Date.now();
@@ -96,7 +96,7 @@ console.log(`\n  Sudarshan - goes out, finishes the task, returns.\n`);
 
 // Installed with the one-line installer: brought up to date first. A developer's clone (no marker file), or a copy
 // with local changes, is left alone; offline, this version starts.
-if (existsSync(p('.sudarshan-auto-update')) && existsSync(p('.git')) && process.env.SUDARSHAN_AUTO_UPDATE !== '0') await update();
+if (existsSync(fromRoot('.sudarshan-auto-update')) && existsSync(fromRoot('.git')) && process.env.SUDARSHAN_AUTO_UPDATE !== '0') await update();
 
 async function update() {
   const s = step('Checking for updates');
@@ -122,17 +122,17 @@ async function update() {
 }
 
 // Install on first run or when package-lock changed.
-if (!existsSync(p('node_modules')) || mtime(p('package-lock.json')) > mtime(p('node_modules', '.package-lock.json'))) {
+if (!existsSync(fromRoot('node_modules')) || mtime(fromRoot('package-lock.json')) > mtime(fromRoot('node_modules', '.package-lock.json'))) {
   await npm('Installing dependencies (the first run takes a few minutes)', 'Dependencies installed', ['install', '--no-audit', '--no-fund']);
 } else {
   done('Dependencies ready');
 }
 
 // Rebuild when sources are newer than the build.
-const serverBuilt = mtime(p('apps', 'server', 'dist', 'main.js'));
-const webBuilt = mtime(p('apps', 'web', 'dist', 'index.html'));
-const serverStale = !serverBuilt || newest(p('apps', 'server', 'src')) > serverBuilt;
-const webStale = !webBuilt || newest(p('apps', 'web', 'src')) > webBuilt || newest(p('apps', 'web', 'public')) > webBuilt;
+const serverBuilt = mtime(fromRoot('apps', 'server', 'dist', 'main.js'));
+const webBuilt = mtime(fromRoot('apps', 'web', 'dist', 'index.html'));
+const serverStale = !serverBuilt || newest(fromRoot('apps', 'server', 'src')) > serverBuilt;
+const webStale = !webBuilt || newest(fromRoot('apps', 'web', 'src')) > webBuilt || newest(fromRoot('apps', 'web', 'public')) > webBuilt;
 if (serverStale || webStale) {
   await npm(`Building the app (${!serverBuilt || !webBuilt ? 'first build' : 'code changed since the last build'})`, 'App built', ['run', 'build']);
 } else {
@@ -163,7 +163,7 @@ function launch(label = 'Starting the server') {
   const boot = step(label);
   let booting = true;
   server = spawn(process.execPath, ['--disable-warning=ExperimentalWarning', 'dist/main.js', ...(label === 'Starting the server' ? ['--open'] : [])], {
-    cwd: p('apps', 'server'),
+    cwd: fromRoot('apps', 'server'),
     stdio: ['inherit', 'pipe', 'pipe'],
     env: { ...process.env, FORCE_COLOR: tty ? '1' : '0' },
   });

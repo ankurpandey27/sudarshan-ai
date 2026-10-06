@@ -35,24 +35,24 @@ export class RecipesService {
    * recipe. The built-in rules' own picks need no recipe - the rules find them again anyway.
    */
   confirm(moves: LearnedMove[]): void {
-    for (const m of moves) if (m.by !== 'rules') this.learn(m.domain, m.kind, m.text);
+    for (const move of moves) if (move.by !== 'rules') this.learn(move.domain, move.kind, move.text);
   }
 
   learn(domain: string, kind: 'apply' | 'advance', text: string): void {
-    const r = this.get(domain);
-    const list = kind === 'apply' ? r.applyTexts : r.advanceTexts;
-    const t = text.trim().toLowerCase();
-    if (!t || list.includes(t) || !usable(kind, t)) return;
-    list.unshift(t);
+    const recipe = this.get(domain);
+    const list = kind === 'apply' ? recipe.applyTexts : recipe.advanceTexts;
+    const lower = text.trim().toLowerCase();
+    if (!lower || list.includes(lower) || !usable(kind, lower)) return;
+    list.unshift(lower);
     list.splice(MAX_TEXTS);
-    this.save(r);
+    this.save(recipe);
   }
 
   outcome(domain: string, ok: boolean): void {
-    const r = this.get(domain);
-    if (ok) r.successes++;
-    else r.failures++;
-    this.save(r);
+    const recipe = this.get(domain);
+    if (ok) recipe.successes++;
+    else recipe.failures++;
+    this.save(recipe);
   }
 
   list(): SiteRecipe[] {

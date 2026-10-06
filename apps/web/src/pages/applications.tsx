@@ -41,7 +41,7 @@ export function Applications() {
   // Employers' replies read from your mailbox, the newest per job.
   const { data: replies } = useQuery({ queryKey: ['replies'], queryFn: () => api.get<JobReply[]>('/inbox/replies') });
   const latestReply = new Map<number, JobReply>();
-  for (const r of replies ?? []) if (!latestReply.has(r.jobId)) latestReply.set(r.jobId, r);
+  for (const reply of replies ?? []) if (!latestReply.has(reply.jobId)) latestReply.set(reply.jobId, reply);
   const { data, isLoading } = useJobs({
     status: current.status,
     platform,

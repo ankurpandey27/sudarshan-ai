@@ -64,7 +64,7 @@ export class LearningService {
     try {
       // What is already filled (by the site or the agent) is not the user's answer.
       const start = await this.snapshot(page, target);
-      for (const f of start.fields) if (f.value) session.known.set(f.label, f.value);
+      for (const field of start.fields) if (field.value) session.known.set(field.label, field.value);
 
       await page.exposeFunction('__sudarshanLearn', (e: LearnEvent) => {
         if (session.done || session.paused || !e.snap) return;
@@ -97,9 +97,9 @@ export class LearningService {
 
   /** While Sudarshan continues in the tab itself, what happens there is not learned as yours. */
   pause(page: Page, paused: boolean): void {
-    const s = this.sessions.get(page);
-    if (!s) return;
-    s.paused = paused;
+    const session = this.sessions.get(page);
+    if (!session) return;
+    session.paused = paused;
     if (paused || page.isClosed()) return;
     // Handed back to you: what Sudarshan touched and filled meanwhile is not yours to learn.
     void page.evaluate(() => (window as unknown as { __sudarshanForget?: () => void }).__sudarshanForget?.()).catch(() => undefined);
@@ -107,15 +107,15 @@ export class LearningService {
     if (target)
       void this.snapshot(page, target)
         .then((now) => {
-          for (const f of now.fields) if (f.value) s.known.set(f.label, f.value);
+          for (const field of now.fields) if (field.value) session.known.set(field.label, field.value);
         })
         .catch(() => undefined);
   }
 
   /** When you last typed or clicked in this tab (0 if never); undefined when it is not watched. */
   lastActivity(page: Page): number | undefined {
-    const s = this.sessions.get(page);
-    return s ? (s.lastActivity ?? 0) : undefined;
+    const session = this.sessions.get(page);
+    return session ? (session.lastActivity ?? 0) : undefined;
   }
 
   /** The application in this tab was confirmed (by you or by Sudarshan). */
@@ -130,15 +130,15 @@ export class LearningService {
   }
 
   private learnAnswers(snap: FormSnapshot, session: LearningSession, touched: Set<string>): void {
-    for (const f of snap.fields) {
-      const value = f.value.trim();
-      if (!value || f.kind === FieldKind.FILE || !f.label || f.label.length < 3) continue;
+    for (const field of snap.fields) {
+      const value = field.value.trim();
+      if (!value || field.kind === FieldKind.FILE || !field.label || field.label.length < 3) continue;
       // Only what you typed or picked - not what the site filled in by itself.
-      if (!touched.has(f.id) && !(f.name && touched.has(`name:${f.name}`))) continue;
-      if (SECRET_QUESTION.test(`${f.label} ${f.name}`)) continue;
-      if (session.known.get(f.label) === value) continue;
-      session.known.set(f.label, value);
-      if (this.answers.remember(f.label, value, AnswerSource.USER, f.kind)) session.answers++;
+      if (!touched.has(field.id) && !(field.name && touched.has(`name:${field.name}`))) continue;
+      if (SECRET_QUESTION.test(`${field.label} ${field.name}`)) continue;
+      if (session.known.get(field.label) === value) continue;
+      session.known.set(field.label, value);
+      if (this.answers.remember(field.label, value, AnswerSource.USER, field.kind)) session.answers++;
     }
   }
 
@@ -196,11 +196,11 @@ export class LearningService {
   }
 
   private learnStep(target: WatchTarget, session: LearningSession, now: FormSnapshot | null): void {
-    const p = session.pending;
-    if (!p || (now && formFingerprint(now) === p.fingerprint)) return;
+    const pending = session.pending;
+    if (!pending || (now && formFingerprint(now) === pending.fingerprint)) return;
     // Your click moved the form on - kept only if the application is then confirmed, so a button that
     // merely left the form (Save and close, a notifications link) is never learned.
-    session.moves.push({ domain: target.domain, kind: p.kind, signature: p.signature, text: p.text, by: 'you' });
+    session.moves.push({ domain: target.domain, kind: pending.kind, signature: pending.signature, text: pending.text, by: 'you' });
     session.pending = null;
   }
 

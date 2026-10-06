@@ -21,9 +21,9 @@ const skills = (q: string) => new Set(extractSkills(q).map(canonicalSkill));
  * "10th" / "12th") differ, and whether they ask for the same kind of answer.
  */
 export function pairFeatures(a: string, b: string, similarity: number): Record<string, number> {
-  const A = a.toLowerCase();
-  const B = b.toLowerCase();
-  const flips = MEANING_FLIPS.filter((re) => re.test(A) !== re.test(B)).length;
+  const lowerA = a.toLowerCase();
+  const lowerB = b.toLowerCase();
+  const flips = MEANING_FLIPS.filter((re) => re.test(lowerA) !== re.test(lowerB)).length;
   const sa = skills(a);
   const sb = skills(b);
   const sameSkills = sa.size === sb.size && [...sa].every((s) => sb.has(s));

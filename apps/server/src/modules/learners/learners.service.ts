@@ -27,12 +27,12 @@ export class LearnersService {
 
   /** A labelled example; seen again, it counts more. */
   addExample(learner: LearnerName, text: string, label: string, source: string): void {
-    const t = text.trim().slice(0, 300);
-    if (!t || !label) return;
+    const clean = text.trim().slice(0, 300);
+    if (!clean || !label) return;
     this.storage.run(
       `INSERT INTO learner_examples (learner, text, label, source, seen, at) VALUES (?, ?, ?, ?, 1, ?)
        ON CONFLICT(learner, text, label) DO UPDATE SET seen = seen + 1, at = excluded.at`,
-      [learner, t, label, source, new Date().toISOString()],
+      [learner, clean, label, source, new Date().toISOString()],
     );
   }
 
@@ -40,22 +40,22 @@ export class LearnersService {
   replaceExamples(learner: LearnerName, source: string, items: { text: string; label: string }[]): void {
     const counts = new Map<string, { text: string; label: string; n: number }>();
     for (const i of items) {
-      const t = i.text.trim().slice(0, 300);
-      if (!t || !i.label) continue;
-      const k = `${t}\u0000${i.label}`;
-      counts.set(k, { text: t, label: i.label, n: (counts.get(k)?.n ?? 0) + 1 });
+      const clean = i.text.trim().slice(0, 300);
+      if (!clean || !i.label) continue;
+      const k = `${clean}\u0000${i.label}`;
+      counts.set(k, { text: clean, label: i.label, n: (counts.get(k)?.n ?? 0) + 1 });
     }
     const at = new Date().toISOString();
     this.storage.transaction(() => {
       this.storage.run('DELETE FROM learner_examples WHERE learner = ? AND source = ?', [learner, source]);
-      for (const c of counts.values()) {
+      for (const count of counts.values()) {
         // A sighting of the same example from another source (a rule) keeps its own row and count.
         this.storage.run('INSERT OR IGNORE INTO learner_examples (learner, text, label, source, seen, at) VALUES (?, ?, ?, ?, ?, ?)', [
           learner,
-          c.text,
-          c.label,
+          count.text,
+          count.label,
           source,
-          c.n,
+          count.n,
           at,
         ]);
       }

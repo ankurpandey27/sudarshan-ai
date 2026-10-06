@@ -120,8 +120,8 @@ export class FormRunnerService {
     // In the box but rejected ("Invalid input"): the answer's FORMAT is wrong, not how it was put in - operating it
     // again changes nothing. It is not saved, and the next pass re-answers it with the site's error in hand.
     const rejected = (ins: FillInstruction) => {
-      const f = now!.fields.find((x) => x.id === ins.id);
-      return !!f && !!f.error && f.value.trim() !== '' && ![FieldKind.SELECT, FieldKind.COMBOBOX, FieldKind.RADIO].includes(f.kind);
+      const field = now!.fields.find((x) => x.id === ins.id);
+      return !!field && !!field.error && field.value.trim() !== '' && ![FieldKind.SELECT, FieldKind.COMBOBOX, FieldKind.RADIO].includes(field.kind);
     };
     for (const ins of failed.filter(rejected))
       opts.onStep(
@@ -265,15 +265,15 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
    */
   private async readComboboxOptions(page: Page, snap: FormSnapshot): Promise<void> {
     const closed = snap.fields.filter((f) => f.kind === FieldKind.COMBOBOX && f.options.length === 0 && needsAnswer(f)).slice(0, MAX_PROBED_COMBOBOXES);
-    for (const f of closed) {
+    for (const field of closed) {
       try {
-        await page.click(`[data-jaa-id="${f.id}"]`);
+        await page.click(`[data-jaa-id="${field.id}"]`);
         await sleep(450);
         const options = await page.evaluate(visibleOptionsInPage);
         await page.keyboard.press('Escape');
         if (options.length) {
-          f.options = options;
-          f.optionIds = [];
+          field.options = options;
+          field.optionIds = [];
         }
       } catch {
         // Not clickable right now: answered as before.
@@ -316,8 +316,8 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     const now = await this.snapshot(page, scope).catch(() => null);
     if (!now) return [];
     return typed.filter((i) => {
-      const f = now.fields.find((x) => x.id === i.id);
-      return !!f && f.value.trim() === '';
+      const field = now.fields.find((x) => x.id === i.id);
+      return !!field && field.value.trim() === '';
     });
   }
 
@@ -614,8 +614,8 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
       .evaluate(() => {
         const el = document.querySelector('[data-jaa-pick="1"]');
         if (!el) return true;
-        const r = el.getBoundingClientRect();
-        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const rect = el.getBoundingClientRect();
+        const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
         return !top || !(top === el || el.contains(top));
       })
       .catch(() => true);
@@ -638,8 +638,8 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     // Himalayas' Apply opened an advertiser's page (Mesa School, 2026-10-05). Then the button itself is pressed.
     const covered = await handle
       .evaluate((el) => {
-        const r = el.getBoundingClientRect();
-        const top = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+        const rect = el.getBoundingClientRect();
+        const top = document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2);
         return !top || !(top === el || el.contains(top) || top.contains(el));
       })
       .catch(() => false);
@@ -681,7 +681,7 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
 
   async fill(page: Page, instructions: FillInstruction[]): Promise<void> {
     const results = await page.evaluate(fillFieldsInPage, instructions);
-    for (const r of results.filter((x) => !x.ok)) this.logger.debug(`fill ${r.id} failed: ${r.error}`);
+    for (const result of results.filter((x) => !x.ok)) this.logger.debug(`fill ${result.id} failed: ${result.error}`);
 
     for (const ins of instructions) {
       const sel = `[data-jaa-id="${ins.id}"]`;
@@ -805,12 +805,12 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
     if (!this.llm.isAvailable()) return false;
     try {
       const text = (await this.docText(page)) || snapText;
-      const r = await this.llm.json<{ confirmed?: boolean }>(buildConfirmPrompt(text), {
+      const reply = await this.llm.json<{ confirmed?: boolean }>(buildConfirmPrompt(text), {
         purpose: LlmPurpose.NAVIGATE,
         system: CONFIRM_SYSTEM_PROMPT,
         maxTokens: 30,
       });
-      return r.confirmed === true;
+      return reply.confirmed === true;
     } catch (err) {
       this.logger.warn(`Confirmation check failed: ${(err as Error).message}`);
       return false;

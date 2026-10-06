@@ -83,14 +83,14 @@ export class AnalyticsService {
   /** Skills jobs wanted that the profile lacks; sentences dropped, aliases merged ("go" and "golang"). */
   private missingSkills(since: string, pf: string, pp: SQLInputValue[]): AnalyticsReport['missingSkills'] {
     const counts = new Map<string, number>();
-    for (const r of this.storage.all<{ s: string; n: number }>(
+    for (const row of this.storage.all<{ s: string; n: number }>(
       `SELECT lower(trim(value)) s, COUNT(*) n FROM jobs, json_each(json_extract(jobs.score_detail, '$.missingSkills'))
        WHERE jobs.score_detail IS NOT NULL AND discovered_at >= ?${pf} GROUP BY s ORDER BY n DESC LIMIT 80`,
       [since, ...pp],
     )) {
-      if (!isSkillName(r.s, MAX_SKILL_LENGTH)) continue;
-      const skill = SKILL_ALIASES[r.s] ?? r.s;
-      counts.set(skill, (counts.get(skill) ?? 0) + Number(r.n));
+      if (!isSkillName(row.s, MAX_SKILL_LENGTH)) continue;
+      const skill = SKILL_ALIASES[row.s] ?? row.s;
+      counts.set(skill, (counts.get(skill) ?? 0) + Number(row.n));
     }
     return [...counts]
       .sort((a, b) => b[1] - a[1])
@@ -100,19 +100,19 @@ export class AnalyticsService {
 
   private daily(days: number, since: string, pf: string, pp: SQLInputValue[]): AnalyticsDay[] {
     const series = new Map<string, AnalyticsDay>(daySeries(days).map((day) => [day, { day, found: 0, applied: {} }]));
-    for (const r of this.storage.all<{ d: string; n: number }>(
+    for (const row of this.storage.all<{ d: string; n: number }>(
       `SELECT date(discovered_at, 'localtime') d, COUNT(*) n FROM jobs WHERE discovered_at >= ?${pf} GROUP BY d`,
       [since, ...pp],
     )) {
-      const day = series.get(r.d);
-      if (day) day.found = Number(r.n);
+      const day = series.get(row.d);
+      if (day) day.found = Number(row.n);
     }
-    for (const r of this.storage.all<{ d: string; p: JobPlatform; n: number }>(
+    for (const row of this.storage.all<{ d: string; p: JobPlatform; n: number }>(
       `SELECT date(applied_at, 'localtime') d, ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ?${pf} GROUP BY d, p`,
       [JobStatus.APPLIED, since, ...pp],
     )) {
-      const day = series.get(r.d);
-      if (day) day.applied[r.p] = Number(r.n);
+      const day = series.get(row.d);
+      if (day) day.applied[row.p] = Number(row.n);
     }
     return [...series.values()];
   }
@@ -121,16 +121,16 @@ export class AnalyticsService {
   private byPlatform(since: string): AnalyticsReport['byPlatform'] {
     const out = new Map<JobPlatform, { platform: JobPlatform; found: number; applied: number }>();
     const row = (p: JobPlatform) => out.get(p) ?? out.set(p, { platform: p, found: 0, applied: 0 }).get(p)!;
-    for (const r of this.storage.all<{ p: JobPlatform; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE discovered_at >= ? GROUP BY p`, [
+    for (const platformRow of this.storage.all<{ p: JobPlatform; n: number }>(`SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE discovered_at >= ? GROUP BY p`, [
       since,
     ])) {
-      row(r.p).found = Number(r.n);
+      row(platformRow.p).found = Number(platformRow.n);
     }
-    for (const r of this.storage.all<{ p: JobPlatform; n: number }>(
+    for (const platformRow of this.storage.all<{ p: JobPlatform; n: number }>(
       `SELECT ${PLATFORM_SQL} p, COUNT(*) n FROM jobs WHERE status = ? AND applied_at >= ? GROUP BY p`,
       [JobStatus.APPLIED, since],
     )) {
-      row(r.p).applied = Number(r.n);
+      row(platformRow.p).applied = Number(platformRow.n);
     }
     return [...out.values()].sort((a, b) => b.applied - a.applied || b.found - a.found);
   }

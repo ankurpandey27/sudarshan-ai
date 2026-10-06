@@ -66,13 +66,13 @@ export class StorageService implements OnApplicationShutdown {
 
   private migrate(): void {
     const { user_version: current } = this.db.prepare('PRAGMA user_version').get() as { user_version: number };
-    for (let v = current; v < MIGRATIONS.length; v++) {
+    for (let version = current; version < MIGRATIONS.length; version++) {
       this.db.exec('BEGIN');
       try {
-        this.db.exec(MIGRATIONS[v]);
-        this.db.exec(`PRAGMA user_version = ${v + 1}`);
+        this.db.exec(MIGRATIONS[version]);
+        this.db.exec(`PRAGMA user_version = ${version + 1}`);
         this.db.exec('COMMIT');
-        this.logger.log(`Database migrated to v${v + 1}`);
+        this.logger.log(`Database migrated to v${version + 1}`);
       } catch (err) {
         this.db.exec('ROLLBACK');
         throw err;

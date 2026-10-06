@@ -16,8 +16,8 @@ export function sanitizeAi(ai: Partial<CandidateProfile>): Partial<CandidateProf
     'firstName', 'lastName', 'email', 'phoneCountryCode', 'city', 'state', 'country', 'postalCode',
     'headline', 'currentTitle', 'currentCompany', 'linkedinUrl', 'githubUrl', 'portfolioUrl', 'summary',
   ] as const) {
-    const v = str(ai[k]);
-    if (v) (out as Record<string, unknown>)[k] = v;
+    const value = str(ai[k]);
+    if (value) (out as Record<string, unknown>)[k] = value;
   }
   const phone = str(ai.phone).replace(/\D/g, '');
   if (phone.length >= 10) out.phone = phone.slice(-10);

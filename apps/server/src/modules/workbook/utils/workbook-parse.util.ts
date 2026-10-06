@@ -8,11 +8,11 @@ export function cellText(value: ExcelJS.CellValue): string {
   if (value === null || value === undefined) return '';
   if (value instanceof Date) return value.toISOString().slice(0, 10);
   if (typeof value === 'object') {
-    const v = value as unknown as Record<string, unknown>;
-    if (Array.isArray(v.richText)) return (v.richText as { text: string }[]).map((r) => r.text).join('').trim();
-    if (typeof v.hyperlink === 'string') return String(v.hyperlink).trim();
-    if (typeof v.text === 'string') return v.text.trim();
-    if ('result' in v) return String(v.result ?? '').trim();
+    const cell = value as unknown as Record<string, unknown>;
+    if (Array.isArray(cell.richText)) return (cell.richText as { text: string }[]).map((r) => r.text).join('').trim();
+    if (typeof cell.hyperlink === 'string') return String(cell.hyperlink).trim();
+    if (typeof cell.text === 'string') return cell.text.trim();
+    if ('result' in cell) return String(cell.result ?? '').trim();
     return '';
   }
   return String(value).trim();
@@ -22,10 +22,10 @@ type Kind = 'answers' | 'links' | 'preferences' | null;
 
 function sheetKind(name: string, headers: string[]): Kind {
   const n = name.toLowerCase();
-  const h = headers.join(' ').toLowerCase();
-  if (/link|url|jobs?\b/.test(n) || /\b(url|link)\b/.test(h)) return 'links';
-  if (/pref|setting|search|config/.test(n) || /\b(setting|preference)\b/.test(h)) return 'preferences';
-  if (/answer|q ?& ?a|question|screening/.test(n) || (/question/.test(h) && /answer/.test(h))) return 'answers';
+  const header = headers.join(' ').toLowerCase();
+  if (/link|url|jobs?\b/.test(n) || /\b(url|link)\b/.test(header)) return 'links';
+  if (/pref|setting|search|config/.test(n) || /\b(setting|preference)\b/.test(header)) return 'preferences';
+  if (/answer|q ?& ?a|question|screening/.test(n) || (/question/.test(header) && /answer/.test(header))) return 'answers';
   return null;
 }
 
@@ -54,23 +54,23 @@ export function parseWorkbook(wb: ExcelJS.Workbook): ParsedWorkbook {
       return hasHeader && i >= 0 ? i : fallback;
     };
     if (kind === 'answers') {
-      const q = col(/question/, 0);
-      const a = col(/answer|value|response/, 1);
-      for (const r of body) if (r[q] && r[a]) out.answers.push({ question: r[q], answer: r[a] });
+      const questionCol = col(/question/, 0);
+      const answerCol = col(/answer|value|response/, 1);
+      for (const answerRow of body) if (answerRow[questionCol] && answerRow[answerCol]) out.answers.push({ question: answerRow[questionCol], answer: answerRow[answerCol] });
     } else if (kind === 'links') {
-      const u = headers.findIndex((h) => /url|link/.test(h));
-      const t = col(/title|role|position/, -1);
-      const c = col(/company|employer/, -1);
+      const urlCol = headers.findIndex((h) => /url|link/.test(h));
+      const titleCol = col(/title|role|position/, -1);
+      const companyCol = col(/company|employer/, -1);
       const n = col(/note/, -1);
-      for (const r of body) {
-        const url = (u >= 0 && hasHeader ? r[u] : r.find((x) => /^https?:\/\//i.test(x))) ?? '';
+      for (const linkRow of body) {
+        const url = (urlCol >= 0 && hasHeader ? linkRow[urlCol] : linkRow.find((x) => /^https?:\/\//i.test(x))) ?? '';
         if (!url) continue;
-        out.links.push({ url, title: t >= 0 ? r[t] : undefined, company: c >= 0 ? r[c] : undefined, notes: n >= 0 ? r[n] : undefined });
+        out.links.push({ url, title: titleCol >= 0 ? linkRow[titleCol] : undefined, company: companyCol >= 0 ? linkRow[companyCol] : undefined, notes: n >= 0 ? linkRow[n] : undefined });
       }
     } else {
       const k = col(/setting|preference|key|name/, 0);
-      const v = col(/value/, 1);
-      for (const r of body) if (r[k]) out.preferences.push({ key: r[k], value: r[v] ?? '' });
+      const valueCol = col(/value/, 1);
+      for (const preferenceRow of body) if (preferenceRow[k]) out.preferences.push({ key: preferenceRow[k], value: preferenceRow[valueCol] ?? '' });
     }
   });
   return out;

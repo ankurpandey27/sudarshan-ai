@@ -8,8 +8,8 @@ export function describeLlmError(err: unknown): string {
   if (err instanceof Anthropic.APIError) return `HTTP ${err.status ?? 'n/a'}: ${err.message}`;
   if (err instanceof AxiosError) {
     const raw = err.response?.data as unknown;
-    const data = (Array.isArray(raw) ? raw[0] : raw) as { error?: { message?: string } | string; message?: string } | undefined;
-    const msg = (typeof data?.error === 'string' ? data.error : data?.error?.message) ?? data?.message ?? err.message;
+    const body = (Array.isArray(raw) ? raw[0] : raw) as { error?: { message?: string } | string; message?: string } | undefined;
+    const msg = (typeof body?.error === 'string' ? body.error : body?.error?.message) ?? body?.message ?? err.message;
     return err.response ? `HTTP ${err.response.status}: ${msg}` : `${err.code ?? 'network'}: ${msg}`;
   }
   return err instanceof Error ? err.message : String(err);
@@ -37,8 +37,8 @@ export function isProtocolMismatch(err: unknown): boolean {
 
 /** The provider said the prompt is too long for this model; a shorter one may work. */
 export function isContextTooLong(err: unknown): boolean {
-  const m = err instanceof Error ? err.message : String(err);
+  const message = err instanceof Error ? err.message : String(err);
   return /context (length|window)|maximum context|too many tokens|prompt is too long|too long|reduce the length|token limit|exceeds? the (maximum|limit)/i.test(
-    m,
+    message,
   );
 }

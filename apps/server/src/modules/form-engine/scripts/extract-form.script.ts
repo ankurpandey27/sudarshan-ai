@@ -9,8 +9,8 @@ import type { FieldKind } from '../enums/field-kind.enum';
  * or outer-scope references). Controls get data-jaa-* ids for the filler.
  */
 export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
-  const w = window as unknown as { __jaaSeq?: number };
-  const nextId = (prefix: string) => `${prefix}${(w.__jaaSeq = (w.__jaaSeq ?? 0) + 1)}`;
+  const win = window as unknown as { __jaaSeq?: number };
+  const nextId = (prefix: string) => `${prefix}${(win.__jaaSeq = (win.__jaaSeq ?? 0) + 1)}`;
   const tag = (el: Element, attr: string, prefix: string): string => {
     let id = el.getAttribute(attr);
     if (!id) {
@@ -27,17 +27,17 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       .trim();
   const visible = (el: Element | null): boolean => {
     if (!el) return false;
-    const h = el as HTMLElement;
+    const htmlEl = el as HTMLElement;
     const shown =
-      (typeof h.checkVisibility !== 'function' || h.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true })) &&
+      (typeof htmlEl.checkVisibility !== 'function' || htmlEl.checkVisibility({ checkOpacity: false, checkVisibilityCSS: true })) &&
       (() => {
-        const r = h.getBoundingClientRect();
-        return r.width > 0 || r.height > 0;
+        const rect = htmlEl.getBoundingClientRect();
+        return rect.width > 0 || rect.height > 0;
       })();
     if (shown) return true;
     // Custom radios/checkboxes hide the native input (display:none, or 0x0); what the user sees is a label or a wrapper.
-    const t = (el as HTMLInputElement).type;
-    if (!(el.tagName === 'INPUT' && (t === 'radio' || t === 'checkbox' || t === 'file'))) return false;
+    const inputType = (el as HTMLInputElement).type;
+    if (!(el.tagName === 'INPUT' && (inputType === 'radio' || inputType === 'checkbox' || inputType === 'file'))) return false;
     const stand = [
       ...Array.from((el as HTMLInputElement).labels ?? []),
       el.closest('[role=radio], [role=checkbox], [role=option]'),
@@ -65,8 +65,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
         if (h.querySelector('input, select, textarea, button') || h.closest('label')) return false;
         const group = h.closest('fieldset, [role=group], [role=radiogroup]');
         if (group && !group.contains(el)) return false;
-        const t = textOf(h);
-        return !!t && t.length <= 60 && t.split(/\s+/).length <= 6;
+        const text = textOf(h);
+        return !!text && text.length <= 60 && text.split(/\s+/).length <= 6;
       });
       if (heads.length) return textOf(heads[heads.length - 1]).slice(0, 60);
     }
@@ -109,12 +109,12 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     const before: string[] = [];
     const after: string[] = [];
     const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT);
-    for (let t = walker.nextNode(); t; t = walker.nextNode()) {
-      const parent = t.parentElement;
-      if (!parent || el.contains(t) || parent.closest('option, select, script, style, template, [hidden], [aria-hidden="true"]')) continue;
-      const s = clean(t.textContent);
-      if (!s || exclude.includes(s) || PICK_PROMPT.test(s) || !visible(parent)) continue;
-      (el.compareDocumentPosition(t) & Node.DOCUMENT_POSITION_PRECEDING ? before : after).push(s);
+    for (let textNode = walker.nextNode(); textNode; textNode = walker.nextNode()) {
+      const parent = textNode.parentElement;
+      if (!parent || el.contains(textNode) || parent.closest('option, select, script, style, template, [hidden], [aria-hidden="true"]')) continue;
+      const text = clean(textNode.textContent);
+      if (!text || exclude.includes(text) || PICK_PROMPT.test(text) || !visible(parent)) continue;
+      (el.compareDocumentPosition(textNode) & Node.DOCUMENT_POSITION_PRECEDING ? before : after).push(text);
     }
     return { before: clean(before.join(' ')), after: clean(after.join(' ')) };
   };
@@ -155,10 +155,10 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     let node: Element | null = el.parentElement;
     for (let depth = 0; node && depth < 3; depth++, node = node.parentElement) {
       if (controlCount(node) > 1) break;
-      for (const t of Array.from(node.querySelectorAll('span, div, p, small'))) {
-        if (t.children.length) continue;
-        const m = /^\s*\d+\s*\/\s*(\d{1,5})(\s*(characters|chars))?\s*$/i.exec((t as HTMLElement).innerText || t.textContent || '');
-        if (m) return Number(m[1]);
+      for (const counter of Array.from(node.querySelectorAll('span, div, p, small'))) {
+        if (counter.children.length) continue;
+        const match = /^\s*\d+\s*\/\s*(\d{1,5})(\s*(characters|chars))?\s*$/i.exec((counter as HTMLElement).innerText || counter.textContent || '');
+        if (match) return Number(match[1]);
       }
     }
     return null;
@@ -175,8 +175,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     const { before, hint } = containerParts(el, ownCount, exclude);
     // A radio button or checkbox is labelled by the words after it ("Yes", "I agree ..."); the question
     // above its group belongs to the group, never to each option (CRUXO, Capgemini, 2026-09-30).
-    const t = (input.type || '').toLowerCase();
-    if (el.tagName === 'INPUT' && (t === 'radio' || t === 'checkbox')) {
+    const inputType = (input.type || '').toLowerCase();
+    if (el.tagName === 'INPUT' && (inputType === 'radio' || inputType === 'checkbox')) {
       return hint || before || clean(input.value && input.value !== 'on' ? input.value : input.name || input.id || '').replace(/[_-]+/g, ' ');
     }
     if (before) return before;
@@ -458,13 +458,13 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
   // yes/no questions so, and left unanswered they kept Submit greyed out (Valerie Group, 2026-10-05).
   const toggleGroups = new Map<Element, HTMLElement[]>();
   // Pills too: Hirist's notice period is button.pill-option in div.pill-answer-options (Babcom, 2026-10-05).
-  for (const b of Array.from(
+  for (const button of Array.from(
     scope.querySelectorAll('button[aria-pressed], [role=button][aria-pressed], button[class*="pill" i], button[class*="chip" i], button[class*="option" i]'),
   ) as HTMLElement[]) {
-    if (!visible(b) || !b.parentElement) continue;
-    const peers = toggleGroups.get(b.parentElement) ?? [];
-    peers.push(b);
-    toggleGroups.set(b.parentElement, peers);
+    if (!visible(button) || !button.parentElement) continue;
+    const peers = toggleGroups.get(button.parentElement) ?? [];
+    peers.push(button);
+    toggleGroups.set(button.parentElement, peers);
   }
   for (const [group, buttons] of toggleGroups) {
     const options = buttons.map((b) => clean(b.innerText || b.getAttribute('aria-label')));
@@ -607,12 +607,12 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
       if (text.split(/\s+/).length <= 5 && links.length < 40) links.push({ id: tag(el, 'data-jaa-act', 'a'), text, kind, disabled: false });
       continue;
     }
-    const b = el as HTMLButtonElement;
+    const button = el as HTMLButtonElement;
     actions.push({
       id: tag(el, 'data-jaa-act', 'a'),
       text,
       kind,
-      disabled: b.disabled === true || el.getAttribute('aria-disabled') === 'true',
+      disabled: button.disabled === true || el.getAttribute('aria-disabled') === 'true',
     });
   }
 
@@ -631,8 +631,8 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     ),
   ).some((el) => {
     if (el.id === 'captcha-internal') return true;
-    const r = (el as HTMLElement).getBoundingClientRect();
-    return r.width >= 50 && r.height >= 50 && getComputedStyle(el).visibility !== 'hidden';
+    const rect = (el as HTMLElement).getBoundingClientRect();
+    return rect.width >= 50 && rect.height >= 50 && getComputedStyle(el).visibility !== 'hidden';
   });
   const token = Array.from(
     document.querySelectorAll('textarea[name="g-recaptcha-response"], textarea[name="h-captcha-response"], input[name="cf-turnstile-response"]'),

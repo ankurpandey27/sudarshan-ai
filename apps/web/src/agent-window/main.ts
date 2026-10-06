@@ -37,7 +37,7 @@ interface View {
 }
 
 const POLL_MS = 3000;
-const $ = (id: string) => document.getElementById(id)!;
+const byId = (id: string) => document.getElementById(id)!;
 
 function applyTheme(): void {
   let theme: string | null = null;
@@ -55,7 +55,7 @@ function drawChakra(): void {
     (a) =>
       `<line x1="${(Math.cos(a) * 2.6).toFixed(2)}" y1="${(Math.sin(a) * 2.6).toFixed(2)}" x2="${(Math.cos(a) * 7.6).toFixed(2)}" y2="${(Math.sin(a) * 7.6).toFixed(2)}"/>`,
   ).join('');
-  $('chakra').innerHTML =
+  byId('chakra').innerHTML =
     `<svg viewBox="-16 -16 32 32" role="img" aria-label="Sudarshan Chakra">` +
     `<polygon points="${CHAKRA_TEETH}" fill="var(--accent)"/>` +
     `<circle r="10.6" fill="var(--chakra-core)"/>` +
@@ -68,8 +68,8 @@ const escape = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': 
 
 function seconds(iso: string | null): number | null {
   if (!iso) return null;
-  const s = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
-  return s > 0 ? s : null;
+  const secs = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
+  return secs > 0 ? secs : null;
 }
 
 function describe(s: Status): View {
@@ -166,35 +166,35 @@ function describe(s: Status): View {
 
 function render(view: View, s: Status | null): void {
   document.body.dataset.tone = view.tone;
-  $('state-label').textContent = view.label;
-  $('headline').innerHTML = view.headline;
-  $('detail').textContent = view.detail;
-  const chakra = $('chakra');
+  byId('state-label').textContent = view.label;
+  byId('headline').innerHTML = view.headline;
+  byId('detail').textContent = view.detail;
+  const chakra = byId('chakra');
   chakra.classList.toggle('spinning', view.spinning);
   chakra.classList.toggle('resting', !view.spinning);
   document.title = view.tone === 'offline' ? 'Sudarshan' : `Sudarshan · ${view.label}`;
 
-  $('review-link').hidden = !s || s.queue > 0 || s.awaitingReview === 0;
-  $('questions-link').hidden = !s || s.openQuestions === 0;
+  byId('review-link').hidden = !s || s.queue > 0 || s.awaitingReview === 0;
+  byId('questions-link').hidden = !s || s.openQuestions === 0;
   if (!s) return;
-  $('queue').textContent = String(s.queue);
-  $('review').textContent = String(s.awaitingReview);
-  $('questions').textContent = String(s.openQuestions);
-  $('questions').classList.toggle('hot', s.openQuestions > 0);
-  $('next-apply').textContent = s.running ? until(s.nextApplyAt) : '–';
-  $('next-search').textContent = s.running ? until(s.nextDiscoveryAt) : '–';
-  $('last-search').textContent = ago(s.lastDiscoveryAt);
-  $('model').textContent = s.llm ?? 'No AI (memory only)';
+  byId('queue').textContent = String(s.queue);
+  byId('review').textContent = String(s.awaitingReview);
+  byId('questions').textContent = String(s.openQuestions);
+  byId('questions').classList.toggle('hot', s.openQuestions > 0);
+  byId('next-apply').textContent = s.running ? until(s.nextApplyAt) : '–';
+  byId('next-search').textContent = s.running ? until(s.nextDiscoveryAt) : '–';
+  byId('last-search').textContent = ago(s.lastDiscoveryAt);
+  byId('model').textContent = s.llm ?? 'No AI (memory only)';
 }
 
 
 function renderToday(stats: JobStats, settings: Settings | null): void {
-  $('applied').textContent = String(stats.appliedToday);
-  $('total').textContent = stats.appliedTotal.toLocaleString();
-  $('memory').textContent = stats.memoryHitRate === null ? '–' : `${Math.round(stats.memoryHitRate * 100)}%`;
-  $('speed').textContent = stats.medianApplySeconds === null ? '–' : duration(stats.medianApplySeconds);
-  $('today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
-  $('sites').replaceChildren(
+  byId('applied').textContent = String(stats.appliedToday);
+  byId('total').textContent = stats.appliedTotal.toLocaleString();
+  byId('memory').textContent = stats.memoryHitRate === null ? '–' : `${Math.round(stats.memoryHitRate * 100)}%`;
+  byId('speed').textContent = stats.medianApplySeconds === null ? '–' : duration(stats.medianApplySeconds);
+  byId('today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
+  byId('sites').replaceChildren(
     ...PLATFORMS.map(({ key, label, setting }) => {
       const done = stats.appliedTodayByPlatform[key] ?? 0;
       const cfg = settings?.sources[setting];
@@ -220,10 +220,10 @@ function renderToday(stats: JobStats, settings: Settings | null): void {
 }
 
 function renderUsage(u: LlmUsage): void {
-  $('ai-today').textContent = tokensShort(u.today.tokens);
-  $('ai-month').textContent = tokensShort(u.month.tokens);
-  $('ai-all').textContent = tokensShort(u.allTime.tokens);
-  $('ai-calls').textContent =
+  byId('ai-today').textContent = tokensShort(u.today.tokens);
+  byId('ai-month').textContent = tokensShort(u.month.tokens);
+  byId('ai-all').textContent = tokensShort(u.allTime.tokens);
+  byId('ai-calls').textContent =
     `${u.allTime.calls.toLocaleString()} AI calls in total` + (u.allTime.since ? ` since ${new Date(u.allTime.since).toLocaleDateString()}` : '');
 }
 
@@ -234,7 +234,7 @@ const MARK: Record<AgentEvent['level'], string> = { success: '✓', warn: '!', e
 function renderFeed(events: AgentEvent[], s: Status | null): void {
   const items = events.filter(noteworthy).slice(-40).reverse();
   if (items.length) {
-    $('feed').replaceChildren(
+    byId('feed').replaceChildren(
       ...items.map((e) => {
         const li = document.createElement('li');
         li.className = e.level;
@@ -252,8 +252,8 @@ function renderFeed(events: AgentEvent[], s: Status | null): void {
   }
   // The latest step of the application in progress.
   const step = s?.phase === 'applying' ? [...events].reverse().find((e) => /^(Step \d+|Naukri:)/.test(e.message)) : undefined;
-  $('now').hidden = !step;
-  if (step) $('now').textContent = step.message;
+  byId('now').hidden = !step;
+  if (step) byId('now').textContent = step.message;
 }
 
 function duration(sec: number): string {
@@ -261,15 +261,15 @@ function duration(sec: number): string {
 }
 
 function until(iso: string | null): string {
-  const s = seconds(iso);
-  if (s === null) return '–';
-  return s < 60 ? `in ${s}s` : s < 3600 ? `in ${Math.round(s / 60)} min` : `in ${Math.round(s / 3600)} h`;
+  const secs = seconds(iso);
+  if (secs === null) return '–';
+  return secs < 60 ? `in ${secs}s` : secs < 3600 ? `in ${Math.round(secs / 60)} min` : `in ${Math.round(secs / 3600)} h`;
 }
 
 function ago(iso: string | null): string {
   if (!iso) return '–';
-  const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-  return s < 60 ? 'just now' : s < 3600 ? `${Math.round(s / 60)} min ago` : `${Math.round(s / 3600)} h ago`;
+  const secs = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  return secs < 60 ? 'just now' : secs < 3600 ? `${Math.round(secs / 60)} min ago` : `${Math.round(secs / 3600)} h ago`;
 }
 
 async function get<T>(path: string): Promise<T> {

@@ -8,7 +8,7 @@ const CITY_INDEX = new Map<string, Place>();
 for (const [name, country, lat, lon, aliases] of CITIES) {
   const place = { name, country, lat, lon };
   CITY_INDEX.set(name, place);
-  for (const a of aliases ?? []) CITY_INDEX.set(a, place);
+  for (const alias of aliases ?? []) CITY_INDEX.set(alias, place);
 }
 
 // "Hyderabad, Pune / Remote (Hybrid)" -> candidate place names
@@ -23,17 +23,17 @@ function tokens(text: string): string[] {
 
 export function resolveCities(text: string): Place[] {
   const found: Place[] = [];
-  for (const t of tokens(text)) {
-    const hit = CITY_INDEX.get(t) ?? [...CITY_INDEX.entries()].find(([k]) => t.includes(k) && k.length >= 4)?.[1];
+  for (const token of tokens(text)) {
+    const hit = CITY_INDEX.get(token) ?? [...CITY_INDEX.entries()].find(([k]) => token.includes(k) && k.length >= 4)?.[1];
     if (hit && !found.includes(hit)) found.push(hit);
   }
   return found;
 }
 
 export function resolveCountry(text: string): string | null {
-  for (const t of tokens(text)) {
-    const c = COUNTRIES[t];
-    if (c) return c;
+  for (const token of tokens(text)) {
+    const country = COUNTRIES[token];
+    if (country) return country;
   }
   return resolveCities(text)[0]?.country ?? null;
 }
@@ -43,8 +43,8 @@ export function distanceKm(a: Place, b: Place): number {
   const rad = (d: number) => (d * Math.PI) / 180;
   const dLat = rad(b.lat - a.lat);
   const dLon = rad(b.lon - a.lon);
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
-  return 2 * 6371 * Math.asin(Math.sqrt(h));
+  const haversine = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a.lat)) * Math.cos(rad(b.lat)) * Math.sin(dLon / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(haversine));
 }
 
 // The closest of several job cities counts. A country-only profile accepts any city in it.

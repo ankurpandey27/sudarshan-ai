@@ -24,25 +24,25 @@ const done = new Map<string, Promise<string | null>>();
 function browserEnglish(text: string): Promise<string | null> {
   const cached = done.get(text);
   if (cached) return cached;
-  const g = globalThis as unknown as AiGlobals;
+  const aiGlobals = globalThis as unknown as AiGlobals;
   const job = (async () => {
-    if (!g.LanguageDetector || !g.Translator) return null;
+    if (!aiGlobals.LanguageDetector || !aiGlobals.Translator) return null;
     try {
-      detector ??= g.LanguageDetector.create().catch(() => null);
-      const d = await detector;
-      const [top] = (await d?.detect(text)) ?? [];
+      detector ??= aiGlobals.LanguageDetector.create().catch(() => null);
+      const detect = await detector;
+      const [top] = (await detect?.detect(text)) ?? [];
       if (!top || top.detectedLanguage === 'en' || top.detectedLanguage === 'und' || top.confidence < 0.4) return null;
       const lang = top.detectedLanguage;
       if (!translators.has(lang)) {
         translators.set(
           lang,
-          g.Translator.availability({ sourceLanguage: lang, targetLanguage: 'en' })
-            .then((a) => (a === 'unavailable' ? null : g.Translator!.create({ sourceLanguage: lang, targetLanguage: 'en' })))
+          aiGlobals.Translator.availability({ sourceLanguage: lang, targetLanguage: 'en' })
+            .then((a) => (a === 'unavailable' ? null : aiGlobals.Translator!.create({ sourceLanguage: lang, targetLanguage: 'en' })))
             .catch(() => null),
         );
       }
-      const t = await translators.get(lang);
-      return t ? await t.translate(text) : null;
+      const translator = await translators.get(lang);
+      return translator ? await translator.translate(text) : null;
     } catch {
       return null;
     }

@@ -72,8 +72,8 @@ export class FounditSource implements DiscoverySource {
     for (let attempt = 0; !res; attempt++) {
       try {
         res = await page.evaluate(async (p: string) => {
-          const r = await fetch(p, { headers: { accept: 'application/json' } });
-          return { status: r.status, body: r.ok ? ((await r.json()) as unknown) : null };
+          const response = await fetch(p, { headers: { accept: 'application/json' } });
+          return { status: response.status, body: response.ok ? ((await response.json()) as unknown) : null };
         }, path);
       } catch (err) {
         if (attempt >= 2 || !/context was destroyed|navigation|detached/i.test((err as Error).message)) throw err;

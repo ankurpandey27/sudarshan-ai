@@ -8,19 +8,19 @@ const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', '
  * 15 March 1995, or 1995-03-15. Null when it is not clearly a date.
  */
 export function parseBirthDate(text: string): Date | null {
-  const s = text.trim().toLowerCase();
-  let d: number, m: number, y: number;
-  let match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s);
-  if (match) [y, m, d] = [+match[1], +match[2], +match[3]];
-  else if ((match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(s))) [d, m, y] = [+match[1], +match[2], +match[3]];
-  else if ((match = /^(\d{1,2})[\s/.-]*([a-z]{3})[a-z]*[\s/.,-]*(\d{2}|\d{4})$/.exec(s))) {
-    [d, m, y] = [+match[1], MONTHS.indexOf(match[2]) + 1, +match[3]];
+  const clean = text.trim().toLowerCase();
+  let day: number, month: number, year: number;
+  let match = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(clean);
+  if (match) [year, month, day] = [+match[1], +match[2], +match[3]];
+  else if ((match = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{2}|\d{4})$/.exec(clean))) [day, month, year] = [+match[1], +match[2], +match[3]];
+  else if ((match = /^(\d{1,2})[\s/.-]*([a-z]{3})[a-z]*[\s/.,-]*(\d{2}|\d{4})$/.exec(clean))) {
+    [day, month, year] = [+match[1], MONTHS.indexOf(match[2]) + 1, +match[3]];
   } else return null;
   // Two-digit years: a birth year is in the past.
-  if (y < 100) y += y > new Date().getFullYear() % 100 ? 1900 : 2000;
-  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
-  const date = new Date(y, m - 1, d);
-  return date.getMonth() === m - 1 ? date : null;
+  if (year < 100) year += year > new Date().getFullYear() % 100 ? 1900 : 2000;
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const date = new Date(year, month - 1, day);
+  return date.getMonth() === month - 1 ? date : null;
 }
 
 /** Whole years old today. */

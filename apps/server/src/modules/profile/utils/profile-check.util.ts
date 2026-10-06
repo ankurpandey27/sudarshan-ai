@@ -17,8 +17,8 @@ export interface ProfileCheckInput {
 
 /** One name per skill: "Golang" and "go", "Java" and "java" count together. */
 export const skillKey = (s: string): string => {
-  const c = canonicalSkill(s.replace(/\s+/g, ' '));
-  return CHECK_ALIASES[c] ?? c;
+  const canonical = canonicalSkill(s.replace(/\s+/g, ' '));
+  return CHECK_ALIASES[canonical] ?? canonical;
 };
 
 const isSkill = (s: string): boolean => s.length > 1 && s.length <= 30 && !/\d{2,}/.test(s) && s.split(' ').length <= 3 && !NOT_A_SKILL.has(s);
@@ -32,8 +32,8 @@ export function buildProfileCheck({ profile, resumeText, jobs, stories }: Profil
   const missingIn = new Map<string, number>();
   for (const job of jobs) {
     const asked = new Set([...job.skills, ...job.missing].map(skillKey).filter(isSkill));
-    for (const s of asked) wanted.set(s, (wanted.get(s) ?? 0) + 1);
-    for (const s of new Set(job.missing.map(skillKey).filter(isSkill))) missingIn.set(s, (missingIn.get(s) ?? 0) + 1);
+    for (const askedSkill of asked) wanted.set(askedSkill, (wanted.get(askedSkill) ?? 0) + 1);
+    for (const missingSkill of new Set(job.missing.map(skillKey).filter(isSkill))) missingIn.set(missingSkill, (missingIn.get(missingSkill) ?? 0) + 1);
   }
 
   const quickAdds: SkillGap[] = [];

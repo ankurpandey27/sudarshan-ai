@@ -65,7 +65,7 @@ export class AnthropicTransport implements LlmTransport {
 
   async listModels(): Promise<string[]> {
     const ids: string[] = [];
-    for await (const m of this.client.models.list()) ids.push(m.id);
+    for await (const model of this.client.models.list()) ids.push(model.id);
     return ids;
   }
 }

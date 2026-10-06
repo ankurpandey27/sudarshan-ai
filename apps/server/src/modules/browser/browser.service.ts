@@ -204,9 +204,9 @@ export class BrowserService implements OnApplicationShutdown {
   }
 
   async close(): Promise<void> {
-    const b = this.browser;
+    const browser = this.browser;
     this.browser = null;
-    if (b?.connected) await b.close().catch(() => undefined);
+    if (browser?.connected) await browser.close().catch(() => undefined);
   }
 
   async onApplicationShutdown(): Promise<void> {

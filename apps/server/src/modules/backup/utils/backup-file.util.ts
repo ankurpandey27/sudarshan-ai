@@ -25,8 +25,8 @@ export function writeBackup(run: Run, file: string, resumePath: string | null, e
       db.prepare(`INSERT OR REPLACE INTO ${BACKUP_FILES_TABLE} (name, data) VALUES ('resume_name', ?)`).run(Buffer.from(basename(resumePath)));
     }
     // Your extra resumes (one per kind of role) travel with it.
-    for (const r of extraResumes) {
-      if (existsSync(r.path)) db.prepare(`INSERT OR REPLACE INTO ${BACKUP_FILES_TABLE} (name, data) VALUES (?, ?)`).run(`resumes:${r.id}`, readFileSync(r.path));
+    for (const resume of extraResumes) {
+      if (existsSync(resume.path)) db.prepare(`INSERT OR REPLACE INTO ${BACKUP_FILES_TABLE} (name, data) VALUES (?, ?)`).run(`resumes:${resume.id}`, readFileSync(resume.path));
     }
   } finally {
     db.close();
@@ -72,7 +72,7 @@ export function applyPendingRestore(paths: { dataDir: string; database: string; 
     } finally {
       current.close();
     }
-    for (const f of [paths.database, `${paths.database}-wal`, `${paths.database}-shm`]) rmSync(f, { force: true });
+    for (const file of [paths.database, `${paths.database}-wal`, `${paths.database}-shm`]) rmSync(file, { force: true });
   }
   renameSync(pending, paths.database);
 
@@ -90,14 +90,14 @@ export function applyPendingRestore(paths: { dataDir: string; database: string; 
         db.prepare('UPDATE profile SET resume_path = ? WHERE id = 1').run(target);
       }
       const extras = db.prepare(`SELECT name, data FROM ${BACKUP_FILES_TABLE} WHERE name LIKE 'resumes:%'`).all() as { name: string; data: Uint8Array }[];
-      for (const r of extras) {
-        const id = Number(r.name.slice('resumes:'.length));
+      for (const extraResume of extras) {
+        const id = Number(extraResume.name.slice('resumes:'.length));
         const row = db.prepare('SELECT name FROM resumes WHERE id = ?').get(id) as { name: string } | undefined;
         if (!row) continue;
         const folder = join(paths.uploads, 'resumes', String(id));
         mkdirSync(folder, { recursive: true });
         const target = join(folder, row.name.replace(/[^\w.\- ]/g, '_') || 'resume.pdf');
-        writeFileSync(target, r.data);
+        writeFileSync(target, extraResume.data);
         db.prepare('UPDATE resumes SET path = ? WHERE id = ?').run(target, id);
       }
       db.exec(`DROP TABLE ${BACKUP_FILES_TABLE}`);

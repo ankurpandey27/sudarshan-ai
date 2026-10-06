@@ -9,14 +9,14 @@ import { ENGLISH_WORDS, FOREIGN_WORDS } from '../constants/language.constants';
  * A short English label ("Phone Device Type", "URL") has neither, and counts as English.
  */
 export function looksNonEnglish(text: string): boolean {
-  const t = text.trim();
-  if (!t) return false;
+  const trimmed = text.trim();
+  if (!trimmed) return false;
   // Letters beyond Latin, e.g. Devanagari or Cyrillic.
-  if (/[^\p{Script=Latin}\p{Script=Common}\p{M}]/u.test(t)) return true;
-  if (/[À-ÖØ-öø-ɏ]/.test(t)) return true;
+  if (/[^\p{Script=Latin}\p{Script=Common}\p{M}]/u.test(trimmed)) return true;
+  if (/[À-ÖØ-öø-ɏ]/.test(trimmed)) return true;
   // "address(es)", "year(s)": English plural endings, not the Spanish "es".
   const words =
-    t
+    trimmed
       .toLowerCase()
       .replace(/\((e?s)\)/g, '')
       .match(/[a-z]+/g) ?? [];

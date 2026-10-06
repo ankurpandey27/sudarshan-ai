@@ -88,15 +88,15 @@ export function StatusBadge({ status }: { status: string }) {
 }
 
 export function ScoreDial({ score, size = 40 }: { score: number | null; size?: number }) {
-  const s = score ?? 0;
-  const r = size / 2 - 3;
-  const c = 2 * Math.PI * r;
-  const color = score === null ? 'var(--line-strong)' : s >= 70 ? 'var(--good)' : s >= 50 ? 'var(--accent)' : 'var(--ink-3)';
+  const value = score ?? 0;
+  const radius = size / 2 - 3;
+  const circumference = 2 * Math.PI * radius;
+  const color = score === null ? 'var(--line-strong)' : value >= 70 ? 'var(--good)' : value >= 50 ? 'var(--accent)' : 'var(--ink-3)';
   return (
     <div className="relative shrink-0" style={{ width: size, height: size }} aria-label={`Match score ${score ?? 'not scored'}`}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="var(--line)" strokeWidth="3" />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${(s / 100) * c} ${c}`} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke="var(--line)" strokeWidth="3" />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeDasharray={`${(value / 100) * circumference} ${circumference}`} />
       </svg>
       <span className="tabular absolute inset-0 grid place-items-center text-[12px] font-semibold">{score ?? '-'}</span>
     </div>

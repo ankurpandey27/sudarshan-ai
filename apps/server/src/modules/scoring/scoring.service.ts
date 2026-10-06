@@ -74,9 +74,9 @@ export class ScoringService implements OnApplicationBootstrap {
    */
   classifyPlaces(all = false): number {
     try {
-      const p = this.profile.get();
+      const profile = this.profile.get();
       return this.jobs.classifyPlaces(
-        { country: countryNames(p.country), ownPlaces: [p.city, p.state, ...this.settings.get().search.locations].filter(Boolean) },
+        { country: countryNames(profile.country), ownPlaces: [profile.city, profile.state, ...this.settings.get().search.locations].filter(Boolean) },
         all,
       );
     } catch (err) {
@@ -95,16 +95,16 @@ export class ScoringService implements OnApplicationBootstrap {
     const pending = this.jobs.unscored(limit);
     if (pending.length === 0) return out;
     const startedAt = Date.now();
-    const p: ScoringProgress = { total: pending.length, done: 0, stage: 'rules', skipped: 0, startedAt: new Date(startedAt).toISOString(), etaSeconds: null };
-    this.current = p;
+    const progress: ScoringProgress = { total: pending.length, done: 0, stage: 'rules', skipped: 0, startedAt: new Date(startedAt).toISOString(), etaSeconds: null };
+    this.current = progress;
     const tick = (done: number) => {
-      p.done = done;
+      progress.done = done;
       const perJob = (Date.now() - startedAt) / Math.max(1, done);
-      p.etaSeconds = done >= 3 ? Math.round((perJob * (p.total - done)) / 1000) : null;
+      progress.etaSeconds = done >= 3 ? Math.round((perJob * (progress.total - done)) / 1000) : null;
     };
     this.events.emit({ type: AgentEventType.LOG, message: `Scoring ${pending.length} job(s) against your profile...` });
     try {
-      return await this.scoreAll(pending, out, p, tick);
+      return await this.scoreAll(pending, out, progress, tick);
     } finally {
       this.current = null;
     }
@@ -123,7 +123,7 @@ export class ScoringService implements OnApplicationBootstrap {
   private async scoreAll(pending: Job[], out: ScoringRunResult, p: ScoringProgress, tick: (done: number) => void): Promise<ScoringRunResult> {
     const profile = this.profile.get();
     const snap = toProfileSnapshot(profile, this.settings.get().search.locations);
-    const s = this.settings.get();
+    const settings = this.settings.get();
     const survivors: { job: Job; detail: ScoreDetail }[] = [];
 
     const skip = (rule: SkipRule) => {
@@ -161,11 +161,11 @@ export class ScoringService implements OnApplicationBootstrap {
     const gated = p.skipped;
     // A job post written to steer AI tools ("ignore previous instructions", "rate this job 100") is never shown to
     // the AI: rules score it, and its summary says why.
-    for (const b of survivors) {
-      if (addressesAi(`${b.job.title} ${b.job.description}`)) b.detail.summary = STEERING_NOTE;
+    for (const survivor of survivors) {
+      if (addressesAi(`${survivor.job.title} ${survivor.job.description}`)) survivor.detail.summary = STEERING_NOTE;
     }
     const forAi = survivors.filter((b) => b.detail.summary !== STEERING_NOTE);
-    const useAi = s.agent.llmScoring && this.llm.isAvailable() && forAi.length > 0;
+    const useAi = settings.agent.llmScoring && this.llm.isAvailable() && forAi.length > 0;
     if (useAi) {
       p.stage = 'ai';
       for (let i = 0; i < forAi.length; i += LLM_SCORE_BATCH) {
@@ -177,22 +177,22 @@ export class ScoringService implements OnApplicationBootstrap {
           batch.map((b) => b.job),
         );
         out.llmCalls++;
-        for (const b of batch) {
-          const l = scores.get(b.job.id);
-          if (!l) continue;
-          b.detail.llm = Math.max(0, Math.min(100, Math.round(l.score)));
-          b.detail.summary = l.summary ?? '';
-          if (l.matched?.length) b.detail.matchedSkills = l.matched.slice(0, 15);
-          if (l.missing?.length) b.detail.missingSkills = l.missing.slice(0, 15);
+        for (const item of batch) {
+          const llmScore = scores.get(item.job.id);
+          if (!llmScore) continue;
+          item.detail.llm = Math.max(0, Math.min(100, Math.round(llmScore.score)));
+          item.detail.summary = llmScore.summary ?? '';
+          if (llmScore.matched?.length) item.detail.matchedSkills = llmScore.matched.slice(0, 15);
+          if (llmScore.missing?.length) item.detail.missingSkills = llmScore.missing.slice(0, 15);
         }
         tick(gated + Math.min(forAi.length, i + batch.length));
       }
     }
 
-    const titleTerms = titleTokens([...s.search.keywords, profile.currentTitle, profile.headline].join(' '));
+    const titleTerms = titleTokens([...settings.search.keywords, profile.currentTitle, profile.headline].join(' '));
     const core = coreSkillsOf({
-      coreSkills: s.search.coreSkills,
-      keywords: s.search.keywords,
+      coreSkills: settings.search.coreSkills,
+      keywords: settings.search.keywords,
       profileSkills: profile.skills.map((k) => k.name),
       currentTitle: profile.currentTitle,
       headline: profile.headline,
@@ -212,11 +212,11 @@ export class ScoringService implements OnApplicationBootstrap {
         score = Math.min(100, score + Math.min(CORE_SKILL_BONUS * (coreHits.length - 1), CORE_SKILL_BONUS_MAX));
         detail.summary ||= `Asks for ${skillList(coreHits)} - ${coreHits.length} of your ${core.length} core skills`;
       }
-      const external = job.source !== JobSource.WEB && !job.easyApply && !s.sources.externalSites.enabled;
+      const external = job.source !== JobSource.WEB && !job.easyApply && !settings.sources.externalSites.enabled;
       let status: JobStatus;
       let reason: string;
-      if (score >= s.agent.minApplyScore && !external) {
-        status = s.agent.mode === AgentMode.AUTO ? JobStatus.APPROVED : JobStatus.REVIEW;
+      if (score >= settings.agent.minApplyScore && !external) {
+        status = settings.agent.mode === AgentMode.AUTO ? JobStatus.APPROVED : JobStatus.REVIEW;
         reason = detail.summary || `Strong match (${score})`;
         // Auto mode: a job unlike the ones you approve waits for your review instead of being sent.
         const taste = status === JobStatus.APPROVED ? this.taste?.predict({ ...job, detail, score }) : null;
@@ -224,21 +224,21 @@ export class ScoringService implements OnApplicationBootstrap {
           status = JobStatus.REVIEW;
           reason = `Held for your review - unlike the jobs you usually approve (${Math.round(taste.p * 100)}% your interest)`;
         }
-      } else if (coreHit && score < s.agent.minReviewScore) {
+      } else if (coreHit && score < settings.agent.minReviewScore) {
         // Never skipped for a low score: it waits in Review, saying why. You still decide.
         status = JobStatus.REVIEW;
         reason =
           coreHits.length > 1
             ? `Below your score (${score}), but it asks for ${skillList(coreHits)} - your core skills`
             : `Below your score (${score}), but it asks for ${skillLabel(coreHit)} - your core skill`;
-      } else if (score >= s.agent.minReviewScore) {
+      } else if (score >= settings.agent.minReviewScore) {
         status = JobStatus.REVIEW;
         reason = external
           ? 'Applies on the company site - turn on "Company career sites" under Apply on, or apply by hand'
           : detail.summary || `Partial match (${score})`;
       } else {
         status = JobStatus.SKIPPED;
-        reason = detail.summary || `Match score ${score} is below your review threshold (${s.agent.minReviewScore})`;
+        reason = detail.summary || `Match score ${score} is below your review threshold (${settings.agent.minReviewScore})`;
         detail.skipRule = SkipRule.LOW_SCORE;
       }
       this.jobs.setScore(job.id, score, detail, status, reason);

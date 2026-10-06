@@ -61,10 +61,10 @@ export class AnswersService {
    */
   yearsYouGave(about: (question: string) => boolean): number | null {
     let best: number | null = null;
-    for (const r of this.rows()) {
+    for (const row of this.rows()) {
       // "Total Experience: 5" counts as much as "How many years of experience: 5".
-      if (r.source === AnswerSource.LLM || !(YEARS_QUESTION.test(r.question) || /experien/i.test(r.question)) || !about(r.question)) continue;
-      for (const n of (r.answer.match(/\d+(?:\.\d+)?/g) ?? []).map(Number)) {
+      if (row.source === AnswerSource.LLM || !(YEARS_QUESTION.test(row.question) || /experien/i.test(row.question)) || !about(row.question)) continue;
+      for (const n of (row.answer.match(/\d+(?:\.\d+)?/g) ?? []).map(Number)) {
         if (n <= MAX_PLAUSIBLE_YEARS && (best === null || n > best)) best = n;
       }
     }
@@ -121,10 +121,10 @@ export class AnswersService {
   update(id: number, answer: string, question?: string): Answer {
     const existing = this.storage.get<AnswerRow>('SELECT * FROM answers WHERE id = ?', [id]);
     if (!existing) throw new NotFoundException(`Answer ${id} not found`);
-    const q = question?.trim() || existing.question;
+    const newQuestion = question?.trim() || existing.question;
     this.storage.run('UPDATE answers SET question = ?, key = ?, answer = ?, source = ?, updated_at = ? WHERE id = ?', [
-      q,
-      questionKey(q),
+      newQuestion,
+      questionKey(newQuestion),
       answer.trim(),
       AnswerSource.USER,
       new Date().toISOString(),

@@ -18,13 +18,13 @@ const OPEN = /(?:(\d{1,2})\s*\+\s*(?:years?|yrs?)|(?:minimum(?: of)?|at least|mi
 /** Every figure in a text: ranges and open-ended ("5+ years"), in order. */
 function figures(text: string): YearsAsked[] {
   const out: YearsAsked[] = [];
-  for (const r of text.matchAll(RANGE)) {
-    const a = Number(r[1]);
-    const b = Number(r[2]);
-    if (a <= b && b <= MAX_YEARS_ASKED) out.push({ min: a, max: b });
+  for (const range of text.matchAll(RANGE)) {
+    const low = Number(range[1]);
+    const high = Number(range[2]);
+    if (low <= high && high <= MAX_YEARS_ASKED) out.push({ min: low, max: high });
   }
-  for (const o of text.matchAll(OPEN)) {
-    const n = Number(o[1] ?? o[2]);
+  for (const openEnded of text.matchAll(OPEN)) {
+    const n = Number(openEnded[1] ?? openEnded[2]);
     if (n <= MAX_YEARS_ASKED) out.push({ min: n, max: null });
   }
   return out;
@@ -44,8 +44,8 @@ function highest(list: YearsAsked[]): YearsAsked | null {
 export function yearsAsked(title: string, url: string, description: string): YearsAsked | null {
   const inTitle = highest(figures(title));
   if (inTitle) return inTitle;
-  const u = URL_RANGE.exec(url);
-  if (u && Number(u[1]) <= Number(u[2]) && Number(u[2]) <= MAX_YEARS_ASKED) return { min: Number(u[1]), max: Number(u[2]) };
+  const match = URL_RANGE.exec(url);
+  if (match && Number(match[1]) <= Number(match[2]) && Number(match[2]) <= MAX_YEARS_ASKED) return { min: Number(match[1]), max: Number(match[2]) };
   return highest(figures(description.slice(0, 4000)));
 }
 

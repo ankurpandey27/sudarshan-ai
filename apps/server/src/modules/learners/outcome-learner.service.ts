@@ -13,7 +13,7 @@ import { auc, predictLogistic, trainLogistic } from './utils/logistic.util';
 import { metricsOf } from './utils/mode.util';
 import { AttemptShape, HostStats, outcomeFeatures } from './utils/outcome-features.util';
 
-const L = LearnerName.OUTCOME;
+const LEARNER = LearnerName.OUTCOME;
 /** Went through on its own. */
 const SUCCESS = ['prep:applied', 'run:applied'];
 /** Needed you, or failed. Closed jobs, already-applied, refusals and careful mode say nothing about the attempt. */
@@ -75,15 +75,15 @@ export class OutcomeLearnerService {
     };
     const y = (r: Row): 0 | 1 => (SUCCESS.includes(r.result) ? 1 : 0);
     const statsOf = (rs: Row[]): HostStats => {
-      const m: HostStats = new Map();
-      for (const r of rs) {
-        const h = shape(r).host;
-        const s = m.get(h) ?? { ok: 0, n: 0 };
-        s.n++;
-        s.ok += y(r);
-        m.set(h, s);
+      const byHost: HostStats = new Map();
+      for (const row of rs) {
+        const host = shape(row).host;
+        const hostStats = byHost.get(host) ?? { ok: 0, n: 0 };
+        hostStats.n++;
+        hostStats.ok += y(row);
+        byHost.set(host, hostStats);
       }
-      return m;
+      return byHost;
     };
 
     // Trained on the older 80%, tested on the newest 20% it had not seen.
@@ -95,18 +95,18 @@ export class OutcomeLearnerService {
       past.map((r) => ({ x: outcomeFeatures(shape(r), pastStats), y: y(r) })),
       LOGISTIC,
     );
-    const a = auc(recent.map((r) => ({ y: y(r), p: predictLogistic(model, outcomeFeatures(shape(r), pastStats)) })));
+    const score = auc(recent.map((r) => ({ y: y(r), p: predictLogistic(model, outcomeFeatures(shape(r), pastStats)) })));
     const tested = recent.length;
-    const enabled = this.learners.enabled(L);
+    const enabled = this.learners.enabled(LEARNER);
     const mode = !enabled
       ? LearnerMode.OFF
-      : rows.length < MIN_EXAMPLES[L]
+      : rows.length < MIN_EXAMPLES[LEARNER]
         ? LearnerMode.LEARNING
-        : a !== null && a >= OUTCOME_MIN_AUC && tested >= OUTCOME_MIN_TESTED
+        : score !== null && score >= OUTCOME_MIN_AUC && tested >= OUTCOME_MIN_TESTED
           ? LearnerMode.ON
           : LearnerMode.CHECKING;
     // Its "accuracy" is how often it ranks a success above a failure among the newest attempts.
-    const offline = a === null ? null : { ...metricsOf(tested, Math.round(a * tested), 'the newest attempts, ranked'), accuracy: Math.round(a * 1000) / 1000 };
+    const offline = score === null ? null : { ...metricsOf(tested, Math.round(score * tested), 'the newest attempts, ranked'), accuracy: Math.round(score * 1000) / 1000 };
 
     // Switched on: every queued job gets its chance, from the whole history; otherwise none.
     if (mode === LearnerMode.ON) {
@@ -118,23 +118,23 @@ export class OutcomeLearnerService {
       const queued = this.storage.all<Omit<Row, 'result'>>(`SELECT id, source, url, apply_url, easy_apply, score FROM jobs WHERE status = 'approved'`);
       this.storage.transaction(() => {
         for (const j of queued) {
-          const p = predictLogistic(full, outcomeFeatures(shape({ ...j, result: '' }), all));
-          this.storage.run('UPDATE jobs SET success_chance = ? WHERE id = ?', [Math.round(p * 100) / 100, j.id]);
+          const chance = predictLogistic(full, outcomeFeatures(shape({ ...j, result: '' }), all));
+          this.storage.run('UPDATE jobs SET success_chance = ? WHERE id = ?', [Math.round(chance * 100) / 100, j.id]);
         }
       });
     } else {
       this.storage.run('UPDATE jobs SET success_chance = NULL WHERE success_chance IS NOT NULL');
     }
-    const pct = a === null ? '-' : `${Math.round(a * 100)}%`;
+    const pct = score === null ? '-' : `${Math.round(score * 100)}%`;
     const note =
       mode === LearnerMode.ON
         ? `Puts likely successes first within each score band (ranks them right ${pct} of the time on the newest attempts)`
         : mode === LearnerMode.CHECKING
           ? `Checking itself - ranks the newest attempts right ${pct} of the time, needs ${Math.round(OUTCOME_MIN_AUC * 100)}%`
           : mode === LearnerMode.LEARNING
-            ? `Collecting examples (${rows.length} of ${MIN_EXAMPLES[L]} attempts)`
+            ? `Collecting examples (${rows.length} of ${MIN_EXAMPLES[LEARNER]} attempts)`
             : 'Switched off';
-    this.learners.saveState(L, { mode, offline, examples: rows.length, note });
+    this.learners.saveState(LEARNER, { mode, offline, examples: rows.length, note });
     this.logger.log(`Outcome learner: ${rows.length} attempts, ${note}`);
   }
 }

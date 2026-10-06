@@ -14,7 +14,7 @@ import { LearnersService } from './learners.service';
 import { knnVote } from './utils/knn.util';
 import { decideMode, metricsOf } from './utils/mode.util';
 
-const L = LearnerName.BUTTON;
+const LEARNER = LearnerName.BUTTON;
 const FORWARD = 'forward';
 const NOT = 'not';
 
@@ -37,7 +37,7 @@ export class ButtonLearnerService {
   ) {}
 
   mode(): LearnerMode {
-    return this.learners.mode(L);
+    return this.learners.mode(LEARNER);
   }
 
   /** The button that most clearly moves forward, when switched on and sure; null otherwise. */
@@ -57,7 +57,7 @@ export class ButtonLearnerService {
 
   async train(): Promise<void> {
     this.collect();
-    const rows = this.learners.examples(L);
+    const rows = this.learners.examples(LEARNER);
     const texts = rows.map((r) => r.text).filter((t) => !this.vectors.has(t));
     if (texts.length) {
       const vs = await this.embeddings.embed(texts);
@@ -76,16 +76,16 @@ export class ButtonLearnerService {
       if (vote.label === e.label) right++;
     }
     const offline = metricsOf(made, right, 'buttons it had not seen');
-    const mode = decideMode({ enabled: this.learners.enabled(L), examples: this.examples.length, min: MIN_EXAMPLES[L], offline, live: null });
+    const mode = decideMode({ enabled: this.learners.enabled(LEARNER), examples: this.examples.length, min: MIN_EXAMPLES[LEARNER], offline, live: null });
     const note =
       mode === LearnerMode.ON
         ? `Picks the button that moves on, on new sites - right ${right} of ${made} times`
         : mode === LearnerMode.CHECKING
           ? `Checking itself before it presses anything (${right} of ${made} right so far)`
           : mode === LearnerMode.LEARNING
-            ? `Collecting examples (${this.examples.length} of ${MIN_EXAMPLES[L]})`
+            ? `Collecting examples (${this.examples.length} of ${MIN_EXAMPLES[LEARNER]})`
             : 'Switched off';
-    this.learners.saveState(L, { mode, offline, examples: this.examples.length, note });
+    this.learners.saveState(LEARNER, { mode, offline, examples: this.examples.length, note });
     this.logger.log(`Button learner: ${this.examples.length} examples, ${note}`);
   }
 
@@ -101,24 +101,24 @@ export class ButtonLearnerService {
     const steps = this.storage.all<{ action: string; ok: number; fail: number }>(
       'SELECT action, SUM(ok) ok, SUM(fail) fail FROM playbook_steps GROUP BY action',
     );
-    for (const s of steps) {
-      const text = s.action.trim().toLowerCase();
+    for (const step of steps) {
+      const text = step.action.trim().toLowerCase();
       if (!text || NEVER_ADVANCE.test(text)) continue;
-      if (s.ok > s.fail) forward.push({ text, label: FORWARD });
-      else if (s.fail > 0 && s.ok === 0) dead.push({ text, label: NOT });
+      if (step.ok > step.fail) forward.push({ text, label: FORWARD });
+      else if (step.fail > 0 && step.ok === 0) dead.push({ text, label: NOT });
     }
-    for (const r of this.storage.all<{ data: string }>('SELECT data FROM recipes')) {
+    for (const row of this.storage.all<{ data: string }>('SELECT data FROM recipes')) {
       try {
-        const d = JSON.parse(r.data) as { applyTexts?: string[]; advanceTexts?: string[] };
-        for (const t of [...(d.applyTexts ?? []), ...(d.advanceTexts ?? [])]) {
-          if (t && !NEVER_ADVANCE.test(t)) recipes.push({ text: t.toLowerCase(), label: FORWARD });
+        const recipe = JSON.parse(row.data) as { applyTexts?: string[]; advanceTexts?: string[] };
+        for (const buttonText of [...(recipe.applyTexts ?? []), ...(recipe.advanceTexts ?? [])]) {
+          if (buttonText && !NEVER_ADVANCE.test(buttonText)) recipes.push({ text: buttonText.toLowerCase(), label: FORWARD });
         }
       } catch {
         // A damaged recipe teaches nothing.
       }
     }
-    this.learners.replaceExamples(L, 'confirmed', forward);
-    this.learners.replaceExamples(L, 'dead end', dead);
-    this.learners.replaceExamples(L, 'recipe', recipes);
+    this.learners.replaceExamples(LEARNER, 'confirmed', forward);
+    this.learners.replaceExamples(LEARNER, 'dead end', dead);
+    this.learners.replaceExamples(LEARNER, 'recipe', recipes);
   }
 }

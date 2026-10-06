@@ -6,9 +6,9 @@ const FORMULA_START = /^([=+@\t\r]|-(?!\d))/;
 
 /** One CSV cell: quoted when needed, and never run as a formula when opened in a spreadsheet. */
 export function csvCell(value: string | number | null | undefined): string {
-  let s = value === null || value === undefined ? '' : String(value);
-  if (FORMULA_START.test(s)) s = `'${s}`;
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  let text = value === null || value === undefined ? '' : String(value);
+  if (FORMULA_START.test(text)) text = `'${text}`;
+  return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
 /**

@@ -149,7 +149,7 @@ export class EventsService {
     if (!this.storage) return;
     try {
       const rows = this.storage.all<ActivityRow>('SELECT * FROM activity ORDER BY id DESC LIMIT ?', [EVENT_HISTORY]).reverse();
-      for (const r of rows) this.history.push(this.toEvent(r, ++this.seq));
+      for (const row of rows) this.history.push(this.toEvent(row, ++this.seq));
     } catch (err) {
       this.logger.warn(`Could not load the saved flight log: ${(err as Error).message}`);
     }

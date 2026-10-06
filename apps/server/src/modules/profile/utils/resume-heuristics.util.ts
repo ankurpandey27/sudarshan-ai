@@ -90,9 +90,9 @@ export function parseResumeHeuristically(text: string, now = new Date()): Partia
 // Overlapping ranges are counted once.
 export function yearsFromDateRanges(text: string, now = new Date()): number {
   const spans: [number, number][] = [];
-  for (const m of text.matchAll(RANGE)) {
-    const start = toMonthIndex(m[1], m[2], m[3], m[4]);
-    const end = m[5] ? now.getFullYear() * 12 + now.getMonth() : toMonthIndex(m[6], m[7], m[8], m[9], true);
+  for (const match of text.matchAll(RANGE)) {
+    const start = toMonthIndex(match[1], match[2], match[3], match[4]);
+    const end = match[5] ? now.getFullYear() * 12 + now.getMonth() : toMonthIndex(match[6], match[7], match[8], match[9], true);
     if (start === null || end === null || end < start) continue;
     spans.push([start, end]);
   }
@@ -119,13 +119,13 @@ function toMonthIndex(
   isEnd = false,
 ): number | null {
   if (year) {
-    const m = month ? MONTHS[month.toLowerCase().slice(0, month.toLowerCase().startsWith('sept') ? 4 : 3)] : undefined;
-    return Number(year) * 12 + (m ?? (isEnd ? 11 : 0));
+    const monthIndex = month ? MONTHS[month.toLowerCase().slice(0, month.toLowerCase().startsWith('sept') ? 4 : 3)] : undefined;
+    return Number(year) * 12 + (monthIndex ?? (isEnd ? 11 : 0));
   }
   if (numMonth && numYear) {
-    const m = Number(numMonth) - 1;
-    if (m < 0 || m > 11) return null;
-    return Number(numYear) * 12 + m;
+    const monthIndex = Number(numMonth) - 1;
+    if (monthIndex < 0 || monthIndex > 11) return null;
+    return Number(numYear) * 12 + monthIndex;
   }
   return null;
 }
@@ -138,9 +138,9 @@ function detectFirstWorkMonth(text: string): number | null {
   if (expAt === -1 || eduAt === -1) return null;
   const expText = text.slice(expAt, eduAt > expAt ? eduAt : undefined);
   let earliest: number | null = null;
-  for (const m of expText.matchAll(RANGE)) {
-    const s = toMonthIndex(m[1], m[2], m[3], m[4]);
-    if (s !== null && (earliest === null || s < earliest)) earliest = s;
+  for (const match of expText.matchAll(RANGE)) {
+    const start = toMonthIndex(match[1], match[2], match[3], match[4]);
+    if (start !== null && (earliest === null || start < earliest)) earliest = start;
   }
   return earliest;
 }

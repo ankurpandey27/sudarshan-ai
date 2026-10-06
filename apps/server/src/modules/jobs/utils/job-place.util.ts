@@ -37,9 +37,9 @@ const hasWord = (text: string, word: string): boolean => new RegExp(`(^|[^a-z])$
 
 /** The names of a country as listings write them, from how the profile names it ("India", "IN", "Bharat"). */
 export function countryNames(country: string): string[] {
-  const c = norm(country);
-  if (!c) return [];
-  return [...(COUNTRIES.find((names) => names.some((n) => norm(n) === c)) ?? [c])];
+  const lower = norm(country);
+  if (!lower) return [];
+  return [...(COUNTRIES.find((names) => names.some((n) => norm(n) === lower)) ?? [lower])];
 }
 
 /** The country a listing names, if it names exactly one place on the list (else null). */
@@ -124,14 +124,14 @@ export function regionOf(job: PlaceInput, home: HomeContext): JobRegion {
 export function learnHomePlaces(country: readonly string[], own: string[], listings: Pick<PlaceInput, 'platform' | 'url' | 'location'>[]): Set<string> {
   const places = new Set<string>();
   const add = (location: string) => {
-    for (const p of placeParts(location)) if (!namedCountry(p) && !REGIONS_ABROAD.test(p)) places.add(p);
+    for (const part of placeParts(location)) if (!namedCountry(part) && !REGIONS_ABROAD.test(part)) places.add(part);
   };
-  for (const o of own) add(o);
+  for (const ownPlace of own) add(ownPlace);
   if (!country.length) return places;
-  for (const l of listings) {
-    const named = namedCountry(norm(l.location));
-    const fromSite = siteCountry(l.platform, l.url);
-    if ((named && country.includes(named)) || (!named && fromSite && country.includes(fromSite))) add(l.location);
+  for (const listing of listings) {
+    const named = namedCountry(norm(listing.location));
+    const fromSite = siteCountry(listing.platform, listing.url);
+    if ((named && country.includes(named)) || (!named && fromSite && country.includes(fromSite))) add(listing.location);
   }
   return places;
 }
@@ -140,10 +140,10 @@ export function learnHomePlaces(country: readonly string[], own: string[], listi
 export function learnAbroadPlaces(country: readonly string[], home: ReadonlySet<string>, listings: Pick<PlaceInput, 'location'>[]): Set<string> {
   const places = new Set<string>();
   if (!country.length) return places;
-  for (const l of listings) {
-    const named = namedCountry(norm(l.location));
+  for (const listing of listings) {
+    const named = namedCountry(norm(listing.location));
     if (!named || country.includes(named)) continue;
-    for (const p of placeParts(l.location)) if (!home.has(p) && !namedCountry(p)) places.add(p);
+    for (const part of placeParts(listing.location)) if (!home.has(part) && !namedCountry(part)) places.add(part);
   }
   return places;
 }

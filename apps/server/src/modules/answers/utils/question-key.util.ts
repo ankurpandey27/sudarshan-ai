@@ -46,14 +46,14 @@ export function questionSimilarity(a: string, b: string): number {
   const ta = new Set(questionTokens(a));
   const tb = new Set(questionTokens(b));
   if (ta.size === 0 || tb.size === 0) return 0;
-  for (const t of symmetricDifference(ta, tb)) {
-    if (CRITICAL.has(t) || /\d/.test(t)) return 0;
+  for (const token of symmetricDifference(ta, tb)) {
+    if (CRITICAL.has(token) || /\d/.test(token)) return 0;
   }
   const sa = new Set(extractSkills(a).map(canonicalSkill));
   const sb = new Set(extractSkills(b).map(canonicalSkill));
   if (sa.size + sb.size > 0 && symmetricDifference(sa, sb).size > 0) return 0;
   let inter = 0;
-  for (const t of ta) if (tb.has(t)) inter++;
+  for (const token of ta) if (tb.has(token)) inter++;
   return inter / (ta.size + tb.size - inter);
 }
 

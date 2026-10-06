@@ -27,8 +27,8 @@ const UNIT_MULTIPLIER: Record<string, number> = {
 };
 
 export const canonicalSkill = (skill: string): string => {
-  const s = skill.toLowerCase().trim();
-  return SKILL_ALIASES[s] ?? s;
+  const lower = skill.toLowerCase().trim();
+  return SKILL_ALIASES[lower] ?? lower;
 };
 
 // Whole-token matches only: "go" must not match "good", "ai" not "email".
@@ -51,9 +51,9 @@ export function extractSkills(description: string): string[] {
 export function parseSalary(raw: string | null): { min: number | null; max: number | null } {
   const none = { min: null, max: null };
   if (!raw) return none;
-  const m = SALARY_RANGE.exec(raw.replace(/\u00a0/g, ' '));
-  if (!m) return none;
-  const [, cur1, a1, unit1, period1, cur2, a2, unit2, period2] = m;
+  const match = SALARY_RANGE.exec(raw.replace(/\u00a0/g, ' '));
+  if (!match) return none;
+  const [, cur1, a1, unit1, period1, cur2, a2, unit2, period2] = match;
   if (!(cur1 || cur2 || unit1 || unit2)) return none; // not money
   const period = (period2 ?? period1 ?? '').toLowerCase();
   if (period === 'hr' || period === 'hour') return none;

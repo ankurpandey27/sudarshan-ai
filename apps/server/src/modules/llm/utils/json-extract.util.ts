@@ -16,15 +16,15 @@ export function extractJson<T>(raw: string): T {
   let depth = 0;
   let inString = false;
   for (let i = start; i < text.length; i++) {
-    const c = text[i];
+    const char = text[i];
     if (inString) {
-      if (c === '\\') i++;
-      else if (c === '"') inString = false;
+      if (char === '\\') i++;
+      else if (char === '"') inString = false;
       continue;
     }
-    if (c === '"') inString = true;
-    else if (c === open) depth++;
-    else if (c === close && --depth === 0) return JSON.parse(text.slice(start, i + 1)) as T;
+    if (char === '"') inString = true;
+    else if (char === open) depth++;
+    else if (char === close && --depth === 0) return JSON.parse(text.slice(start, i + 1)) as T;
   }
   throw new Error(`Unterminated JSON in model reply: ${reply.slice(0, 160)}`);
 }

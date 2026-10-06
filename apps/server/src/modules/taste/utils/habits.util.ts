@@ -20,12 +20,12 @@ function traits(job: TasteFeaturesInput): string[] {
 export function habitsOf(rows: { y: 0 | 1; job: TasteFeaturesInput }[]): { likes: string[]; dislikes: string[] } {
   const kept = rows.filter((r) => r.y === 1).length;
   const tally = new Map<string, { kept: number; skipped: number }>();
-  for (const r of rows) {
-    for (const t of traits(r.job)) {
-      const c = tally.get(t) ?? { kept: 0, skipped: 0 };
-      if (r.y === 1) c.kept++;
-      else c.skipped++;
-      tally.set(t, c);
+  for (const row of rows) {
+    for (const trait of traits(row.job)) {
+      const count = tally.get(trait) ?? { kept: 0, skipped: 0 };
+      if (row.y === 1) count.kept++;
+      else count.skipped++;
+      tally.set(trait, count);
     }
   }
   const all = [...tally];

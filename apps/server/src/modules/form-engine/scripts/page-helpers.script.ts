@@ -17,15 +17,15 @@ export function pickTypeaheadOptionInPage(value: string, strict = false, markOnl
       '[role=option], [role=listbox] li, .basic-typeahead__selectable, .autocomplete-item, .pac-item, ul[class*=suggest] li, .dropdown-results > div, .dropdown-location, [class*="suggestion-item"], [class*="autocomplete"] li',
     ),
   ).filter((el) => {
-    const r = (el as HTMLElement).getBoundingClientRect();
-    return r.width > 0 && r.height > 0;
+    const rect = (el as HTMLElement).getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   }) as HTMLElement[];
   if (opts.length === 0) return null;
   const scored = opts
     .map((el) => {
-      const t = norm(el.innerText || el.textContent || '');
-      const score = t === want ? 3 : t.startsWith(want) ? 2 : t.includes(want) ? 1 : want.includes(t) && t.length > 2 ? 0.5 : 0;
-      return { el, t, score };
+      const text = norm(el.innerText || el.textContent || '');
+      const score = text === want ? 3 : text.startsWith(want) ? 2 : text.includes(want) ? 1 : want.includes(text) && text.length > 2 ? 0.5 : 0;
+      return { el, t: text, score };
     })
     .sort((a, b) => b.score - a.score);
   // No textual match: the first suggestion, only where the caller allows it (strict: never - it was a wrong school).
@@ -44,8 +44,8 @@ export function documentTextInPage(): string {
 /** A password box is showing: the site wants you to sign in or create an account. */
 export function visiblePasswordInPage(): boolean {
   return Array.from(document.querySelectorAll('input[type=password]')).some((el) => {
-    const r = (el as HTMLElement).getBoundingClientRect();
-    return r.width > 0 && r.height > 0 && getComputedStyle(el).visibility !== 'hidden';
+    const rect = (el as HTMLElement).getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && getComputedStyle(el).visibility !== 'hidden';
   });
 }
 
@@ -73,10 +73,10 @@ export function pageQuietInPage(quietMs: number, maxMs: number): Promise<void> {
 export function visibleOptionsInPage(): string[] {
   const seen = new Set<string>();
   for (const el of Array.from(document.querySelectorAll('[role=option], [role=listbox] li, [class*="option"][id*="option"], .dropdown-results > div, .dropdown-location'))) {
-    const r = (el as HTMLElement).getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) continue;
-    const t = ((el as HTMLElement).innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
-    if (t && t.length <= 200 && !/^(no options|loading\.*|no results( found)?|type to search)$/i.test(t)) seen.add(t);
+    const rect = (el as HTMLElement).getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) continue;
+    const text = ((el as HTMLElement).innerText || el.textContent || '').replace(/\s+/g, ' ').trim();
+    if (text && text.length <= 200 && !/^(no options|loading\.*|no results( found)?|type to search)$/i.test(text)) seen.add(text);
   }
   return [...seen].slice(0, 300);
 }

@@ -28,6 +28,6 @@ export function isCustomWidget(signature: string): boolean {
 
 /** The field shows an answer - not empty, not still asking you to pick one. */
 export const showsAnswer = (value: string): boolean => {
-  const v = value.trim();
-  return v !== '' && !/^(select|choose|pick|--|please select)\b/i.test(v);
+  const trimmed = value.trim();
+  return trimmed !== '' && !/^(select|choose|pick|--|please select)\b/i.test(trimmed);
 };

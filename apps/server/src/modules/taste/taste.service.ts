@@ -166,9 +166,9 @@ export class TasteService implements OnApplicationBootstrap, OnApplicationShutdo
        WHERE status IN ('review', 'approved') AND score IS NOT NULL${all ? '' : ' AND taste IS NULL'}`,
     );
     this.storage.transaction(() => {
-      for (const r of open) {
-        const t = this.predict(this.input(r))!;
-        this.storage.run('UPDATE jobs SET taste = ?, taste_reasons = ? WHERE id = ?', [Math.round(t.p * 100) / 100, JSON.stringify(t.reasons), r.id]);
+      for (const row of open) {
+        const taste = this.predict(this.input(row))!;
+        this.storage.run('UPDATE jobs SET taste = ?, taste_reasons = ? WHERE id = ?', [Math.round(taste.p * 100) / 100, JSON.stringify(taste.reasons), row.id]);
       }
     });
   }

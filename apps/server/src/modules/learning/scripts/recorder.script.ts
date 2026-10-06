@@ -13,7 +13,7 @@ import type { FormSnapshot } from '../../form-engine/interfaces/form-field.inter
  */
 export function learnRecorderInPage(): void {
   type Extract = (scope: string | null) => FormSnapshot;
-  const w = window as unknown as {
+  const win = window as unknown as {
     __sudarshanRecorder?: boolean;
     __sudarshanLearn?: (e: unknown) => void;
     __sudarshanExtract?: Extract;
@@ -21,18 +21,18 @@ export function learnRecorderInPage(): void {
     __sudarshanWidget?: (ids: string[]) => Record<string, string>;
     __sudarshanForget?: () => void;
   };
-  if (w.__sudarshanRecorder) return;
-  w.__sudarshanRecorder = true;
+  if (win.__sudarshanRecorder) return;
+  win.__sudarshanRecorder = true;
 
   const snap = (): FormSnapshot | null => {
-    const extract = w.__sudarshanExtract;
+    const extract = win.__sudarshanExtract;
     if (!extract) return null;
-    const scoped = w.__sudarshanScope ? extract(w.__sudarshanScope) : null;
+    const scoped = win.__sudarshanScope ? extract(win.__sudarshanScope) : null;
     return scoped?.scopeFound ? scoped : extract(null);
   };
   const send = (e: unknown) => {
     try {
-      w.__sudarshanLearn?.(e);
+      win.__sudarshanLearn?.(e);
     } catch {
       // The binding goes away when the page closes.
     }
@@ -78,7 +78,7 @@ export function learnRecorderInPage(): void {
   };
   const ways = (): Record<string, { widget: string; ops: string[] }> => {
     const ids = [...ops.keys()];
-    const widgets = ids.length && w.__sudarshanWidget ? w.__sudarshanWidget(ids) : {};
+    const widgets = ids.length && win.__sudarshanWidget ? win.__sudarshanWidget(ids) : {};
     const out: Record<string, { widget: string; ops: string[] }> = {};
     for (const id of ids) if (widgets[id]) out[id] = { widget: widgets[id], ops: ops.get(id)! };
     return out;
@@ -99,7 +99,7 @@ export function learnRecorderInPage(): void {
   };
   // Sudarshan worked in this tab (its clicks are trusted too): what it touched is not yours (Valerie Group,
   // 2026-10-05: the AI's tick on "I have built this myself" was saved as your answer when the tab closed).
-  w.__sudarshanForget = () => {
+  win.__sudarshanForget = () => {
     touchedEls.clear();
     ops.clear();
     clearTimeout(timer);
@@ -139,9 +139,9 @@ export function learnRecorderInPage(): void {
       const option = e.target.closest('[role=option], [role=menuitem], [role=menuitemradio], [role=listbox] li');
       if (option && current && Date.now() - current.at < 15_000 && (!id || id === current.id)) note(current.id, 'option');
       else if (id && !secret(e.target)) note(id, e.target.closest('label, [role=radio], [role=checkbox], [role=switch]') ? 'choice' : 'click');
-      const b = e.target.closest('button, a, [role=button], input[type=submit]');
-      if (!b) return;
-      const text = ((b as HTMLElement).innerText || (b as HTMLInputElement).value || b.getAttribute('aria-label') || '').trim();
+      const button = e.target.closest('button, a, [role=button], input[type=submit]');
+      if (!button) return;
+      const text = ((button as HTMLElement).innerText || (button as HTMLInputElement).value || button.getAttribute('aria-label') || '').trim();
       clearTimeout(timer);
       // Capture phase: this runs before the page reacts to the click.
       if (text) report({ type: 'click', text: text.slice(0, 80) });

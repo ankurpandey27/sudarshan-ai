@@ -36,10 +36,10 @@ export class ApiErrorFilter implements ExceptionFilter {
         message = body;
         errorCode = (exception as Error).name;
       } else {
-        const b = body as Record<string, unknown>;
+        const fields = body as Record<string, unknown>;
         message =
-          (b.message as string | string[]) ?? (exception as Error).message;
-        errorCode = (b.error as string) ?? (exception as Error).name;
+          (fields.message as string | string[]) ?? (exception as Error).message;
+        errorCode = (fields.error as string) ?? (exception as Error).name;
       }
     } else {
       status = HttpStatus.INTERNAL_SERVER_ERROR;

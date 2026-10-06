@@ -21,13 +21,13 @@ export function pickResume(job: { title: string; description: string }, resumes:
   const jobSkills = new Set(extractSkills(`${job.title} ${job.description}`));
   let best: { id: number; score: number } | null = null;
   let tie = false;
-  for (const r of resumes) {
-    const words = r.forJobs.map((w) => w.trim()).filter(Boolean);
+  for (const resume of resumes) {
+    const words = resume.forJobs.map((w) => w.trim()).filter(Boolean);
     const fit = words.reduce((n, w) => n + (has(job.title, w) ? TITLE_WEIGHT : has(job.description, w) ? 1 : 0), 0);
     if (fit === 0) continue;
-    const score = fit + SKILL_WEIGHT * r.skills.filter((s) => jobSkills.has(canonicalSkill(s))).length;
+    const score = fit + SKILL_WEIGHT * resume.skills.filter((s) => jobSkills.has(canonicalSkill(s))).length;
     if (!best || score > best.score) {
-      best = { id: r.id, score };
+      best = { id: resume.id, score };
       tie = false;
     } else if (score === best.score) tie = true;
   }

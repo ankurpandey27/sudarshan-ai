@@ -39,8 +39,8 @@ export function clickChoiceNearFieldInPage(id: string, text: string): boolean {
   const want = norm(text);
   if (!want) return false;
   const visible = (e: Element) => {
-    const r = (e as HTMLElement).getBoundingClientRect();
-    return r.width > 0 && r.height > 0;
+    const rect = (e as HTMLElement).getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0;
   };
   // The field's box: up to the nearest ancestor that holds other fields too.
   let box: Element = el;

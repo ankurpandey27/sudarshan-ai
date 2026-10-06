@@ -38,9 +38,9 @@ export function AnswersPage() {
   useEffect(() => setPage(1), [search, source, sortBy, pageSize]);
 
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: data.length };
-    for (const a of data) c[a.source] = (c[a.source] ?? 0) + 1;
-    return c;
+    const counts: Record<string, number> = { all: data.length };
+    for (const answer of data) counts[answer.source] = (counts[answer.source] ?? 0) + 1;
+    return counts;
   }, [data]);
   const shown = useMemo(() => {
     const list = source === 'all' ? [...data] : data.filter((a) => a.source === source);

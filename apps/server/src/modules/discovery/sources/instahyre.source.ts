@@ -75,8 +75,8 @@ export class InstahyreSource implements DiscoverySource {
   private async fetchPage(page: Page, path: string): Promise<InstahyreSearchResponse | null> {
     for (let attempt = 0; attempt < 2; attempt++) {
       const res = await page.evaluate(async (p: string) => {
-        const r = await fetch(p, { headers: { accept: 'application/json' } });
-        return { status: r.status, body: r.ok ? ((await r.json()) as unknown) : null };
+        const response = await fetch(p, { headers: { accept: 'application/json' } });
+        return { status: response.status, body: response.ok ? ((await response.json()) as unknown) : null };
       }, path);
       if (res.status === 429 && attempt === 0) {
         this.logger.warn('Instahyre asked to slow down - waiting a minute');

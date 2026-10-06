@@ -34,8 +34,8 @@ import { AttentionPage } from './pages/attention';
 
 // Apply the saved theme before first paint.
 try {
-  const t = localStorage.getItem('jaa-theme');
-  document.documentElement.dataset.theme = t ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const theme = localStorage.getItem('jaa-theme');
+  document.documentElement.dataset.theme = theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
 } catch {
   document.documentElement.dataset.theme = 'light';
 }

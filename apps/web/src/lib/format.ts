@@ -3,20 +3,20 @@
 
 export function timeAgo(iso: string | null | undefined): string {
   if (!iso) return '-';
-  const s = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
-  if (s < 45) return 'just now';
-  if (s < 3600) return `${Math.round(s / 60)}m ago`;
-  if (s < 86400) return `${Math.round(s / 3600)}h ago`;
-  return `${Math.round(s / 86400)}d ago`;
+  const secs = Math.round((Date.now() - new Date(iso).getTime()) / 1000);
+  if (secs < 45) return 'just now';
+  if (secs < 3600) return `${Math.round(secs / 60)}m ago`;
+  if (secs < 86400) return `${Math.round(secs / 3600)}h ago`;
+  return `${Math.round(secs / 86400)}d ago`;
 }
 
 export function timeUntil(iso: string | null | undefined): string {
   if (!iso) return '-';
-  const s = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
-  if (s <= 0) return 'now';
-  if (s < 60) return `in ${s}s`;
-  if (s < 3600) return `in ${Math.round(s / 60)}m`;
-  return `in ${Math.round(s / 3600)}h`;
+  const secs = Math.round((new Date(iso).getTime() - Date.now()) / 1000);
+  if (secs <= 0) return 'now';
+  if (secs < 60) return `in ${secs}s`;
+  if (secs < 3600) return `in ${Math.round(secs / 60)}m`;
+  return `in ${Math.round(secs / 3600)}h`;
 }
 
 export function clock(iso: string): string {

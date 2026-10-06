@@ -24,8 +24,8 @@ export class ProfileCheckService {
     );
     const list = (raw: string | null): string[] => {
       try {
-        const v = JSON.parse(raw ?? '[]') as unknown;
-        return Array.isArray(v) ? v.filter((s): s is string => typeof s === 'string') : [];
+        const parsed = JSON.parse(raw ?? '[]') as unknown;
+        return Array.isArray(parsed) ? parsed.filter((s): s is string => typeof s === 'string') : [];
       } catch {
         return [];
       }

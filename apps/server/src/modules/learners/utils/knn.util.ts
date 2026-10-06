@@ -18,9 +18,9 @@ export function knnVote(query: Float32Array, examples: LabelledVector[], k: numb
   const votes = new Map<string, number>();
   let total = 0;
   for (const { e, s } of near) {
-    const w = Math.max(0, s) * Math.log2(1 + e.weight);
-    votes.set(e.label, (votes.get(e.label) ?? 0) + w);
-    total += w;
+    const weight = Math.max(0, s) * Math.log2(1 + e.weight);
+    votes.set(e.label, (votes.get(e.label) ?? 0) + weight);
+    total += weight;
   }
   const [label, score] = [...votes].sort((a, b) => b[1] - a[1])[0];
   const best = near.find((n) => n.e.label === label)!;

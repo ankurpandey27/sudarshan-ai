@@ -56,10 +56,10 @@ export class InboxService implements OnApplicationBootstrap, OnApplicationShutdo
   }
 
   status(): InboxStatus {
-    const c = this.config();
+    const config = this.config();
     const replies: InboxStatus['replies'] = {};
-    for (const r of this.storage.all<{ kind: ReplyKind; n: number }>('SELECT kind, COUNT(*) n FROM job_replies GROUP BY kind')) replies[r.kind] = Number(r.n);
-    return { connected: !!c, user: c?.user ?? null, host: c?.host ?? null, lastCheck: this.lastCheck, error: this.error, replies };
+    for (const row of this.storage.all<{ kind: ReplyKind; n: number }>('SELECT kind, COUNT(*) n FROM job_replies GROUP BY kind')) replies[row.kind] = Number(row.n);
+    return { connected: !!config, user: config?.user ?? null, host: config?.host ?? null, lastCheck: this.lastCheck, error: this.error, replies };
   }
 
   /** Signs in once to check the details, saves them (the password encrypted), and reads the mailbox in the background. */
@@ -110,52 +110,52 @@ export class InboxService implements OnApplicationBootstrap, OnApplicationShutdo
       )
       .map<AppliedJob>((j) => ({ id: j.id, title: j.title, company: j.company, appliedAt: j.applied_at }));
     let added = 0;
-    for (const m of messages) {
-      const kind = classifyReply(m.subject, m.text);
+    for (const message of messages) {
+      const kind = classifyReply(message.subject, message.text);
       if (!kind) continue;
-      const jobId = matchJob(m, jobs);
+      const jobId = matchJob(message, jobs);
       if (!jobId) continue;
       const { changes } = this.storage.run('INSERT OR IGNORE INTO job_replies (message_id, job_id, kind, subject, sender, at) VALUES (?, ?, ?, ?, ?, ?)', [
-        m.id,
+        message.id,
         jobId,
         kind,
-        m.subject.slice(0, 300),
-        m.from,
-        m.at,
+        message.subject.slice(0, 300),
+        message.from,
+        message.at,
       ]);
       if (!changes) continue;
       added++;
       const job = jobs.find((j) => j.id === jobId)!;
       const label = `${job.title} @ ${job.company}`;
-      this.events.emit({ type: AgentEventType.LOG, level: kind === 'rejected' || kind === 'received' ? 'info' : 'success', jobId, message: `${label}: ${SAY[kind]} (email "${m.subject.slice(0, 80)}")` });
+      this.events.emit({ type: AgentEventType.LOG, level: kind === 'rejected' || kind === 'received' ? 'info' : 'success', jobId, message: `${label}: ${SAY[kind]} (email "${message.subject.slice(0, 80)}")` });
       if (kind === 'interview' || kind === 'assessment' || kind === 'offer') {
-        void this.notifications?.notify('needs_you', `${job.company}: ${SAY[kind]}`, `${label}\nEmail: "${m.subject}" from ${m.from}`);
+        void this.notifications?.notify('needs_you', `${job.company}: ${SAY[kind]}`, `${label}\nEmail: "${message.subject}" from ${message.from}`);
       }
     }
     return added;
   }
 
   private async read(): Promise<number> {
-    const c = this.config();
-    if (!c) return 0;
-    const client = this.client(c);
+    const config = this.config();
+    if (!config) return 0;
+    const client = this.client(config);
     const messages: MailMessage[] = [];
-    let lastUid = c.lastUid;
+    let lastUid = config.lastUid;
     try {
       await client.connect();
       const lock = await client.getMailboxLock('INBOX');
       try {
-        const found = c.lastUid
-          ? await client.search({ uid: `${c.lastUid + 1}:*` }, { uid: true })
+        const found = config.lastUid
+          ? await client.search({ uid: `${config.lastUid + 1}:*` }, { uid: true })
           : await client.search({ since: new Date(Date.now() - INBOX_FIRST_DAYS * 86_400_000) }, { uid: true });
-        const uids = (found || []).filter((u) => !c.lastUid || u > c.lastUid).slice(-INBOX_MAX_PER_CHECK);
+        const uids = (found || []).filter((u) => !config.lastUid || u > config.lastUid).slice(-INBOX_MAX_PER_CHECK);
         if (uids.length) {
           for await (const msg of client.fetch(uids, { uid: true, envelope: true, source: { maxLength: 300_000 } }, { uid: true })) {
             lastUid = Math.max(lastUid ?? 0, msg.uid);
             const parsed = msg.source ? await simpleParser(msg.source).catch(() => null) : null;
             const sender = parsed?.from?.value[0] ?? msg.envelope?.from?.[0];
             messages.push({
-              id: parsed?.messageId ?? `${c.user}:${msg.uid}`,
+              id: parsed?.messageId ?? `${config.user}:${msg.uid}`,
               from: (sender?.address ?? '').toLowerCase(),
               fromName: sender?.name ?? '',
               subject: parsed?.subject ?? msg.envelope?.subject ?? '',
@@ -176,7 +176,7 @@ export class InboxService implements OnApplicationBootstrap, OnApplicationShutdo
       return 0;
     }
     const added = this.record(messages);
-    if (lastUid !== c.lastUid) this.store({ ...c, lastUid });
+    if (lastUid !== config.lastUid) this.store({ ...config, lastUid });
     this.lastCheck = new Date().toISOString();
     if (added) this.logger.log(`Read ${messages.length} new email(s): ${added} reply(ies) to your applications`);
     return added;
@@ -190,8 +190,8 @@ export class InboxService implements OnApplicationBootstrap, OnApplicationShutdo
     const row = this.storage.get<{ value: string }>('SELECT value FROM settings WHERE key = ?', [INBOX_KEY]);
     if (!row) return null;
     try {
-      const c = JSON.parse(row.value) as InboxConfig;
-      return { ...c, password: this.secrets.decrypt(c.password) };
+      const config = JSON.parse(row.value) as InboxConfig;
+      return { ...config, password: this.secrets.decrypt(config.password) };
     } catch {
       // secret.key changed (a restored backup): the mailbox has to be connected again.
       return null;

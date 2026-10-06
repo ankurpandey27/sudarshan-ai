@@ -10,7 +10,7 @@ import type { FillInstruction, FillResult } from '../interfaces/fill-instruction
  */
 export function fillFieldsInPage(instructions: FillInstruction[]): FillResult[] {
   const fire = (el: Element, ...types: string[]) => {
-    for (const t of types) el.dispatchEvent(new Event(t, { bubbles: true }));
+    for (const eventType of types) el.dispatchEvent(new Event(eventType, { bubbles: true }));
   };
   const setNative = (el: HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement, value: string) => {
     const proto =
@@ -83,18 +83,18 @@ export function fillFieldsInPage(instructions: FillInstruction[]): FillResult[] 
         case 'combobox':
           continue;
         default: {
-          const h = el as HTMLElement;
-          h.scrollIntoView({ block: 'center' });
-          h.focus();
-          if (h.getAttribute('contenteditable') === 'true') {
-            h.textContent = ins.value;
-            h.dispatchEvent(new InputEvent('input', { bubbles: true, data: ins.value, inputType: 'insertText' }));
+          const htmlEl = el as HTMLElement;
+          htmlEl.scrollIntoView({ block: 'center' });
+          htmlEl.focus();
+          if (htmlEl.getAttribute('contenteditable') === 'true') {
+            htmlEl.textContent = ins.value;
+            htmlEl.dispatchEvent(new InputEvent('input', { bubbles: true, data: ins.value, inputType: 'insertText' }));
           } else {
             const input = el as HTMLInputElement;
             setNative(input, ins.value);
             fire(input, 'input', 'change');
           }
-          fire(h, 'blur', 'focusout');
+          fire(htmlEl, 'blur', 'focusout');
         }
       }
       results.push({ id: ins.id, ok: true });

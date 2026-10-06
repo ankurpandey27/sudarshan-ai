@@ -28,10 +28,10 @@ export class StructuredLogger implements LoggerService {
         // Plain console output; structured JSON goes to the log files.
         new transports.Console({
           format: format.printf((info) => {
-            const r = info as unknown as LogRecord;
-            const time = r.timestamp?.slice(11, 19) ?? '';
-            const source = (r.context as { source?: string } | undefined)?.source;
-            return `${time} ${String(r.level).toUpperCase().padEnd(5)} ${source ? '[' + source + '] ' : ''}${r.message}`;
+            const record = info as unknown as LogRecord;
+            const time = record.timestamp?.slice(11, 19) ?? '';
+            const source = (record.context as { source?: string } | undefined)?.source;
+            return `${time} ${String(record.level).toUpperCase().padEnd(5)} ${source ? '[' + source + '] ' : ''}${record.message}`;
           }),
         }),
         new DailyJsonTransport(logDir),

@@ -32,11 +32,11 @@ export class TranslationService {
     const out = new Map<string, string>();
     for (let i = 0; i < wanted.length; i += 400) {
       const part = wanted.slice(i, i + 400);
-      for (const r of this.storage.all<{ source: string; english: string }>(
+      for (const row of this.storage.all<{ source: string; english: string }>(
         `SELECT source, english FROM translations WHERE source IN (${part.map(() => '?').join(',')})`,
         part,
       )) {
-        out.set(r.source, r.english);
+        out.set(row.source, row.english);
       }
     }
     return out;

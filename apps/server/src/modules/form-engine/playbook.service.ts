@@ -32,12 +32,12 @@ export class PlaybookService {
   /** The application was confirmed: every step's button (once per step) was a good move. */
   confirm(moves: LearnedMove[]): void {
     const seen = new Set<string>();
-    for (const m of moves) {
-      if (m.signature === null) continue;
-      const key = `${m.domain}|${m.signature}|${m.text.trim().toLowerCase()}`;
+    for (const move of moves) {
+      if (move.signature === null) continue;
+      const key = `${move.domain}|${move.signature}|${move.text.trim().toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      this.record(m.domain, m.signature, m.text, true);
+      this.record(move.domain, move.signature, move.text, true);
     }
   }
 

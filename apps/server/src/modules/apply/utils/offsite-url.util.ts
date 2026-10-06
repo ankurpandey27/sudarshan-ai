@@ -9,8 +9,8 @@ const JOB_BOARD = /(^|\.)linkedin\.com$/i;
 /** A job board's own address (or a blank tab) - not the company's site yet. */
 export function onJobBoard(url: string): boolean {
   try {
-    const u = new URL(url);
-    return !/^https?:$/.test(u.protocol) || JOB_BOARD.test(u.hostname);
+    const parsed = new URL(url);
+    return !/^https?:$/.test(parsed.protocol) || JOB_BOARD.test(parsed.hostname);
   } catch {
     return true;
   }
@@ -22,9 +22,9 @@ export function onJobBoard(url: string): boolean {
  */
 export function redirectTarget(url: string): string | null {
   try {
-    const u = new URL(url);
-    if (!JOB_BOARD.test(u.hostname)) return null;
-    const target = u.searchParams.get('url') ?? u.searchParams.get('redirect') ?? u.searchParams.get('dest');
+    const parsed = new URL(url);
+    if (!JOB_BOARD.test(parsed.hostname)) return null;
+    const target = parsed.searchParams.get('url') ?? parsed.searchParams.get('redirect') ?? parsed.searchParams.get('dest');
     return target && /^https?:\/\//i.test(target) && !onJobBoard(target) ? target : null;
   } catch {
     return null;

@@ -11,9 +11,9 @@
  */
 export function dismissCookieBannerInPage(): string | null {
   const visible = (el: Element) => {
-    const r = (el as HTMLElement).getBoundingClientRect();
-    const s = getComputedStyle(el);
-    return r.width > 0 && r.height > 0 && s.visibility !== 'hidden' && s.display !== 'none' && s.opacity !== '0';
+    const rect = (el as HTMLElement).getBoundingClientRect();
+    const style = getComputedStyle(el);
+    return rect.width > 0 && rect.height > 0 && style.visibility !== 'hidden' && style.display !== 'none' && style.opacity !== '0';
   };
   // The document and every open shadow root in it.
   const roots: (Document | ShadowRoot)[] = [document];
@@ -74,8 +74,8 @@ export function dismissCookieBannerInPage(): string | null {
     return false;
   };
   for (const want of PREFER) {
-    const b = buttons.find((x) => want.test(label(x)) && inBanner(x));
-    if (b) return press(b);
+    const button = buttons.find((x) => want.test(label(x)) && inBanner(x));
+    if (button) return press(button);
   }
   return null;
 }
@@ -84,8 +84,8 @@ export function dismissCookieBannerInPage(): string | null {
 export function applicationDialogInPage(selector: string): boolean {
   const COOKIE = /cookie|galletas|kekse|koekjes|biscotti/i;
   return Array.from(document.querySelectorAll(selector)).some((d) => {
-    const r = (d as HTMLElement).getBoundingClientRect();
-    if (r.width === 0 || r.height === 0) return false;
+    const rect = (d as HTMLElement).getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return false;
     const hasForm = !!d.querySelector('input:not([type=hidden]):not([type=checkbox]), select, textarea');
     // A cookie banner's switches and "Allow" buttons are not a form.
     const cookieBanner = COOKIE.test((d as HTMLElement).innerText ?? '') && !d.querySelector('input[type=file], textarea');

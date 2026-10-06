@@ -48,9 +48,9 @@ export class LinkedInSource implements DiscoverySource {
       // f_WT=2 is LinkedIn's remote filter.
       const cards = parseSearchCards(html, q.prefs.easyApplyOnly).map((c) => (remote ? { ...c, isRemote: true } : c));
       const before = jobs.size;
-      for (const c of cards) {
-        if (!jobs.has(c.externalId) && !q.isKnown(c.externalId)) fresh++;
-        jobs.set(c.externalId, c);
+      for (const card of cards) {
+        if (!jobs.has(card.externalId) && !q.isKnown(card.externalId)) fresh++;
+        jobs.set(card.externalId, card);
       }
       // Past the last result LinkedIn repeats earlier cards.
       if (jobs.size === before) break;

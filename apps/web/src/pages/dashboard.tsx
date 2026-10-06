@@ -41,8 +41,8 @@ const RANGE_KEY = 'sudarshan.lakshya.range';
 // A remembered view preference only; the page works without storage.
 const savedRange = (): Range => {
   try {
-    const v = Number(localStorage.getItem(RANGE_KEY));
-    return (RANGES as readonly number[]).includes(v) ? (v as Range) : 30;
+    const days = Number(localStorage.getItem(RANGE_KEY));
+    return (RANGES as readonly number[]).includes(days) ? (days as Range) : 30;
   } catch {
     return 30;
   }
@@ -377,7 +377,7 @@ function ApplicationsChart({ report, loading }: { report?: AnalyticsReport; load
   const [metric, setMetric] = useState<'applied' | 'found'>('applied');
   const present = useMemo(() => {
     const seen = new Set<JobPlatform>();
-    for (const d of report?.daily ?? []) for (const [p, n] of Object.entries(d.applied)) if (n) seen.add(p as JobPlatform);
+    for (const day of report?.daily ?? []) for (const [p, n] of Object.entries(day.applied)) if (n) seen.add(p as JobPlatform);
     return PLATFORMS.map((p) => p.key).filter((p) => seen.has(p));
   }, [report]);
 

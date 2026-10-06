@@ -93,8 +93,8 @@ describe('FieldLearnerService', () => {
   const setup = (answered: [string, string][]) => {
     const { storage, learners, answers } = make();
     for (const [q, a] of answered) answers.remember(q, a, AnswerSource.USER);
-    const field_ = new FieldLearnerService(learners, fakeModel, storage, { get: () => profile } as unknown as ProfileService);
-    return { storage, learners, answers, field: field_ };
+    const fieldLearner = new FieldLearnerService(learners, fakeModel, storage, { get: () => profile } as unknown as ProfileService);
+    return { storage, learners, answers, field: fieldLearner };
   };
 
   it('learns from your history: wordings the rules know, and ones you answered with your own details', async () => {
@@ -121,9 +121,9 @@ describe('FieldLearnerService', () => {
   it('marks its quiet prediction right or wrong from the answer the field finally got', async () => {
     const { learners, field } = setup([]);
     const right = field.startCheck('Contact No', 'phone');
-    field.finishCheck(right, ctx, field_('Contact No'), 'phone', '98765 43210');
+    field.finishCheck(right, ctx, fieldNamed('Contact No'), 'phone', '98765 43210');
     const wrong = field.startCheck('Emergency contact', 'phone');
-    field.finishCheck(wrong, ctx, field_('Emergency contact'), 'phone', '9123456789');
+    field.finishCheck(wrong, ctx, fieldNamed('Emergency contact'), 'phone', '9123456789');
     expect(learners.live(LearnerName.FIELD)).toMatchObject({ checked: 2, right: 1 });
   });
 
@@ -134,7 +134,7 @@ describe('FieldLearnerService', () => {
     expect(learners.mode(LearnerName.FIELD)).not.toBe(LearnerMode.ON);
   });
 });
-const field_ = field;
+const fieldNamed = field;
 
 describe('ButtonLearnerService', () => {
   const buttons = (...texts: string[]): FormAction[] => texts.map((text, i) => ({ id: `b${i}`, text, kind: 'other', disabled: false }));

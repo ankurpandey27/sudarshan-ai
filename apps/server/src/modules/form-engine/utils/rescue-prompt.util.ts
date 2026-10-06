@@ -18,21 +18,21 @@ export const RESCUE_SYSTEM_PROMPT =
  */
 export function buildRescuePrompt(snap: FormSnapshot, goal: string, history: string[], size: { items: number; text: number }): string {
   const items: string[] = [];
-  for (const f of snap.fields) {
-    if (f.kind === FieldKind.FILE) {
+  for (const field of snap.fields) {
+    if (field.kind === FieldKind.FILE) {
       // Upload fields: whether a file is there, never its name.
       items.push(
-        `[${f.id}] file "${(f.label || f.name || 'upload').slice(0, 80)}"${f.required ? ' (required)' : ''}${f.value ? ' has a file' : ' empty'}${f.error ? ` error="${f.error.slice(0, 80)}"` : ''}`,
+        `[${field.id}] file "${(field.label || field.name || 'upload').slice(0, 80)}"${field.required ? ' (required)' : ''}${field.value ? ' has a file' : ' empty'}${field.error ? ` error="${field.error.slice(0, 80)}"` : ''}`,
       );
       continue;
     }
-    const label = (f.label || f.placeholder || f.name || 'unlabelled').slice(0, 80);
-    const value = f.value ? (isSensitive(label, f.value) ? ' value=[hidden]' : ` value="${f.value.slice(0, 40)}"`) : ' empty';
-    const opts = f.options.length ? ` options=${JSON.stringify(f.options.filter((o) => o.trim()).slice(0, 12))}` : '';
-    items.push(`[${f.id}] ${f.kind} "${label}"${f.required ? ' (required)' : ''}${value}${opts}${f.error ? ` error="${f.error.slice(0, 80)}"` : ''}`);
+    const label = (field.label || field.placeholder || field.name || 'unlabelled').slice(0, 80);
+    const value = field.value ? (isSensitive(label, field.value) ? ' value=[hidden]' : ` value="${field.value.slice(0, 40)}"`) : ' empty';
+    const opts = field.options.length ? ` options=${JSON.stringify(field.options.filter((o) => o.trim()).slice(0, 12))}` : '';
+    items.push(`[${field.id}] ${field.kind} "${label}"${field.required ? ' (required)' : ''}${value}${opts}${field.error ? ` error="${field.error.slice(0, 80)}"` : ''}`);
   }
-  for (const a of snap.actions) items.push(`[${a.id}] ${a.kind === 'other' ? 'button' : a.kind} "${a.text.slice(0, 60)}"${a.disabled ? ' (disabled)' : ''}`);
-  for (const l of snap.links ?? []) items.push(`[${l.id}] link "${l.text.slice(0, 60)}"`);
+  for (const action of snap.actions) items.push(`[${action.id}] ${action.kind === 'other' ? 'button' : action.kind} "${action.text.slice(0, 60)}"${action.disabled ? ' (disabled)' : ''}`);
+  for (const link of snap.links ?? []) items.push(`[${link.id}] link "${link.text.slice(0, 60)}"`);
   return `GOAL: ${goal}
 ADDRESS: ${snap.url.split('?')[0]}
 

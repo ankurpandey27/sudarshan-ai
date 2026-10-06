@@ -52,17 +52,17 @@ export class DiscoveryService {
 
   // Falls back to the current title when no keywords are set.
   keywords(): string[] {
-    const s = this.settings.get().search;
-    if (s.keywords.length) return s.keywords;
-    const p = this.profile.get();
-    return [p.currentTitle || p.headline].filter((k): k is string => !!k).slice(0, 1);
+    const search = this.settings.get().search;
+    if (search.keywords.length) return search.keywords;
+    const profile = this.profile.get();
+    return [profile.currentTitle || profile.headline].filter((k): k is string => !!k).slice(0, 1);
   }
 
   async run(only?: JobPlatform[]): Promise<DiscoveryRunResult[]> {
     if (this.running) return [];
     this.running = true;
     try {
-      const s = this.settings.get();
+      const settings = this.settings.get();
       const keywords = this.keywords();
       if (keywords.length === 0) {
         this.log('warn', 'Add search keywords in Settings (or upload a resume with a job title) to find jobs');
@@ -70,13 +70,13 @@ export class DiscoveryService {
       }
       // The "Apply on" switches decide which platforms are searched.
       const on: Record<JobPlatform, boolean> = {
-        [JobPlatform.LINKEDIN]: s.sources.linkedin.enabled,
-        [JobPlatform.NAUKRI]: s.sources.naukri.enabled,
-        [JobPlatform.INSTAHYRE]: s.sources.instahyre.enabled,
-        [JobPlatform.INDEED]: s.sources.indeed.enabled,
-        [JobPlatform.FOUNDIT]: s.sources.foundit?.enabled === true,
-        [JobPlatform.HIRIST]: s.sources.hirist?.enabled === true,
-        [JobPlatform.HIMALAYAS]: s.sources.himalayas?.enabled === true,
+        [JobPlatform.LINKEDIN]: settings.sources.linkedin.enabled,
+        [JobPlatform.NAUKRI]: settings.sources.naukri.enabled,
+        [JobPlatform.INSTAHYRE]: settings.sources.instahyre.enabled,
+        [JobPlatform.INDEED]: settings.sources.indeed.enabled,
+        [JobPlatform.FOUNDIT]: settings.sources.foundit?.enabled === true,
+        [JobPlatform.HIRIST]: settings.sources.hirist?.enabled === true,
+        [JobPlatform.HIMALAYAS]: settings.sources.himalayas?.enabled === true,
         [JobPlatform.OTHER]: false,
       };
       const enabled = this.sources.filter((src) => (!only || only.includes(src.platform)) && on[src.platform]);
@@ -84,7 +84,7 @@ export class DiscoveryService {
         this.log('warn', 'Every platform that can be searched is switched off - turn one on under "Apply on"');
         return [];
       }
-      return await Promise.all(enabled.map((src) => this.runSource(src, keywords, s.search.locations.length ? s.search.locations : ['India'])));
+      return await Promise.all(enabled.map((src) => this.runSource(src, keywords, settings.search.locations.length ? settings.search.locations : ['India'])));
     } finally {
       this.running = false;
     }

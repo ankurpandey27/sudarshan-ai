@@ -22,19 +22,19 @@ const NCR = ['noida', 'greater noida', 'gurgaon', 'gurugram', 'delhi', 'new delh
 
 /** Whether a job's locations are in the place you search ("India" is everywhere; "Remote" is work from home). */
 export function inPlace(place: string, locations: string, remote: boolean): boolean {
-  const p = place.trim().toLowerCase();
-  if (!p || p === 'india') return true;
-  if (REMOTE.test(p)) return remote || /remote|work from home|wfh/i.test(locations);
-  const names = SAME_CITY.find((g) => g.includes(p)) ?? [p];
-  const l = locations.toLowerCase();
-  return names.some((n) => l.includes(n)) || (NCR.includes(p) && /\bncr\b/.test(l));
+  const wanted = place.trim().toLowerCase();
+  if (!wanted || wanted === 'india') return true;
+  if (REMOTE.test(wanted)) return remote || /remote|work from home|wfh/i.test(locations);
+  const names = SAME_CITY.find((g) => g.includes(wanted)) ?? [wanted];
+  const lower = locations.toLowerCase();
+  return names.some((n) => lower.includes(n)) || (NCR.includes(wanted) && /\bncr\b/.test(lower));
 }
 
 export function founditSearchPath(keyword: string, location: string, page: number): string {
-  const q = new URLSearchParams({ sort: '1', limit: String(FOUNDIT_PAGE_SIZE), start: String(page * FOUNDIT_PAGE_SIZE), query: keyword });
+  const params = new URLSearchParams({ sort: '1', limit: String(FOUNDIT_PAGE_SIZE), start: String(page * FOUNDIT_PAGE_SIZE), query: keyword });
   const place = REMOTE.test(location.trim()) ? 'Work From Home' : location.trim();
-  if (place && !/^india$/i.test(place)) q.set('locations', place);
-  return `/middleware/jobsearch?${q}`;
+  if (place && !/^india$/i.test(place)) params.set('locations', place);
+  return `/middleware/jobsearch?${params}`;
 }
 
 /**
@@ -87,8 +87,8 @@ export function hiristQuery(keyword: string): string {
 }
 
 export function hiristSearchUrl(keyword: string, page: number): string {
-  const q = new URLSearchParams({ query: hiristQuery(keyword), page: String(page), posting: '0', industry: '', size: String(HIRIST_PAGE_SIZE) });
-  return `${HIRIST_SEARCH_API}?${q}`;
+  const params = new URLSearchParams({ query: hiristQuery(keyword), page: String(page), posting: '0', industry: '', size: String(HIRIST_PAGE_SIZE) });
+  return `${HIRIST_SEARCH_API}?${params}`;
 }
 
 /** A Hirist job as a job; one that sends you to a company site is that site's job. */
@@ -116,8 +116,8 @@ export function hiristJobToDiscovered(j: HiristJob): DiscoveredJob | null {
 }
 
 export function himalayasSearchUrl(keyword: string, country: string, page: number): string {
-  const q = new URLSearchParams({ q: keyword.trim(), country, page: String(page) });
-  return `${HIMALAYAS_SEARCH_API}?${q}`;
+  const params = new URLSearchParams({ q: keyword.trim(), country, page: String(page) });
+  return `${HIMALAYAS_SEARCH_API}?${params}`;
 }
 
 /** A Himalayas job: always remote, open to the countries it lists; an expired one is skipped. */

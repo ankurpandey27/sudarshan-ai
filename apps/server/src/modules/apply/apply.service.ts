@@ -84,7 +84,7 @@ export class ApplyService {
   }
 
   private async applyTo(job: Job): Promise<ApplyResult> {
-    const s = this.settings.get();
+    const settings = this.settings.get();
     const trace: string[] = [];
     const step = (m: string) => {
       trace.push(`${new Date().toISOString().slice(11, 19)} ${m}`);
@@ -117,7 +117,7 @@ export class ApplyService {
       if (prep.page) page = prep.page;
 
       if (prep.status === PrepareStatus.EXTERNAL) {
-        if (!s.sources.externalSites.enabled || !prep.externalUrl) {
+        if (!settings.sources.externalSites.enabled || !prep.externalUrl) {
           final = {
             status: JobStatus.MANUAL,
             detail: `Not applied - this job applies on the company's own site. Turn on "Company career sites" under Apply on, or apply by hand: ${prep.externalUrl ?? job.url}`,
@@ -136,7 +136,7 @@ export class ApplyService {
       final = { ...this.mapPrepare(prep, job, onCompanySite), ended: `prep:${prep.status}` };
       preparedFor = { prep, adapter: active };
       if (prep.status === PrepareStatus.READY) {
-        const opts = this.formOptions(job, prep, page, attemptId, step, s);
+        const opts = this.formOptions(job, prep, page, attemptId, step, settings);
         const run: FormRunOutcome = active.runForm ? await active.runForm(page, prep, opts) : await this.runner.run(page, opts);
         outcome = run;
         moves.push(...(run.moves ?? []));
@@ -265,7 +265,7 @@ export class ApplyService {
       this.tabs.delete(job.id);
       return { status: JobStatus.APPLIED, detail: 'Already applied' };
     }
-    const s = this.settings.get();
+    const settings = this.settings.get();
     const trace: string[] = [];
     const step = (m: string) => {
       trace.push(`${new Date().toISOString().slice(11, 19)} ${m}`);
@@ -282,7 +282,7 @@ export class ApplyService {
     let run: FormRunOutcome | null = null;
     let final: { status: JobStatus; detail: string; ended?: string };
     try {
-      const opts = this.formOptions(job, tab.prep, page, attemptId, step, s);
+      const opts = this.formOptions(job, tab.prep, page, attemptId, step, settings);
       run = tab.adapter.runForm ? await tab.adapter.runForm(page, tab.prep, opts) : await this.runner.run(page, opts);
       moves.push(...(run.moves ?? []));
       final = { ended: `run:${run.status}`, ...this.mapOutcome(job, run) };
@@ -423,7 +423,7 @@ export class ApplyService {
         const asked = AnswerEngineService.toPending(o.unresolved);
         // Questions never asked for this job before: progress, not a failed try (only the same ones coming back are).
         const fresh = !this.pending.askedBefore(job.id, asked.map((a) => a.question));
-        for (const u of asked) this.pending.add({ jobId: job.id, ...u });
+        for (const question of asked) this.pending.add({ jobId: job.id, ...question });
         return { status: JobStatus.NEEDS_INPUT, detail: o.detail, ...(fresh ? { ended: NEW_QUESTIONS } : {}) };
       }
       case 'ready_to_submit':

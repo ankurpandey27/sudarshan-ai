@@ -9,6 +9,6 @@ import { SKILL_FAMILIES } from '../constants/skill-families.constants';
  * a job asking for "SQL" is matched by your MySQL or PostgreSQL, "Node.js" by your NestJS.
  */
 export function hasSkill(have: Set<string>, skill: string): boolean {
-  const s = canonicalSkill(skill);
-  return have.has(s) || (SKILL_FAMILIES[s] ?? []).some((m) => have.has(m));
+  const canonical = canonicalSkill(skill);
+  return have.has(canonical) || (SKILL_FAMILIES[canonical] ?? []).some((m) => have.has(m));
 }

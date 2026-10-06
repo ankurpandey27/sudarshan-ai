@@ -66,22 +66,22 @@ export class RescueService {
   }
 
   status(): RescueStatus {
-    const m = this.llm.current();
-    if (!m) return { model: null, tries: 0, helped: 0, failedInARow: 0, paused: false };
+    const model = this.llm.current();
+    if (!model) return { model: null, tries: 0, helped: 0, failedInARow: 0, paused: false };
     const rows = this.storage.all<{ outcome: string }>('SELECT outcome FROM rescue_runs WHERE provider = ? AND model = ? ORDER BY id DESC LIMIT 200', [
-      m.provider,
-      m.model,
+      model.provider,
+      model.model,
     ]);
     let inARow = 0;
-    for (const r of rows) {
+    for (const row of rows) {
       // An application that turned out to be sent already says nothing about this model.
-      if (r.outcome === 'nothing to do') continue;
-      if (r.outcome !== 'failed') break;
+      if (row.outcome === 'nothing to do') continue;
+      if (row.outcome !== 'failed') break;
       inARow++;
     }
     const tries = rows.filter((r) => r.outcome !== 'reset' && r.outcome !== 'nothing to do').length;
     const helped = rows.filter((r) => r.outcome === 'applied' || r.outcome === 'progressed').length;
-    return { model: `${m.provider} / ${m.model}`, tries, helped, failedInARow: inARow, paused: inARow >= RESCUE_PAUSE_AFTER };
+    return { model: `${model.provider} / ${model.model}`, tries, helped, failedInARow: inARow, paused: inARow >= RESCUE_PAUSE_AFTER };
   }
 
   /** "Try rescues again" after a pause (a new model starts fresh by itself). */
@@ -145,14 +145,14 @@ export class RescueService {
       }
 
       const did: string[] = [];
-      for (const a of plan.actions.slice(0, RESCUE_MAX_ACTIONS)) {
-        if (a.click) {
-          const target = [...snap.actions, ...(snap.links ?? [])].find((x) => x.id === a.click);
+      for (const action of plan.actions.slice(0, RESCUE_MAX_ACTIONS)) {
+        if (action.click) {
+          const target = [...snap.actions, ...(snap.links ?? [])].find((x) => x.id === action.click);
           if (!target || target.disabled || NEVER_ADVANCE.test(target.text.trim())) {
-            did.push(`skipped unsafe or unknown control ${a.click}`);
+            did.push(`skipped unsafe or unknown control ${action.click}`);
             continue;
           }
-          const sends = this.sends(target, snap) || a.submits === true;
+          const sends = this.sends(target, snap) || action.submits === true;
           if (sends && opts.pauseBeforeSubmit) {
             return done({ ...out, status: 'ready_to_submit', detail: 'Filled and waiting for you to press Submit (rescued)' }, 'progressed');
           }
@@ -169,17 +169,17 @@ export class RescueService {
           });
           did.push(`pressed "${target.text}"`);
           await sleep(400);
-        } else if (a.upload) {
-          const field = snap.fields.find((f) => f.id === a.upload && f.kind === FieldKind.FILE);
+        } else if (action.upload) {
+          const field = snap.fields.find((f) => f.id === action.upload && f.kind === FieldKind.FILE);
           // The resume only, and only into a field that is not for something else (a photo, a certificate).
           if (!field || !opts.ctx.resumePath || NOT_A_RESUME.test(`${field.label} ${field.name}`)) {
-            did.push(`skipped upload ${a.upload}`);
+            did.push(`skipped upload ${action.upload}`);
             continue;
           }
           await hands.fill(page, [{ id: field.id, kind: FieldKind.FILE, value: opts.ctx.resumePath, optionIndexes: [], optionIds: [] }]);
           did.push(`attached your resume to "${field.label || 'the upload'}"`);
-        } else if (a.choose && a.option) {
-          const field = snap.fields.find((f) => f.id === a.choose);
+        } else if (action.choose && action.option) {
+          const field = snap.fields.find((f) => f.id === action.choose);
           const question = field ? field.label || field.placeholder : '';
           // Visa, work permit, salary, notice, dates, relocation, legal: your answer only - the question comes to you
           // with the AI's pick as a suggestion (Almedia, 2026-09-30: it chose "legally entitled to work in Germany").
@@ -196,16 +196,16 @@ export class RescueService {
           }
           // Only options for questions about the application - never anything that identifies you.
           if (!field || !field.options.length || isSensitive(question)) {
-            did.push(`skipped field ${a.choose}`);
+            did.push(`skipped field ${action.choose}`);
             continue;
           }
-          const ins = toInstruction(field, a.option);
+          const ins = toInstruction(field, action.option);
           if (!ins) {
-            did.push(`"${a.option}" is not an option of "${field.label}"`);
+            did.push(`"${action.option}" is not an option of "${field.label}"`);
             continue;
           }
           await hands.fill(page, [ins]);
-          did.push(`chose "${a.option}" for "${field.label}"`);
+          did.push(`chose "${action.option}" for "${field.label}"`);
         }
       }
       opts.onStep(`Rescue step ${steps} (AI): ${did.join('; ') || 'nothing it could safely do'}`);
@@ -240,18 +240,18 @@ export class RescueService {
   ): Promise<RescuePlan | null> {
     const shot =
       withShot && this.llm.acceptsImages() !== false ? await page.screenshot({ type: 'jpeg', quality: 50, encoding: 'base64' }).catch(() => null) : null;
-    for (let s = size; s < RESCUE_SIZES.length; s++) {
+    for (let sizeIndex = size; sizeIndex < RESCUE_SIZES.length; sizeIndex++) {
       try {
-        const plan = await this.llm.json<RescuePlan>(buildRescuePrompt(snap, goal, history, RESCUE_SIZES[s]), {
+        const plan = await this.llm.json<RescuePlan>(buildRescuePrompt(snap, goal, history, RESCUE_SIZES[sizeIndex]), {
           purpose: LlmPurpose.NAVIGATE,
           system: RESCUE_SYSTEM_PROMPT,
           maxTokens: 400,
           ...(shot ? { images: [{ mediaType: 'image/jpeg' as const, data: String(shot) }] } : {}),
         });
-        setSize(s);
+        setSize(sizeIndex);
         return plan && typeof plan === 'object' ? plan : null;
       } catch (err) {
-        if (isContextTooLong(err) && s + 1 < RESCUE_SIZES.length) {
+        if (isContextTooLong(err) && sizeIndex + 1 < RESCUE_SIZES.length) {
           this.logger.log(`Prompt too long for ${this.llm.current()?.model} - trying a shorter one`);
           continue;
         }
@@ -263,12 +263,12 @@ export class RescueService {
   }
 
   private record(outcome: string, domain: string, steps: number): void {
-    const m = this.llm.current();
-    if (!m) return;
+    const model = this.llm.current();
+    if (!model) return;
     this.storage.run('INSERT INTO rescue_runs (at, provider, model, domain, outcome, steps) VALUES (?, ?, ?, ?, ?, ?)', [
       new Date().toISOString(),
-      m.provider,
-      m.model,
+      model.provider,
+      model.model,
       domain,
       outcome,
       steps,

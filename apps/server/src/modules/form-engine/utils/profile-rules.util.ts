@@ -79,11 +79,11 @@ const REQUIRED_YEARS =
 // Profile CTC is annual in full units; convert to what the question asks for.
 function money(amount: number | null, field: FormField): RuleAnswer | null {
   if (amount === null || amount <= 0) return null;
-  const q = `${field.label} ${field.placeholder}`.toLowerCase();
-  if (/\b(lakh|lakhs|lac|lacs|lpa|l\.p\.a)\b/.test(q)) return fact(round(amount / 1e5, 2));
-  if (/\b(per month|monthly|\/month|pm)\b/.test(q)) return fact(Math.round(amount / 12));
-  if (/\bcrore|cr\b/.test(q)) return fact(round(amount / 1e7, 2));
-  if (/\b(in k|thousands|'000)\b/.test(q)) return fact(Math.round(amount / 1000));
+  const label = `${field.label} ${field.placeholder}`.toLowerCase();
+  if (/\b(lakh|lakhs|lac|lacs|lpa|l\.p\.a)\b/.test(label)) return fact(round(amount / 1e5, 2));
+  if (/\b(per month|monthly|\/month|pm)\b/.test(label)) return fact(Math.round(amount / 12));
+  if (/\bcrore|cr\b/.test(label)) return fact(round(amount / 1e7, 2));
+  if (/\b(in k|thousands|'000)\b/.test(label)) return fact(Math.round(amount / 1000));
   return fact(Math.round(amount));
 }
 
@@ -91,12 +91,12 @@ const round = (n: number, dp: number): number => Math.round(n * 10 ** dp) / 10 *
 
 function noticePeriod(days: number | null, field: FormField): RuleAnswer | null {
   if (days === null) return null;
-  const q = field.label.toLowerCase();
+  const label = field.label.toLowerCase();
   // A short box (LinkedIn's "0/20") takes the number of days: "30 days" was "Invalid input" there (Somo Media, 2026-10-02).
   const shortBox = field.maxLength !== null && field.maxLength <= SHORT_ANSWER_MAX && !field.options.length;
-  if (field.kind === FieldKind.NUMBER || shortBox || /\(in (days|months|weeks)\)|in (days|months|weeks)\b/.test(q)) {
-    if (/month/.test(q)) return fact(Math.ceil(days / 30));
-    if (/week/.test(q)) return fact(Math.ceil(days / 7));
+  if (field.kind === FieldKind.NUMBER || shortBox || /\(in (days|months|weeks)\)|in (days|months|weeks)\b/.test(label)) {
+    if (/month/.test(label)) return fact(Math.ceil(days / 30));
+    if (/week/.test(label)) return fact(Math.ceil(days / 7));
     return fact(days);
   }
   if (field.options.length) {
@@ -314,28 +314,28 @@ const RULES: ProfileRule[] = [
 
 // Tick consent boxes; leave marketing and "follow company" boxes alone.
 function checkboxRule(field: FormField): RuleAnswer | null {
-  const q = field.label.toLowerCase();
-  if (/follow|newsletter|marketing|promotional|subscribe|updates? (about|from)|job alerts?|sms/.test(q)) return guess(field.value || 'false');
-  if (/agree|consent|terms|privacy|acknowledge|certify|confirm|declare|accurate|true and correct|authori[sz]e/.test(q)) return guess('true');
+  const label = field.label.toLowerCase();
+  if (/follow|newsletter|marketing|promotional|subscribe|updates? (about|from)|job alerts?|sms/.test(label)) return guess(field.value || 'false');
+  if (/agree|consent|terms|privacy|acknowledge|certify|confirm|declare|accurate|true and correct|authori[sz]e/.test(label)) return guess('true');
   return null;
 }
 
 function skillYearsRule(ctx: AnswerContext, field: FormField): RuleAnswer | null {
-  const q = field.label.toLowerCase();
+  const label = field.label.toLowerCase();
   // "Experience working with databases (PostgreSQL, MySQL...)?" in a short box (LinkedIn's 20 characters, or a
   // number box) asks for years too - "5" was accepted where words were "Invalid input" (AppGreat, 2026-10-01).
   const shortBox = field.kind === FieldKind.NUMBER || (field.maxLength !== null && field.maxLength <= SHORT_ANSWER_MAX);
   const asksYears =
-    (/\byears?\b|\byrs?\b|how (long|many)/.test(q) && /experien|worked|work(ing)? with|using|hands[- ]on/.test(q)) ||
-    (shortBox && /^(experience|exp\.?)\b|\bexperience (working |developing |building )?(with|in|of)\b/.test(q));
+    (/\byears?\b|\byrs?\b|how (long|many)/.test(label) && /experien|worked|work(ing)? with|using|hands[- ]on/.test(label)) ||
+    (shortBox && /^(experience|exp\.?)\b|\bexperience (working |developing |building )?(with|in|of)\b/.test(label));
   const asksYesNo =
     [FieldKind.RADIO, FieldKind.SELECT, FieldKind.CHECKBOX].includes(field.kind) &&
-    /^(do|have|are|did) you\b|\b(experience|familiar|worked|knowledge|proficien)/.test(q);
+    /^(do|have|are|did) you\b|\b(experience|familiar|worked|knowledge|proficien)/.test(label);
   const skills = extractSkills(field.label);
   // "Do you have at least 5 years of Node.js?": yes if your years reach it (4.9 counts as 5).
-  const required = REQUIRED_YEARS.exec(q);
+  const required = REQUIRED_YEARS.exec(label);
   // Only for a yes/no question: "How many years (minimum 3)?" still wants the number.
-  if (required && !/how many|how long|number of|no\.? of/.test(q) && /^(do|have|are|did|is)\b|\?\s*$/.test(q)) {
+  if (required && !/how many|how long|number of|no\.? of/.test(label) && /^(do|have|are|did|is)\b|\?\s*$/.test(label)) {
     const need = Number(required[1] ?? required[2]);
     const years = skills.length ? Math.max(...skills.map((s) => ctx.skillYears(s) ?? 0)) : ctx.profile.totalYearsExperience;
     return fact(yes(wholeYears(years) >= need));
@@ -346,8 +346,8 @@ function skillYearsRule(ctx: AnswerContext, field: FormField): RuleAnswer | null
     if (skills.length === 0) {
       // "...work experience with Aruba Wireless?" asks about Aruba, not your whole career (HCLTech, 2026-09-29):
       // a subject that is not a known skill is left to your answers or the AI, which reads your resume.
-      if (ABOUT_A_SUBJECT.test(q)) return null;
-      if (/total|overall|professional|relevant|work experience|industry/.test(q) || /^how many years of experience/.test(q)) {
+      if (ABOUT_A_SUBJECT.test(label)) return null;
+      if (/total|overall|professional|relevant|work experience|industry/.test(label) || /^how many years of experience/.test(label)) {
         return fact(wholeYears(ctx.profile.totalYearsExperience));
       }
       return null;
@@ -374,13 +374,13 @@ export function answerFromProfile(ctx: AnswerContext, field: FormField): RuleAns
   }
   const skill = skillYearsRule(ctx, field);
   if (skill) return skill;
-  const q = `${field.label}`.toLowerCase().trim();
+  const label = `${field.label}`.toLowerCase().trim();
   for (const rule of RULES) {
-    if (!rule.test.test(q)) continue;
-    if (rule.not?.test(q)) continue;
+    if (!rule.test.test(label)) continue;
+    if (rule.not?.test(label)) continue;
     if (rule.kinds && !rule.kinds.includes(field.kind)) continue;
-    const a = rule.answer(ctx, field);
-    if (a && a.value !== '') return rule.key ? { ...a, key: rule.key } : a;
+    const answer = rule.answer(ctx, field);
+    if (answer && answer.value !== '') return rule.key ? { ...answer, key: rule.key } : answer;
     // The matching rule has no data: let memory or the user answer instead of a weaker rule.
     return null;
   }
@@ -389,9 +389,9 @@ export function answerFromProfile(ctx: AnswerContext, field: FormField): RuleAns
 
 /** Which of your details a question asks for, by the rules alone ("Mobile number" -> phone); null if none. */
 export function ruleKeyFor(label: string): string | null {
-  const q = label.toLowerCase().trim();
+  const lower = label.toLowerCase().trim();
   for (const rule of RULES) {
-    if (!rule.test.test(q) || rule.not?.test(q)) continue;
+    if (!rule.test.test(lower) || rule.not?.test(lower)) continue;
     return rule.key ?? null;
   }
   return null;
@@ -400,8 +400,8 @@ export function ruleKeyFor(label: string): string | null {
 /** The answer for this field as the named detail ("phone"), with its units and format - a learned field uses it. */
 export function answerForKey(ctx: AnswerContext, field: FormField, key: string): RuleAnswer | null {
   const rule = RULES.find((r) => r.key === key);
-  const a = rule?.answer(ctx, field) ?? null;
-  return a && a.value !== '' && a.confident ? { ...a, key } : null;
+  const answer = rule?.answer(ctx, field) ?? null;
+  return answer && answer.value !== '' && answer.confident ? { ...answer, key } : null;
 }
 
 /** Every named detail the rules know. */

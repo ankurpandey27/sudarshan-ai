@@ -91,14 +91,14 @@ export class NaukriSource implements DiscoverySource {
     await page.waitForSelector('.srp-jobtuple-wrapper, .cust-job-tuple, article.jobTuple', { timeout: 10_000 }).catch(() => undefined);
     const cards = await page.evaluate(() =>
       Array.from(document.querySelectorAll('.srp-jobtuple-wrapper, .cust-job-tuple, article.jobTuple')).map((c) => {
-        const a = c.querySelector('a.title, a[href*="job-listings"]') as HTMLAnchorElement | null;
-        const t = (sel: string) => (c.querySelector(sel) as HTMLElement | null)?.innerText?.trim() ?? '';
+        const link = c.querySelector('a.title, a[href*="job-listings"]') as HTMLAnchorElement | null;
+        const textOf = (sel: string) => (c.querySelector(sel) as HTMLElement | null)?.innerText?.trim() ?? '';
         return {
-          href: a?.href ?? '',
-          title: a?.innerText?.trim() ?? '',
-          company: t('.comp-name, .subTitle, .company-name'),
-          location: t('.locWdth, .loc, [class*="location"]'),
-          salary: t('.sal, [class*="salary"]'),
+          href: link?.href ?? '',
+          title: link?.innerText?.trim() ?? '',
+          company: textOf('.comp-name, .subTitle, .company-name'),
+          location: textOf('.locWdth, .loc, [class*="location"]'),
+          salary: textOf('.sal, [class*="salary"]'),
           text: (c as HTMLElement).innerText.slice(0, 2000),
         };
       }),

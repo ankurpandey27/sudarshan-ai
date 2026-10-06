@@ -13,7 +13,7 @@ function pages(current: number, count: number): (number | 'gap')[] {
   const from = Math.max(2, current - 1);
   const to = Math.min(count - 1, current + 1);
   if (from > 2) out.push('gap');
-  for (let p = from; p <= to; p++) out.push(p);
+  for (let page = from; page <= to; page++) out.push(page);
   if (to < count - 1) out.push('gap');
   out.push(count);
   return out;

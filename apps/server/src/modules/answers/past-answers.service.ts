@@ -59,8 +59,8 @@ export class PastAnswersService {
   private async ensureVectors(rows: AnswerRow[]): Promise<boolean> {
     const missing = rows.filter((r) => !this.vectors.has(r.key));
     if (missing.length === 0) return true;
-    for (const v of this.storage.all<{ key: string; vector: Uint8Array }>('SELECT key, vector FROM answer_vectors WHERE model = ?', [EMBEDDING_MODEL])) {
-      this.vectors.set(v.key, fromBlob(v.vector));
+    for (const row of this.storage.all<{ key: string; vector: Uint8Array }>('SELECT key, vector FROM answer_vectors WHERE model = ?', [EMBEDDING_MODEL])) {
+      this.vectors.set(row.key, fromBlob(row.vector));
     }
     const todo = rows.filter((r) => !this.vectors.has(r.key));
     if (todo.length === 0) return true;

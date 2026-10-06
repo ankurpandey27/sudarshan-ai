@@ -10,5 +10,5 @@ if (major < 24 || (major === 24 && minor < 9)) {
   console.log(`\n  Browser tests skipped: they need Node.js 24.9 or newer (you have ${process.version}). The app itself is fine on your version.\n`);
   process.exit(0);
 }
-const r = spawnSync('npm run test:browser -w apps/server', { stdio: 'inherit', shell: true });
-process.exit(r.status ?? 1);
+const result = spawnSync('npm run test:browser -w apps/server', { stdio: 'inherit', shell: true });
+process.exit(result.status ?? 1);

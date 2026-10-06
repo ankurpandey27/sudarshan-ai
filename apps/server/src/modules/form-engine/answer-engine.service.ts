@@ -229,21 +229,21 @@ export class AnswerEngineService {
     const kept: [string, string][] = [];
     if (llmAnswers) await this.humanize(llmAnswers, forLlm, result);
     for (const field of forLlm) {
-      const a = llmAnswers?.get(field.id);
+      const llmAnswer = llmAnswers?.get(field.id);
       // The AI's answer settles the field learner's quiet prediction for this field.
       const check = pendingChecks.get(field.id);
-      if (check && a?.value?.trim() && a.confident !== false) this.fieldLearner?.finishCheck(check.id, ctx, field, check.key, a.value);
-      const ins = a && a.value.trim() ? toInstruction(field, a.value) : null;
-      if (ins && a && accepted(a, field)) {
-        kept.push([draftKey(field), a.value]);
+      if (check && llmAnswer?.value?.trim() && llmAnswer.confident !== false) this.fieldLearner?.finishCheck(check.id, ctx, field, check.key, llmAnswer.value);
+      const ins = llmAnswer && llmAnswer.value.trim() ? toInstruction(field, llmAnswer.value) : null;
+      if (ins && llmAnswer && accepted(llmAnswer, field)) {
+        kept.push([draftKey(field), llmAnswer.value]);
         result.instructions.push(ins);
         result.stats.fields++;
         result.stats.llmAnswers++;
-        if (a.basis === 'inferred') result.stats.inferred = (result.stats.inferred ?? 0) + 1;
+        if (llmAnswer.basis === 'inferred') result.stats.inferred = (result.stats.inferred ?? 0) + 1;
         // Inferred answers are worked out again each time, never saved as your own.
-        if (a.reusable && a.basis !== 'inferred' && field.kind !== FieldKind.TEXTAREA) {
-          if (opts.deferMemory) (result.toRemember ??= []).push({ fieldId: field.id, question: field.label, answer: a.value, kind: field.kind });
-          else this.answers.remember(field.label, a.value, AnswerSource.LLM, field.kind);
+        if (llmAnswer.reusable && llmAnswer.basis !== 'inferred' && field.kind !== FieldKind.TEXTAREA) {
+          if (opts.deferMemory) (result.toRemember ??= []).push({ fieldId: field.id, question: field.label, answer: llmAnswer.value, kind: field.kind });
+          else this.answers.remember(field.label, llmAnswer.value, AnswerSource.LLM, field.kind);
         }
         continue;
       }
@@ -256,7 +256,7 @@ export class AnswerEngineService {
         } else if (GENERIC_QUESTION.test((field.label || field.placeholder).trim())) {
           result.blockers.push('A required question on this form has no label, so it cannot be remembered - answer it in the open tab');
         } else {
-          result.unresolved.push({ field, suggestion: a?.value?.trim() || null });
+          result.unresolved.push({ field, suggestion: llmAnswer?.value?.trim() || null });
         }
       }
     }
@@ -393,13 +393,13 @@ export class AnswerEngineService {
    */
   private async humanize(answers: Map<string, LlmFieldAnswer>, fields: FormField[], result: ResolveResult): Promise<void> {
     const stillAi: { id: string; question: string; text: string; tells: string[] }[] = [];
-    for (const f of fields) {
-      const a = answers.get(f.id);
-      if (!a || f.options.length || !isWrittenAnswer(a.value)) continue;
-      a.value = plainWords(a.value);
-      if (f.maxLength) a.value = a.value.slice(0, f.maxLength);
-      const tells = aiTells(a.value);
-      if (tells.length >= REWRITE_AT_TELLS) stillAi.push({ id: f.id, question: f.label, text: a.value, tells });
+    for (const field of fields) {
+      const answer = answers.get(field.id);
+      if (!answer || field.options.length || !isWrittenAnswer(answer.value)) continue;
+      answer.value = plainWords(answer.value);
+      if (field.maxLength) answer.value = answer.value.slice(0, field.maxLength);
+      const tells = aiTells(answer.value);
+      if (tells.length >= REWRITE_AT_TELLS) stillAi.push({ id: field.id, question: field.label, text: answer.value, tells });
     }
     if (!stillAi.length || !this.llm.isAvailable()) return;
     try {
@@ -412,12 +412,12 @@ Return JSON: {"answers":[{"id":"<id>","text":"<rewritten>"}]}`,
         { purpose: LlmPurpose.FORM_ANSWER, maxTokens: 1500, system: UNTRUSTED_RULE },
       );
       result.stats.llmCalls++;
-      for (const r of res.answers ?? []) {
-        const was = stillAi.find((x) => x.id === r.id);
-        const a = answers.get(r.id);
-        const text = typeof r.text === 'string' ? plainWords(r.text.trim()) : '';
+      for (const rewrite of res.answers ?? []) {
+        const was = stillAi.find((x) => x.id === rewrite.id);
+        const answer = answers.get(rewrite.id);
+        const text = typeof rewrite.text === 'string' ? plainWords(rewrite.text.trim()) : '';
         // Kept only when it is really plainer and not much shorter (no facts dropped).
-        if (was && a && text && aiTells(text).length < was.tells.length && text.length >= was.text.length * 0.6) a.value = text;
+        if (was && answer && text && aiTells(text).length < was.tells.length && text.length >= was.text.length * 0.6) answer.value = text;
       }
     } catch {
       // The plain-words pass already ran; the answer stands.
@@ -438,8 +438,8 @@ Return JSON: {"answers":[{"id":"<id>","text":"<rewritten>"}]}`,
         maxTokens: Math.min(4000, 300 + fields.length * 180),
       });
       const map = new Map<string, LlmFieldAnswer>();
-      for (const a of res.answers ?? []) {
-        if (a && typeof a.id === 'string') map.set(a.id, { ...a, value: String(a.value ?? '') });
+      for (const answer of res.answers ?? []) {
+        if (answer && typeof answer.id === 'string') map.set(answer.id, { ...answer, value: String(answer.value ?? '') });
       }
       return map;
     } catch (err) {

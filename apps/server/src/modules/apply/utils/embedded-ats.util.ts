@@ -20,11 +20,11 @@ export function embeddedApplicationUrl(page: Page): string | null {
 
 /** The frame's address as a page of its own: without the embed flag, and on Ashby its Application tab. */
 export function applicationPageOf(frameUrl: string): string {
-  const u = new URL(frameUrl);
-  for (const p of ['embed', 'embedded', 'iframe']) u.searchParams.delete(p);
+  const frame = new URL(frameUrl);
+  for (const param of ['embed', 'embedded', 'iframe']) frame.searchParams.delete(param);
   // Ashby: /<company>/<job id> is the overview; /<company>/<job id>/application is the form.
-  if (/(^|\.)ashbyhq\.com$/.test(u.hostname) && /^\/[^/]+\/[0-9a-f-]{36}\/?$/i.test(u.pathname)) {
-    u.pathname = `${u.pathname.replace(/\/$/, '')}/application`;
+  if (/(^|\.)ashbyhq\.com$/.test(frame.hostname) && /^\/[^/]+\/[0-9a-f-]{36}\/?$/i.test(frame.pathname)) {
+    frame.pathname = `${frame.pathname.replace(/\/$/, '')}/application`;
   }
-  return u.toString();
+  return frame.toString();
 }

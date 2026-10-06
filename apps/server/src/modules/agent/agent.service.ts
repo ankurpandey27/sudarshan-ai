@@ -166,13 +166,13 @@ export class AgentService implements OnApplicationShutdown {
     if (!this.running || this.ticking) return;
     this.ticking = true;
     try {
-      const s = this.settings.get();
-      if (!this.inActiveHours(s.agent.activeHoursStart, s.agent.activeHoursEnd)) {
+      const settings = this.settings.get();
+      if (!this.inActiveHours(settings.agent.activeHoursStart, settings.agent.activeHoursEnd)) {
         this.setPhase(AgentPhase.SLEEPING);
         return;
       }
       if (Date.now() >= this.nextDiscoveryAt && !this.discovery.isRunning()) {
-        this.nextDiscoveryAt = Date.now() + s.agent.intervalMinutes * 60_000;
+        this.nextDiscoveryAt = Date.now() + settings.agent.intervalMinutes * 60_000;
         // Not awaited, so applying continues during discovery.
         void this.runDiscovery();
       }
@@ -195,7 +195,7 @@ export class AgentService implements OnApplicationShutdown {
       const platforms = await this.eligiblePlatforms();
       // Something may have started while platforms were checked (Apply now).
       if (this.applying) return;
-      const job = this.jobs.nextToApply(platforms, s.agent.homeFirst !== false);
+      const job = this.jobs.nextToApply(platforms, settings.agent.homeFirst !== false);
       if (!job) {
         if (this.discovery.isRunning()) {
           this.setPhase(AgentPhase.DISCOVERING);
@@ -225,7 +225,7 @@ export class AgentService implements OnApplicationShutdown {
         this.jobs.forgetAttempt(job.id);
         this.jobs.setStatus(job.id, JobStatus.APPROVED, 'Its page was slow while Sudarshan searched for jobs - trying it again');
       }
-      const gap = s.agent.minDelaySeconds + Math.random() * Math.max(0, s.agent.maxDelaySeconds - s.agent.minDelaySeconds);
+      const gap = settings.agent.minDelaySeconds + Math.random() * Math.max(0, settings.agent.maxDelaySeconds - settings.agent.minDelaySeconds);
       this.nextApplyAt = Date.now() + gap * 1000;
     } catch (err) {
       this.log('error', `Agent tick failed: ${(err as Error).message}`);
@@ -267,7 +267,7 @@ export class AgentService implements OnApplicationShutdown {
 
   /** Platforms switched on, under today's limit and logged in. */
   private async eligiblePlatforms(): Promise<JobPlatform[]> {
-    const s = this.settings.get().sources;
+    const sources = this.settings.get().sources;
     const blocked: AgentStatus['blockedSources'] = [];
     const out: JobPlatform[] = [];
     const check = async (platform: JobPlatform, cfg: SourceSettings | undefined, site?: SiteId) => {
@@ -299,23 +299,23 @@ export class AgentService implements OnApplicationShutdown {
       }
       out.push(platform);
     };
-    await check(JobPlatform.LINKEDIN, s.linkedin, 'linkedin');
-    await check(JobPlatform.NAUKRI, s.naukri, 'naukri');
-    await check(JobPlatform.INSTAHYRE, s.instahyre, 'instahyre');
-    await check(JobPlatform.INDEED, s.indeed, 'indeed');
-    await check(JobPlatform.FOUNDIT, s.foundit, 'foundit');
-    await check(JobPlatform.HIRIST, s.hirist, 'hirist');
-    await check(JobPlatform.HIMALAYAS, s.himalayas, 'himalayas');
-    await check(JobPlatform.OTHER, s.links);
+    await check(JobPlatform.LINKEDIN, sources.linkedin, 'linkedin');
+    await check(JobPlatform.NAUKRI, sources.naukri, 'naukri');
+    await check(JobPlatform.INSTAHYRE, sources.instahyre, 'instahyre');
+    await check(JobPlatform.INDEED, sources.indeed, 'indeed');
+    await check(JobPlatform.FOUNDIT, sources.foundit, 'foundit');
+    await check(JobPlatform.HIRIST, sources.hirist, 'hirist');
+    await check(JobPlatform.HIMALAYAS, sources.himalayas, 'himalayas');
+    await check(JobPlatform.OTHER, sources.links);
     const changed = JSON.stringify(blocked) !== JSON.stringify(this.blocked);
     this.blocked = blocked;
-    if (changed) for (const b of blocked) this.log('warn', `${sourceLabel(b.source)}: ${b.reason}`);
+    if (changed) for (const block of blocked) this.log('warn', `${sourceLabel(block.source)}: ${block.reason}`);
     return out;
   }
 
   private inActiveHours(start: number, end: number): boolean {
-    const h = new Date().getHours();
-    return start <= end ? h >= start && h < end : h >= start || h < end;
+    const hour = new Date().getHours();
+    return start <= end ? hour >= start && hour < end : hour >= start || hour < end;
   }
 
   private setPhase(phase: AgentPhase): void {

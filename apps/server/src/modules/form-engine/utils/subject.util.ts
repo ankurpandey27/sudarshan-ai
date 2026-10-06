@@ -20,8 +20,8 @@ export function subjectWords(question: string): Set<string> {
  * particular only matches another about nothing in particular.
  */
 export function sameSubject(asked: string, other: string): boolean {
-  const a = subjectWords(asked);
-  const b = subjectWords(other);
-  if (a.size === 0) return b.size === 0;
-  return [...a].every((w) => b.has(w));
+  const askedWords = subjectWords(asked);
+  const otherWords = subjectWords(other);
+  if (askedWords.size === 0) return otherWords.size === 0;
+  return [...askedWords].every((w) => otherWords.has(w));
 }

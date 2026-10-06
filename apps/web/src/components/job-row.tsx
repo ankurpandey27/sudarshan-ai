@@ -27,7 +27,7 @@ export function JobRow({
   showStatus?: boolean;
 }) {
   const [open, setOpen] = useState(false);
-  const d = job.scoreDetail;
+  const detail = job.scoreDetail;
   return (
     <li className={cn('border-b border-line last:border-b-0', selected && 'bg-accent-soft/35')}>
       <div className="flex flex-wrap items-start gap-3 px-4 py-3 sm:flex-nowrap">
@@ -69,14 +69,14 @@ export function JobRow({
             {job.easyApply && job.source !== 'web' && <Badge tone="good">Easy Apply</Badge>}
             {job.origin === 'link' && <Badge tone="accent">Your list</Badge>}
             {job.salaryRaw && <Badge>{job.salaryRaw}</Badge>}
-            {d?.matchedSkills.slice(0, 3).map((s) => (
+            {detail?.matchedSkills.slice(0, 3).map((s) => (
               <Badge key={s} tone="good">
                 {s}
               </Badge>
             ))}
-            {d && d.matchedSkills.length > 3 && (
-              <button onClick={() => setOpen(true)} className="text-[11.5px] text-ink-3 hover:text-ink" title={d.matchedSkills.slice(3).join(', ')}>
-                +{d.matchedSkills.length - 3} more
+            {detail && detail.matchedSkills.length > 3 && (
+              <button onClick={() => setOpen(true)} className="text-[11.5px] text-ink-3 hover:text-ink" title={detail.matchedSkills.slice(3).join(', ')}>
+                +{detail.matchedSkills.length - 3} more
               </button>
             )}
           </div>
@@ -109,7 +109,7 @@ export function JobRow({
 
 function JobDetail({ job }: { job: Job }) {
   const { data } = useQuery({ queryKey: ['jobs', 'detail', job.id], queryFn: () => api.get<{ job: Job; attempts: Attempt[] }>(`/jobs/${job.id}`) });
-  const d = job.scoreDetail;
+  const detail = job.scoreDetail;
   return (
     <div className="grid gap-4 border-t border-line bg-surface-2/40 px-4 py-4 md:grid-cols-[1fr_280px]">
       <div>
@@ -118,26 +118,26 @@ function JobDetail({ job }: { job: Job }) {
       </div>
       <div className="space-y-3 text-[12.5px]">
         {job.reason && <p className="text-ink-2">{job.reason}</p>}
-        {d && d.matchedSkills.length > 0 && (
+        {detail && detail.matchedSkills.length > 0 && (
           <div>
             <p className="mb-1 font-semibold text-ink-3">You have</p>
-            <p className="text-good">{d.matchedSkills.join(', ')}</p>
+            <p className="text-good">{detail.matchedSkills.join(', ')}</p>
           </div>
         )}
-        {d && d.missingSkills.length > 0 && (
+        {detail && detail.missingSkills.length > 0 && (
           <div>
             <p className="mb-1 font-semibold text-ink-3">Asked for, not in your profile</p>
-            <p className="text-ink-2">{d.missingSkills.join(', ')}</p>
+            <p className="text-ink-2">{detail.missingSkills.join(', ')}</p>
           </div>
         )}
-        {d && (
+        {detail && (
           <div>
             <p className="mb-1 font-semibold text-ink-3">Why this score</p>
             <ul className="space-y-0.5 text-ink-2">
-              <li>Skills match: {d.technical}</li>
-              <li>Salary fit: {d.salary}</li>
-              <li>Location fit: {d.location}</li>
-              {d.llm !== null && <li>AI opinion: {d.llm}</li>}
+              <li>Skills match: {detail.technical}</li>
+              <li>Salary fit: {detail.salary}</li>
+              <li>Location fit: {detail.location}</li>
+              {detail.llm !== null && <li>AI opinion: {detail.llm}</li>}
             </ul>
           </div>
         )}
@@ -170,10 +170,10 @@ function TasteChip({ taste, reasons }: { taste: number; reasons: string[] }) {
   const shares: string[] = [];
   const rare: string[] = [];
   const turnedDown: string[] = [];
-  for (const r of reasons) {
-    const [kind, value = ''] = r.slice(2).split(': ');
+  for (const reason of reasons) {
+    const [kind, value = ''] = reason.slice(2).split(': ');
     const name = kind === 'platform' ? `${value.charAt(0).toUpperCase()}${value.slice(1)} jobs` : value.charAt(0).toUpperCase() + value.slice(1);
-    if (r.startsWith('+ ')) shares.push(name);
+    if (reason.startsWith('+ ')) shares.push(name);
     else if (kind === 'skill') rare.push(name);
     else turnedDown.push(name);
   }
@@ -216,10 +216,10 @@ const REPLY: Record<JobReply['kind'], { label: string; tone: 'good' | 'info' | '
 
 /** What the employer replied by email (hover for the email's subject). */
 function ReplyBadge({ reply }: { reply: JobReply }) {
-  const r = REPLY[reply.kind];
+  const replyStyle = REPLY[reply.kind];
   return (
     <span title={`Email ${timeAgo(reply.at)}: "${reply.subject}" from ${reply.from}`}>
-      <Badge tone={r.tone}>{r.label}</Badge>
+      <Badge tone={replyStyle.tone}>{replyStyle.label}</Badge>
     </span>
   );
 }

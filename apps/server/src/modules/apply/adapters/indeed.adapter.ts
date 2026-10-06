@@ -89,8 +89,8 @@ export class IndeedApplyAdapter implements ApplyAdapter {
 
     // "Apply now" is a link to Indeed Apply: open it in this tab.
     const href = await page.evaluate(() => {
-      const a = [...document.querySelectorAll('a[href]')].find((x) => /smartapply\.indeed\.com/i.test((x as HTMLAnchorElement).href));
-      return (a as HTMLAnchorElement | undefined)?.href ?? null;
+      const link = [...document.querySelectorAll('a[href]')].find((x) => /smartapply\.indeed\.com/i.test((x as HTMLAnchorElement).href));
+      return (link as HTMLAnchorElement | undefined)?.href ?? null;
     });
     if (!href) {
       // Logged in, "Apply now" is a button that opens Indeed Apply by script.

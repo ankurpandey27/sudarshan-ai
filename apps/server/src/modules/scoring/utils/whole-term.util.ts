@@ -5,6 +5,6 @@ import { escapeRegex } from '../../../common/utils/regex.util';
 
 /** `term` appears as whole words: "Meta" matches "Meta Platforms", not "Metamorphic". */
 export function containsTerm(text: string, term: string): boolean {
-  const t = term.trim().toLowerCase();
-  return !!t && new RegExp(`(^|[^a-z0-9])${escapeRegex(t)}($|[^a-z0-9])`).test(text.toLowerCase());
+  const lower = term.trim().toLowerCase();
+  return !!lower && new RegExp(`(^|[^a-z0-9])${escapeRegex(lower)}($|[^a-z0-9])`).test(text.toLowerCase());
 }

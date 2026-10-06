@@ -53,10 +53,10 @@ export class InsightsService {
   async list(): Promise<Insight[]> {
     // Each card's version is its title and detail unless it says otherwise (see Insight.version).
     const out: (Omit<Insight, 'version'> & { version?: string })[] = [];
-    const s = this.settings.get();
+    const settings = this.settings.get();
     const status = this.agent.status();
     const state = this.profile.state();
-    const p = state.profile;
+    const profile = state.profile;
 
     const failure = this.llm.failure();
     if (failure && failure.kind !== 'other') {
@@ -92,7 +92,7 @@ export class InsightsService {
         fix: 'Upload your resume PDF on the Profile page.',
         actions: [{ label: 'Upload resume', to: '/profile' }],
       });
-    } else if (p.skills.length === 0) {
+    } else if (profile.skills.length === 0) {
       out.push({
         id: 'no-skills',
         severity: 'error',
@@ -124,7 +124,7 @@ export class InsightsService {
       });
     }
 
-    const risks = paceRisks(s);
+    const risks = paceRisks(settings);
     if (risks.length) {
       out.push({
         id: 'pace-risk',
@@ -148,37 +148,37 @@ export class InsightsService {
       });
     }
     // A platform whose pages seem to have changed: paused, or resumed carefully.
-    for (const h of this.health.all()) {
-      const name = sourceLabel(h.platform);
-      if (h.status === 'broken') {
+    for (const health of this.health.all()) {
+      const name = sourceLabel(health.platform);
+      if (health.status === 'broken') {
         out.push({
-          id: `changed-${h.platform}`,
+          id: `changed-${health.platform}`,
           severity: 'error',
           title: `${name} may have changed its pages - paused`,
-          detail: `The last few ${name} applications got stuck (latest: "${(h.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan stopped applying on ${name} - it tries one again by itself at ${clockTime(h.until)}.`,
+          detail: `The last few ${name} applications got stuck (latest: "${(health.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan stopped applying on ${name} - it tries one again by itself at ${clockTime(health.until)}.`,
           fix: this.settings.get().agent.carefulAfterPause
             ? `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again": it resumes and, as you set, stops before Submit on ${name}'s own forms until one works.`
             : `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again": it resumes normally. (To have it stop before Submit after a pause, turn on "Careful mode after a pause" in Settings.)`,
           actions: [
-            { label: 'Try again', api: `/agent/platforms/${h.platform}/retry` },
+            { label: 'Try again', api: `/agent/platforms/${health.platform}/retry` },
             { label: 'See what happened', to: '/applications' },
           ],
         });
-      } else if (h.status === 'cooling') {
+      } else if (health.status === 'cooling') {
         out.push({
-          id: `cooling-${h.platform}`,
-          version: `cooling until ${h.until ?? ''}`,
+          id: `cooling-${health.platform}`,
+          version: `cooling until ${health.until ?? ''}`,
           severity: 'warn',
-          title: `${name} is refusing applications for now - paused until ${clockTime(h.until)}`,
-          detail: `${name} answered "please try again later" instead of taking the application - usually after many applications in a short time. Those jobs stay in the queue; Sudarshan tries ${name} again at ${clockTime(h.until)} and carries on with the other sites meanwhile.`,
+          title: `${name} is refusing applications for now - paused until ${clockTime(health.until)}`,
+          detail: `${name} answered "please try again later" instead of taking the application - usually after many applications in a short time. Those jobs stay in the queue; Sudarshan tries ${name} again at ${clockTime(health.until)} and carries on with the other sites meanwhile.`,
           fix: `Nothing to do now. To make it less likely: a lower daily limit for ${name} (Settings, Platforms & limits) and a longer gap between applications (Settings, Agent).`,
           actions: [{ label: 'Limits', to: '/settings?tab=platforms' }],
         });
-      } else if (h.status === 'careful' && this.settings.get().agent.carefulAfterPause) {
+      } else if (health.status === 'careful' && this.settings.get().agent.carefulAfterPause) {
         out.push({
-          id: `careful-${h.platform}`,
+          id: `careful-${health.platform}`,
           // A new careful-mode episode is a new card, even though it reads the same.
-          version: `careful since ${h.since ?? ''}`,
+          version: `careful since ${health.since ?? ''}`,
           severity: 'info',
           title: `${name}: careful mode`,
           detail: `After recent trouble, Sudarshan fills ${name}'s own application forms and stops before Submit, so you check each one. Company sites are not affected.`,
@@ -207,30 +207,30 @@ export class InsightsService {
       });
     }
 
-    for (const b of status.blockedSources) {
+    for (const block of status.blockedSources) {
       // Paused platforms have their own card above.
-      if (/may have changed|refusing applications/i.test(b.reason)) continue;
-      const login = /log in/i.test(b.reason);
-      if (/switched off/i.test(b.reason)) {
+      if (/may have changed|refusing applications/i.test(block.reason)) continue;
+      const login = /log in/i.test(block.reason);
+      if (/switched off/i.test(block.reason)) {
         out.push({
-          id: `off-${b.source}`,
+          id: `off-${block.source}`,
           severity: 'info',
-          title: `${sourceLabel(b.source)} is switched off`,
-          detail: `You have approved ${sourceLabel(b.source)} jobs, but applying there is off, so they wait.`,
-          fix: `Turn ${sourceLabel(b.source)} on under "Apply on" to apply to them, or leave it off.`,
+          title: `${sourceLabel(block.source)} is switched off`,
+          detail: `You have approved ${sourceLabel(block.source)} jobs, but applying there is off, so they wait.`,
+          fix: `Turn ${sourceLabel(block.source)} on under "Apply on" to apply to them, or leave it off.`,
           actions: [{ label: 'Apply on', to: '/#apply-on' }],
         });
         continue;
       }
       out.push({
-        id: `blocked-${b.source}`,
+        id: `blocked-${block.source}`,
         severity: login ? 'error' : 'info',
-        title: login ? `Not logged in to ${sourceLabel(b.source)}` : `${sourceLabel(b.source)}: daily limit reached`,
+        title: login ? `Not logged in to ${sourceLabel(block.source)}` : `${sourceLabel(block.source)}: daily limit reached`,
         detail: login
-          ? `There are ${sourceLabel(b.source)} jobs waiting in the queue, but the agent's browser is not logged in, so it cannot apply.`
-          : `${b.reason}. This protects your account; the agent continues tomorrow.`,
+          ? `There are ${sourceLabel(block.source)} jobs waiting in the queue, but the agent's browser is not logged in, so it cannot apply.`
+          : `${block.reason}. This protects your account; the agent continues tomorrow.`,
         fix: login
-          ? `Click "Log in", sign in to ${sourceLabel(b.source)} in the window that opens, then come back.`
+          ? `Click "Log in", sign in to ${sourceLabel(block.source)} in the window that opens, then come back.`
           : 'Nothing to do, or raise the limit in Settings if you are sure.',
         actions: login ? [{ label: 'Log in', to: '/settings#sites' }] : [{ label: 'Limits', to: '/settings' }],
       });
@@ -257,7 +257,7 @@ export class InsightsService {
         ],
       });
     }
-    if (review > 0 && queued === 0 && s.agent.mode === AgentMode.REVIEW) {
+    if (review > 0 && queued === 0 && settings.agent.mode === AgentMode.REVIEW) {
       out.push({
         id: 'awaiting-approval',
         severity: 'warn',

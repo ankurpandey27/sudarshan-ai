@@ -57,8 +57,8 @@ export class ProfileService implements OnApplicationBootstrap {
   }
 
   resumePath(): string | null {
-    const p = this.row()?.resume_path;
-    return p && existsSync(p) ? p : null;
+    const path = this.row()?.resume_path;
+    return path && existsSync(path) ? path : null;
   }
 
   resumeText(): string {
@@ -79,10 +79,10 @@ export class ProfileService implements OnApplicationBootstrap {
   // Rebuild a profile that lost its data from the stored resume text.
   onApplicationBootstrap(): void {
     const row = this.row();
-    const p = this.get();
-    if (!row?.resume_text || p.skills.length > 0 || p.firstName) return;
+    const profile = this.get();
+    if (!row?.resume_text || profile.skills.length > 0 || profile.firstName) return;
     const restored = parseResumeHeuristically(row.resume_text);
-    const next: CandidateProfile = { ...p };
+    const next: CandidateProfile = { ...profile };
     for (const [key, value] of Object.entries(restored) as [keyof CandidateProfile, unknown][]) {
       if (isEmpty(next[key]) && !isEmpty(value)) (next as unknown as Record<string, unknown>)[key] = value;
     }
@@ -160,12 +160,12 @@ export class ProfileService implements OnApplicationBootstrap {
    * counts MySQL and PostgreSQL) - the highest. A skill listed without years counts as your whole career.
    */
   skillYears(skill: string): number | null {
-    const p = this.get();
+    const profile = this.get();
     const target = canonicalSkill(skill);
     const family = new Set([target, ...(SKILL_FAMILIES[target] ?? []).map(canonicalSkill)]);
-    const hits = p.skills.filter((s) => family.has(canonicalSkill(s.name)));
+    const hits = profile.skills.filter((s) => family.has(canonicalSkill(s.name)));
     if (hits.length === 0) return null;
-    return Math.max(...hits.map((h) => h.years ?? p.totalYearsExperience));
+    return Math.max(...hits.map((h) => h.years ?? profile.totalYearsExperience));
   }
 
   /**
@@ -173,10 +173,10 @@ export class ProfileService implements OnApplicationBootstrap {
    * without years or not at all. A number you gave yourself beats a skill listed without years.
    */
   statedSkillYears(skill: string): number | null {
-    const p = this.get();
+    const profile = this.get();
     const target = canonicalSkill(skill);
     const family = new Set([target, ...(SKILL_FAMILIES[target] ?? []).map(canonicalSkill)]);
-    const stated = p.skills.filter((s) => family.has(canonicalSkill(s.name)) && s.years !== null && s.years !== undefined).map((s) => s.years as number);
+    const stated = profile.skills.filter((s) => family.has(canonicalSkill(s.name)) && s.years !== null && s.years !== undefined).map((s) => s.years as number);
     return stated.length ? Math.max(...stated) : null;
   }
 

@@ -18,7 +18,7 @@ import { LearnersService } from './learners.service';
 import { knnVote } from './utils/knn.util';
 import { decideMode, metricsOf } from './utils/mode.util';
 
-const L = LearnerName.FIELD;
+const LEARNER = LearnerName.FIELD;
 const same = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9@.+]+/g, '') === b.toLowerCase().replace(/[^a-z0-9@.+]+/g, '');
 // Yes/No says nothing about which detail was asked.
 const TELLS_NOTHING = /^(yes|no|y|n|true|false|na|n\/a|none|-|0|1)$/i;
@@ -44,11 +44,11 @@ export class FieldLearnerService {
 
   /** A rule filled this field with this detail. */
   observe(label: string, key: string): void {
-    this.learners.addExample(L, label, key, 'rule');
+    this.learners.addExample(LEARNER, label, key, 'rule');
   }
 
   mode(): LearnerMode {
-    return this.learners.mode(L);
+    return this.learners.mode(LEARNER);
   }
 
   /** Which detail this field asks for, when the nearest examples clearly agree; null otherwise. */
@@ -61,7 +61,7 @@ export class FieldLearnerService {
 
   /** Starts a live check; the answer the field finally gets says whether the prediction was right. */
   startCheck(label: string, key: string): number {
-    return this.learners.check(L, label, key);
+    return this.learners.check(LEARNER, label, key);
   }
 
   /** Right when the field's final answer is what that detail would have filled. */
@@ -74,7 +74,7 @@ export class FieldLearnerService {
   /** Rebuilds from all examples: history, rules, your answers; then measures itself and picks its mode. */
   async train(): Promise<void> {
     this.backfill();
-    const rows = this.learners.examples(L);
+    const rows = this.learners.examples(LEARNER);
     const texts = rows.map((r) => r.text).filter((t) => !this.vectors.has(t));
     if (texts.length) {
       const vs = await this.embeddings.embed(texts);
@@ -96,16 +96,16 @@ export class FieldLearnerService {
       if (vote.label === e.label) right++;
     }
     const offline = metricsOf(made, right, pool === hard ? 'your own answers it had not seen' : 'examples it had not seen');
-    const mode = decideMode({ enabled: this.learners.enabled(L), examples: this.examples.length, min: MIN_EXAMPLES[L], offline, live: this.learners.live(L) });
+    const mode = decideMode({ enabled: this.learners.enabled(LEARNER), examples: this.examples.length, min: MIN_EXAMPLES[LEARNER], offline, live: this.learners.live(LEARNER) });
     const note =
       mode === LearnerMode.ON
         ? `Fills fields it recognises - right ${right} of ${made} times on ${offline.how}`
         : mode === LearnerMode.CHECKING
           ? `Checking itself before it fills anything (${right} of ${made} right so far)`
           : mode === LearnerMode.LEARNING
-            ? `Collecting examples (${this.examples.length} of ${MIN_EXAMPLES[L]})`
+            ? `Collecting examples (${this.examples.length} of ${MIN_EXAMPLES[LEARNER]})`
             : 'Switched off';
-    this.learners.saveState(L, { mode, offline, examples: this.examples.length, note });
+    this.learners.saveState(LEARNER, { mode, offline, examples: this.examples.length, note });
     this.logger.log(`Field learner: ${this.examples.length} examples, ${note}`);
   }
 
@@ -121,8 +121,8 @@ export class FieldLearnerService {
     const questions = this.storage.all<{ question: string; answer: string | null; source: string | null }>(
       `SELECT question, answer, source FROM answers UNION ALL SELECT question, NULL, NULL FROM pending_questions`,
     );
-    for (const q of questions) {
-      const label = q.question.trim();
+    for (const question of questions) {
+      const label = question.question.trim();
       if (!label || label.length > 150) continue;
       const byRule = ruleKeyFor(label);
       if (byRule) {
@@ -130,7 +130,7 @@ export class FieldLearnerService {
         continue;
       }
       // You answered it yourself with one of your details: a wording the rules missed.
-      if (!q.answer || q.source === AnswerSource.LLM || TELLS_NOTHING.test(q.answer.trim())) continue;
+      if (!question.answer || question.source === AnswerSource.LLM || TELLS_NOTHING.test(question.answer.trim())) continue;
       const field = this.field(label);
       const keys = [
         'phone',
@@ -150,22 +150,22 @@ export class FieldLearnerService {
         'postalCode',
       ];
       const matches = keys.filter((k) => {
-        const v = answerForKey(ctx, field, k)?.value;
-        return !!v && same(v, q.answer!);
+        const value = answerForKey(ctx, field, k)?.value;
+        return !!value && same(value, question.answer!);
       });
       // Exactly one detail fits; two (first name = full name) would be a guess.
       if (matches.length === 1) yours.push({ text: label, label: matches[0] });
     }
-    this.learners.replaceExamples(L, 'history', history);
-    this.learners.replaceExamples(L, 'you', yours);
+    this.learners.replaceExamples(LEARNER, 'history', history);
+    this.learners.replaceExamples(LEARNER, 'you', yours);
   }
 
   /** Live checks whose question you have answered since. */
   private resolveOpenChecks(): void {
     const ctx = this.context();
-    for (const c of this.learners.openChecks(L)) {
-      const yours = this.storage.get<{ answer: string }>(`SELECT answer FROM answers WHERE question = ? AND source <> ?`, [c.input, AnswerSource.LLM]);
-      if (yours) this.finishCheck(c.id, ctx, this.field(c.input), c.predicted, yours.answer);
+    for (const check of this.learners.openChecks(LEARNER)) {
+      const yours = this.storage.get<{ answer: string }>(`SELECT answer FROM answers WHERE question = ? AND source <> ?`, [check.input, AnswerSource.LLM]);
+      if (yours) this.finishCheck(check.id, ctx, this.field(check.input), check.predicted, yours.answer);
     }
   }
 

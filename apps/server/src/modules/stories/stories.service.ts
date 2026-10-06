@@ -52,10 +52,10 @@ export class StoriesService {
   }
 
   update(id: number, changes: { title?: string; text?: string }): Story {
-    const s = this.get(id);
-    const text = changes.text?.trim() || s.text;
+    const story = this.get(id);
+    const text = changes.text?.trim() || story.text;
     this.storage.run('UPDATE stories SET title = ?, text = ?, skills = ?, updated_at = ? WHERE id = ?', [
-      changes.title?.trim() || (changes.text ? titleOf(text) : s.title),
+      changes.title?.trim() || (changes.text ? titleOf(text) : story.title),
       text,
       JSON.stringify(extractSkills(text)),
       new Date().toISOString(),

@@ -51,8 +51,8 @@ export class LlmService {
   }
 
   describe(): string | null {
-    const t = this.chain[0];
-    return t ? `${t.kind} / ${t.model}` : null;
+    const primary = this.chain[0];
+    return primary ? `${primary.kind} / ${primary.model}` : null;
   }
 
   complete(prompt: string, opts: LlmCallOptions): Promise<string> {
@@ -127,27 +127,27 @@ export class LlmService {
   }
 
   private period(since: string | null): LlmUsagePeriod {
-    const r = this.storage.get<{ calls: number; failed: number | null; p: number; c: number }>(
+    const totals = this.storage.get<{ calls: number; failed: number | null; p: number; c: number }>(
       `SELECT COUNT(*) calls, SUM(ok = 0) failed, COALESCE(SUM(prompt_tokens),0) p, COALESCE(SUM(completion_tokens),0) c
          FROM llm_usage ${since ? 'WHERE at >= ?' : ''}`,
       since ? [since] : [],
     ) ?? { calls: 0, failed: 0, p: 0, c: 0 };
-    const p = Number(r.p);
-    const c = Number(r.c);
-    return { calls: Number(r.calls), failedCalls: Number(r.failed ?? 0), promptTokens: p, completionTokens: c, tokens: p + c };
+    const promptTokens = Number(totals.p);
+    const completionTokens = Number(totals.c);
+    return { calls: Number(totals.calls), failedCalls: Number(totals.failed ?? 0), promptTokens: promptTokens, completionTokens: completionTokens, tokens: promptTokens + completionTokens };
   }
 
   /** The model in use (the first of the chain), for per-model notes such as what it accepts. */
   current(): { provider: string; model: string } | null {
-    const t = this.chain[0];
-    return t ? { provider: t.kind, model: t.model } : null;
+    const primary = this.chain[0];
+    return primary ? { provider: primary.kind, model: primary.model } : null;
   }
 
   /** Whether the current model accepts images: true, false, or null when not tried yet. */
   acceptsImages(): boolean | null {
-    const c = this.current();
-    if (!c) return false;
-    const row = this.storage.get<{ images: number | null }>('SELECT images FROM llm_capabilities WHERE provider = ? AND model = ?', [c.provider, c.model]);
+    const current = this.current();
+    if (!current) return false;
+    const row = this.storage.get<{ images: number | null }>('SELECT images FROM llm_capabilities WHERE provider = ? AND model = ?', [current.provider, current.model]);
     return row?.images === null || row?.images === undefined ? null : row.images === 1;
   }
 
@@ -173,11 +173,11 @@ export class LlmService {
   }
 
   private noteImages(ok: boolean): void {
-    const c = this.current();
-    if (!c) return;
+    const current = this.current();
+    if (!current) return;
     this.storage.run(
       'INSERT INTO llm_capabilities (provider, model, images, at) VALUES (?, ?, ?, ?) ON CONFLICT(provider, model) DO UPDATE SET images = excluded.images, at = excluded.at',
-      [c.provider, c.model, ok ? 1 : 0, new Date().toISOString()],
+      [current.provider, current.model, ok ? 1 : 0, new Date().toISOString()],
     );
   }
 

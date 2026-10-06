@@ -51,7 +51,7 @@ export class WorkbookService {
 
     const parsed = parseWorkbook(wb);
     let answers = 0;
-    for (const a of parsed.answers) if (this.answers.remember(a.question, a.answer, AnswerSource.EXCEL)) answers++;
+    for (const answer of parsed.answers) if (this.answers.remember(answer.question, answer.answer, AnswerSource.EXCEL)) answers++;
     const links = parsed.links.length ? this.jobs.addLinks(parsed.links) : { added: 0, duplicates: 0, invalid: [] };
     // Same limits as the Settings and Profile pages (e.g. at most 200 applications a day), row by row.
     const checked = validPreferenceRows(parsed.preferences);

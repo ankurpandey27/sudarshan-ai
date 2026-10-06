@@ -17,8 +17,8 @@ export interface DonutSlice {
 export function Donut({ slices, centerLabel, size = 132 }: { slices: DonutSlice[]; centerLabel: string; size?: number }) {
   const [hover, setHover] = useState<string | null>(null);
   const total = slices.reduce((n, s) => n + s.value, 0);
-  const r = 42;
-  const c = 2 * Math.PI * r;
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
   let offset = 0;
   const shown = hover ? slices.find((s) => s.id === hover) : null;
 
@@ -26,23 +26,23 @@ export function Donut({ slices, centerLabel, size = 132 }: { slices: DonutSlice[
     <div className="flex flex-wrap items-center gap-5">
       <div className="relative shrink-0" style={{ width: size, height: size }}>
         <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-          <circle cx="50" cy="50" r={r} fill="none" stroke="var(--surface-2)" strokeWidth="11" />
+          <circle cx="50" cy="50" r={radius} fill="none" stroke="var(--surface-2)" strokeWidth="11" />
           {total > 0 &&
             slices
               .filter((s) => s.value > 0)
               .map((s) => {
-                const len = (s.value / total) * c;
+                const len = (s.value / total) * circumference;
                 // A hairline gap between slices.
                 const el = (
                   <circle
                     key={s.id}
                     cx="50"
                     cy="50"
-                    r={r}
+                    r={radius}
                     fill="none"
                     stroke={s.color}
                     strokeWidth={hover === s.id ? 13 : 11}
-                    strokeDasharray={`${Math.max(0, len - 0.8)} ${c}`}
+                    strokeDasharray={`${Math.max(0, len - 0.8)} ${circumference}`}
                     strokeDashoffset={-offset}
                     className="transition-[stroke-width,opacity] duration-200"
                     opacity={hover && hover !== s.id ? 0.45 : 1}

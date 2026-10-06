@@ -129,5 +129,5 @@ function prune(dir: string): void {
     .filter((f) => DAILY_BACKUP.test(f))
     .sort()
     .slice(0, -KEEP_BACKUPS);
-  for (const f of old) rmSync(join(dir, f), { force: true });
+  for (const file of old) rmSync(join(dir, file), { force: true });
 }

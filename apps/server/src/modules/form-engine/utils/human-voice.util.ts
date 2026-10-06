@@ -15,8 +15,8 @@ export function isWrittenAnswer(text: string): boolean {
 /** What makes an answer read as written by AI, one entry per tell. */
 export function aiTells(text: string): string[] {
   const tells: string[] = [];
-  for (const m of text.match(WORD_LIST) ?? []) tells.push(`word "${m}"`);
-  for (const p of AI_PHRASES) if (p.test(text)) tells.push(`phrase ${p.source.slice(0, 30)}`);
+  for (const word of text.match(WORD_LIST) ?? []) tells.push(`word "${word}"`);
+  for (const phrase of AI_PHRASES) if (phrase.test(text)) tells.push(`phrase ${phrase.source.slice(0, 30)}`);
   const words = text.split(/\s+/).filter(Boolean).length;
   const dashes = (text.match(/—|–| -- /g) ?? []).length;
   if (dashes > Math.max(1, Math.ceil((words / 100) * EM_DASH_PER_100_WORDS))) tells.push(`${dashes} dashes`);

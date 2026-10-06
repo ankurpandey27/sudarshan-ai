@@ -67,8 +67,8 @@ export function LlmForm({ slot = 'llm', onSaved }: { slot?: 'llm' | 'fallbackLlm
 
   const choose = (kind: LlmProviderKind) => {
     setProvider(kind);
-    const p = presets.find((x) => x.kind === kind);
-    setModel(kind === saved?.provider ? saved.model : (p?.suggestedModels[0] ?? ''));
+    const preset = presets.find((x) => x.kind === kind);
+    setModel(kind === saved?.provider ? saved.model : (preset?.suggestedModels[0] ?? ''));
     setBaseUrl(kind === saved?.provider ? saved.baseUrl : '');
     setApiKey('');
     setModels([]);

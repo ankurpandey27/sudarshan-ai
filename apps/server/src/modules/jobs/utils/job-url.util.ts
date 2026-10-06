@@ -30,8 +30,8 @@ export function parseJobUrl(raw: string): ParsedJobUrl | null {
     if (id && /^[0-9a-f]{16}$/i.test(id)) return { source: JobSource.INDEED, externalId: id, url: `https://${host}/viewjob?jk=${id}` };
   }
   // Other sites: the URL minus tracking params is the id.
-  for (const p of [...url.searchParams.keys()]) {
-    if (/^(utm_|ref|source|src|trk|gh_src|lever-source)/i.test(p)) url.searchParams.delete(p);
+  for (const param of [...url.searchParams.keys()]) {
+    if (/^(utm_|ref|source|src|trk|gh_src|lever-source)/i.test(param)) url.searchParams.delete(param);
   }
   url.hash = '';
   const clean = url.toString();

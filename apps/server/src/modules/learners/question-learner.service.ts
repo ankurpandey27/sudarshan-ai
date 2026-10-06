@@ -13,7 +13,7 @@ import { auc, predictLogistic, trainLogistic } from './utils/logistic.util';
 import { decideMode, metricsOf } from './utils/mode.util';
 import { pairFeatures, sameReply } from './utils/pair-features.util';
 
-const L = LearnerName.QUESTION;
+const LEARNER = LearnerName.QUESTION;
 /** Pairs looked at per saved answer: its closest few in meaning. */
 const NEIGHBOURS = 8;
 const MIN_PAIR_SIMILARITY = 0.5;
@@ -35,7 +35,7 @@ export class QuestionLearnerService {
   ) {}
 
   mode(): LearnerMode {
-    return this.learners.mode(L);
+    return this.learners.mode(LEARNER);
   }
 
   /** Chance the two questions ask the same thing; null before it has learned anything. */
@@ -46,8 +46,8 @@ export class QuestionLearnerService {
   /** Keep this past answer for the AI? Always, unless switched on and sure it is about something else. */
   keep(asked: string, saved: string, similarity: number): boolean {
     if (this.mode() !== LearnerMode.ON) return true;
-    const p = this.same(asked, saved, similarity);
-    return p === null || p >= DIFFERENT_BELOW;
+    const probability = this.same(asked, saved, similarity);
+    return probability === null || probability >= DIFFERENT_BELOW;
   }
 
   async train(): Promise<void> {
@@ -73,17 +73,17 @@ export class QuestionLearnerService {
     const scored: { y: 0 | 1; p: number }[] = [];
     const byCosine: { y: 0 | 1; p: number }[] = [];
     for (let fold = 0; fold < 5; fold++) {
-      const m = trainLogistic(
+      const model = trainLogistic(
         pairs.filter((p) => p.group % 5 !== fold).map((p) => p.s),
         LOGISTIC,
       );
-      for (const p of pairs.filter((q) => q.group % 5 === fold)) {
-        const prob = predictLogistic(m, p.s.x);
-        scored.push({ y: p.s.y, p: prob });
-        byCosine.push({ y: p.s.y, p: p.similarity });
+      for (const pair of pairs.filter((q) => q.group % 5 === fold)) {
+        const prob = predictLogistic(model, pair.s.x);
+        scored.push({ y: pair.s.y, p: prob });
+        byCosine.push({ y: pair.s.y, p: pair.similarity });
         if (prob < DIFFERENT_BELOW) {
           dropped++;
-          if (p.s.y === 0) rightDrops++;
+          if (pair.s.y === 0) rightDrops++;
         }
       }
     }
@@ -94,18 +94,18 @@ export class QuestionLearnerService {
         )
       : null;
     const offline = metricsOf(dropped, rightDrops, 'pairs of your answers it had not seen');
-    const mode = decideMode({ enabled: this.learners.enabled(L), examples: pairs.length, min: MIN_EXAMPLES[L], offline, live: null });
-    const a = auc(scored);
-    const c = auc(byCosine);
+    const mode = decideMode({ enabled: this.learners.enabled(LEARNER), examples: pairs.length, min: MIN_EXAMPLES[LEARNER], offline, live: null });
+    const score = auc(scored);
+    const cosineScore = auc(byCosine);
     const note =
       mode === LearnerMode.ON
         ? `Hides past answers about something else - right ${rightDrops} of ${dropped} times`
         : mode === LearnerMode.CHECKING
-          ? `Checking itself (would hide ${dropped}, ${rightDrops} rightly); tells same from different ${a !== null && c !== null ? `${Math.round(a * 100)}% vs ${Math.round(c * 100)}% by meaning alone` : ''}`.trim()
+          ? `Checking itself (would hide ${dropped}, ${rightDrops} rightly); tells same from different ${score !== null && cosineScore !== null ? `${Math.round(score * 100)}% vs ${Math.round(cosineScore * 100)}% by meaning alone` : ''}`.trim()
           : mode === LearnerMode.LEARNING
-            ? `Collecting examples (${pairs.length} of ${MIN_EXAMPLES[L]} pairs)`
+            ? `Collecting examples (${pairs.length} of ${MIN_EXAMPLES[LEARNER]} pairs)`
             : 'Switched off';
-    this.learners.saveState(L, { mode, offline, examples: pairs.length, note });
+    this.learners.saveState(LEARNER, { mode, offline, examples: pairs.length, note });
     this.logger.log(`Question learner: ${pairs.length} pairs, ${note}`);
   }
 }

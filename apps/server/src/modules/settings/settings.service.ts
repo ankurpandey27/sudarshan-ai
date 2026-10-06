@@ -44,8 +44,8 @@ export class SettingsService {
   }
 
   getPublic(): PublicAppSettings {
-    const s = this.get();
-    return { ...s, llm: this.maskLlm(s.llm), fallbackLlm: this.maskLlm(s.fallbackLlm) };
+    const settings = this.get();
+    return { ...settings, llm: this.maskLlm(settings.llm), fallbackLlm: this.maskLlm(settings.fallbackLlm) };
   }
 
   update(patch: UpdateSettingsDto): PublicAppSettings {

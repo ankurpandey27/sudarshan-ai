@@ -33,11 +33,11 @@ export class PlatformHealthService {
 
   /** Changes whenever anything the health depends on changes; one cheap, indexed query. */
   private stamp(): string {
-    const r = this.storage.get<{ a: number | null; j: string | null; r: string | null }>(
+    const latest = this.storage.get<{ a: number | null; j: string | null; r: string | null }>(
       `SELECT (SELECT MAX(id) FROM attempts) a, (SELECT MAX(applied_at) FROM jobs) j,
          (SELECT MAX(reset_at) || '|' || COALESCE(MAX(cool_until), '') FROM platform_health) r`,
     );
-    return `${r?.a ?? ''}|${r?.j ?? ''}|${r?.r ?? ''}`;
+    return `${latest?.a ?? ''}|${latest?.j ?? ''}|${latest?.r ?? ''}`;
   }
 
   private compute(platform: JobPlatform): PlatformHealth {

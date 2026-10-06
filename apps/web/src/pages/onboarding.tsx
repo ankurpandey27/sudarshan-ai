@@ -144,7 +144,7 @@ function StepResume({ onNext }: { onNext: () => void }) {
     },
     onError: (e: Error) => toast('error', e.message),
   });
-  const p = data?.profile;
+  const profile = data?.profile;
   const set = useMutation({
     mutationFn: (patch: Record<string, unknown>) => api.patch<ProfileState>('/profile', patch),
     onSuccess: (s) => qc.setQueryData(['profile'], s),
@@ -169,27 +169,27 @@ function StepResume({ onNext }: { onNext: () => void }) {
           )
         }
       />
-      {p && data?.resume && (
+      {profile && data?.resume && (
         <div className="mt-6">
           <p className="mb-3 text-[13px] font-semibold">Forms ask these on almost every application - fill them once:</p>
           <div className="grid gap-3 sm:grid-cols-3">
             <Field label="Notice period (days)">
-              <Input type="number" min={0} defaultValue={p.noticePeriodDays ?? ''} onBlur={(e) => set.mutate({ noticePeriodDays: e.target.value === '' ? null : Number(e.target.value) })} />
+              <Input type="number" min={0} defaultValue={profile.noticePeriodDays ?? ''} onBlur={(e) => set.mutate({ noticePeriodDays: e.target.value === '' ? null : Number(e.target.value) })} />
             </Field>
             <Field label="Current CTC (lakhs/yr)">
-              <Input type="number" min={0} step="0.1" defaultValue={p.currentCtc ? p.currentCtc / 1e5 : ''} onBlur={(e) => set.mutate({ currentCtc: e.target.value === '' ? null : Math.round(Number(e.target.value) * 1e5) })} />
+              <Input type="number" min={0} step="0.1" defaultValue={profile.currentCtc ? profile.currentCtc / 1e5 : ''} onBlur={(e) => set.mutate({ currentCtc: e.target.value === '' ? null : Math.round(Number(e.target.value) * 1e5) })} />
             </Field>
             <Field label="Expected CTC (lakhs/yr)">
-              <Input type="number" min={0} step="0.1" defaultValue={p.expectedCtc ? p.expectedCtc / 1e5 : ''} onBlur={(e) => set.mutate({ expectedCtc: e.target.value === '' ? null : Math.round(Number(e.target.value) * 1e5) })} />
+              <Input type="number" min={0} step="0.1" defaultValue={profile.expectedCtc ? profile.expectedCtc / 1e5 : ''} onBlur={(e) => set.mutate({ expectedCtc: e.target.value === '' ? null : Math.round(Number(e.target.value) * 1e5) })} />
             </Field>
             <Field label="City">
-              <Input defaultValue={p.city} onBlur={(e) => set.mutate({ city: e.target.value })} />
+              <Input defaultValue={profile.city} onBlur={(e) => set.mutate({ city: e.target.value })} />
             </Field>
             <Field label="Current title">
-              <Input defaultValue={p.currentTitle} onBlur={(e) => set.mutate({ currentTitle: e.target.value })} />
+              <Input defaultValue={profile.currentTitle} onBlur={(e) => set.mutate({ currentTitle: e.target.value })} />
             </Field>
             <Field label="Phone">
-              <Input defaultValue={p.phone} onBlur={(e) => set.mutate({ phone: e.target.value })} />
+              <Input defaultValue={profile.phone} onBlur={(e) => set.mutate({ phone: e.target.value })} />
             </Field>
           </div>
         </div>

@@ -19,14 +19,14 @@ export type HostStats = Map<string, { ok: number; n: number }>;
  * site went before (smoothed, so one try says little), and how good a fit the job is.
  */
 export function outcomeFeatures(a: AttemptShape, hosts: HostStats): Record<string, number> {
-  const h = hosts.get(a.host);
-  const tries = h?.n ?? 0;
+  const hostStats = hosts.get(a.host);
+  const tries = hostStats?.n ?? 0;
   return {
     [`platform: ${a.platform}`]: 1,
     'easy apply': a.easyApply ? 1 : 0,
     'company site': a.external ? 1 : 0,
     // Two imaginary tries, one good: an unknown site starts at even odds.
-    'site success rate': ((h?.ok ?? 0) + 1) / (tries + 2),
+    'site success rate': ((hostStats?.ok ?? 0) + 1) / (tries + 2),
     'site known': Math.min(1, Math.log2(1 + tries) / 4),
     fit: (a.score ?? 50) / 100,
   };

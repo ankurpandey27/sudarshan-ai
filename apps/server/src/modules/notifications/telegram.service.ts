@@ -23,29 +23,29 @@ export class TelegramService {
   ) {}
 
   status(): TelegramStatus {
-    const c = this.config();
-    return { connected: !!c, bot: c?.bot ?? null, chatId: c?.chatId ?? null, error: this.error };
+    const config = this.config();
+    return { connected: !!config, bot: config?.bot ?? null, chatId: config?.chatId ?? null, error: this.error };
   }
 
   /** Checks the token with Telegram and saves it (encrypted); the chat is found by connect(). */
   async saveToken(token: string): Promise<TelegramStatus> {
-    const t = token.trim();
-    if (!/^\d+:[\w-]{20,}$/.test(t)) throw new BadRequestException('That does not look like a bot token - it is like 123456789:AAH... from @BotFather.');
-    const me = await this.call<{ username: string }>(t, 'getMe').catch(() => null);
+    const trimmed = token.trim();
+    if (!/^\d+:[\w-]{20,}$/.test(trimmed)) throw new BadRequestException('That does not look like a bot token - it is like 123456789:AAH... from @BotFather.');
+    const me = await this.call<{ username: string }>(trimmed, 'getMe').catch(() => null);
     if (!me) throw new BadRequestException('Telegram did not accept this token. Copy it again from @BotFather.');
-    this.store({ token: t, bot: `@${me.username}`, chatId: null });
+    this.store({ token: trimmed, bot: `@${me.username}`, chatId: null });
     this.error = null;
     return this.status();
   }
 
   /** Finds the chat from the last message you sent the bot. */
   async connect(): Promise<TelegramStatus> {
-    const c = this.config();
-    if (!c) throw new BadRequestException('Save your bot token first.');
-    const updates = await this.call<{ message?: { chat: { id: number } } }[]>(c.token, 'getUpdates');
+    const config = this.config();
+    if (!config) throw new BadRequestException('Save your bot token first.');
+    const updates = await this.call<{ message?: { chat: { id: number } } }[]>(config.token, 'getUpdates');
     const chat = [...updates].reverse().find((u) => u.message?.chat)?.message?.chat.id;
-    if (!chat) throw new BadRequestException(`Send any message (like "hi") to ${c.bot ?? 'your bot'} in Telegram, then press Connect again.`);
-    this.store({ ...c, chatId: String(chat) });
+    if (!chat) throw new BadRequestException(`Send any message (like "hi") to ${config.bot ?? 'your bot'} in Telegram, then press Connect again.`);
+    this.store({ ...config, chatId: String(chat) });
     return this.status();
   }
 
@@ -57,10 +57,10 @@ export class TelegramService {
 
   /** Sends a message if Telegram is connected; never throws (a failed send is shown in Settings). */
   async send(title: string, body: string): Promise<boolean> {
-    const c = this.config();
-    if (!c?.chatId) return false;
+    const config = this.config();
+    if (!config?.chatId) return false;
     try {
-      await this.call(c.token, 'sendMessage', { chat_id: c.chatId, text: `${title}\n\n${body}`.slice(0, TELEGRAM_MAX_CHARS) });
+      await this.call(config.token, 'sendMessage', { chat_id: config.chatId, text: `${title}\n\n${body}`.slice(0, TELEGRAM_MAX_CHARS) });
       this.error = null;
       return true;
     } catch (err) {
@@ -87,8 +87,8 @@ export class TelegramService {
     const row = this.storage.get<{ value: string }>('SELECT value FROM settings WHERE key = ?', [TELEGRAM_KEY]);
     if (!row) return null;
     try {
-      const c = JSON.parse(row.value) as TelegramConfig;
-      return { ...c, token: this.secrets.decrypt(c.token) };
+      const config = JSON.parse(row.value) as TelegramConfig;
+      return { ...config, token: this.secrets.decrypt(config.token) };
     } catch {
       // secret.key changed (a restored backup): the bot has to be connected again.
       return null;

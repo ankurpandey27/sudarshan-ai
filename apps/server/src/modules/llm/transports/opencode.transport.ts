@@ -16,10 +16,10 @@ const ALL_PROTOCOLS: OpencodeProtocol[] = ['chat', 'messages', 'responses', 'gem
 
 // Zen serves each model family on its own wire format.
 function inferProtocol(model: string): OpencodeProtocol {
-  const m = model.toLowerCase();
-  if (m.startsWith('claude-')) return 'messages';
-  if (m.startsWith('gpt-')) return 'responses';
-  if (m.startsWith('gemini-')) return 'gemini';
+  const lower = model.toLowerCase();
+  if (lower.startsWith('claude-')) return 'messages';
+  if (lower.startsWith('gpt-')) return 'responses';
+  if (lower.startsWith('gemini-')) return 'gemini';
   return 'chat';
 }
 

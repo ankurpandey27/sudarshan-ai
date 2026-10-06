@@ -7,8 +7,8 @@ import { localDay } from '../../../common/utils/date.util';
 export function daySeries(days: number, today: Date = new Date()): string[] {
   const out: string[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
-    out.push(localDay(d));
+    const day = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i);
+    out.push(localDay(day));
   }
   return out;
 }

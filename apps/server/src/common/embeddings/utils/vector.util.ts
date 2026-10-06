@@ -4,9 +4,9 @@
 /** Similarity of two normalised vectors, -1 to 1 (1 = same meaning). */
 export function cosine(a: Float32Array, b: Float32Array): number {
   if (a.length !== b.length) return 0;
-  let s = 0;
-  for (let i = 0; i < a.length; i++) s += a[i] * b[i];
-  return s;
+  let dot = 0;
+  for (let i = 0; i < a.length; i++) dot += a[i] * b[i];
+  return dot;
 }
 
 /** A vector as bytes for the database, and back. */

@@ -10,10 +10,10 @@ import { IndeedCard } from '../interfaces/indeed-card.interface';
 export const indeedFromage = (days: number): number => INDEED_FROMAGE_DAYS.find((d) => d >= days) ?? INDEED_FROMAGE_DAYS[INDEED_FROMAGE_DAYS.length - 1];
 
 export function indeedSearchUrl(keyword: string, location: string, postedWithinDays: number, page: number): string {
-  const q = new URLSearchParams({ q: keyword, l: /^(remote|work from home|wfh)$/i.test(location.trim()) ? 'Remote' : location.trim() });
-  if (postedWithinDays > 0) q.set('fromage', String(indeedFromage(postedWithinDays)));
-  if (page > 0) q.set('start', String(page * INDEED_PAGE_STEP));
-  return `${INDEED_ORIGIN}/jobs?${q}`;
+  const params = new URLSearchParams({ q: keyword, l: /^(remote|work from home|wfh)$/i.test(location.trim()) ? 'Remote' : location.trim() });
+  if (postedWithinDays > 0) params.set('fromage', String(indeedFromage(postedWithinDays)));
+  if (page > 0) params.set('start', String(page * INDEED_PAGE_STEP));
+  return `${INDEED_ORIGIN}/jobs?${params}`;
 }
 
 const text = (html: string | undefined): string =>

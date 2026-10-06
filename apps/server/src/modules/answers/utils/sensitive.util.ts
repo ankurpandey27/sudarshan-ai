@@ -11,8 +11,8 @@ import { SENSITIVE_QUESTION, SENSITIVE_VALUE } from '../constants/sensitive.cons
  * saved answers only.
  */
 export function isSensitive(question: string, answer = ''): boolean {
-  const q = question.toLowerCase();
-  if (PERSONAL_DETAILS.some((d) => d.test.test(q)) || SENSITIVE_QUESTION.test(q)) return true;
+  const lower = question.toLowerCase();
+  if (PERSONAL_DETAILS.some((d) => d.test.test(lower)) || SENSITIVE_QUESTION.test(lower)) return true;
   return SENSITIVE_VALUE.some((re) => re.test(answer.trim()));
 }
 
