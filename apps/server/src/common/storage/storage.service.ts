@@ -6,6 +6,7 @@ import { dirname } from 'node:path';
 import { DatabaseSync, SQLInputValue, StatementSync } from 'node:sqlite';
 import { Injectable, Logger, OnApplicationShutdown } from '@nestjs/common';
 import { MIGRATIONS } from './constants/migrations.constants';
+import { escapeRegex } from '../utils/regex.util';
 
 export type SqlParams = Record<string, SQLInputValue> | SQLInputValue[];
 
@@ -19,6 +20,11 @@ export class StorageService implements OnApplicationShutdown {
     if (file !== ':memory:') mkdirSync(dirname(file), { recursive: true });
     this.db = new DatabaseSync(file);
     this.db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;');
+    // has_term(text, term): the term as whole words - "Java" is in "Java/J2EE", not in "JavaScript".
+    this.db.function('has_term', { deterministic: true }, (text, term) => {
+      const wanted = String(term ?? '').trim().toLowerCase();
+      return wanted && new RegExp(`(^|[^a-z0-9])${escapeRegex(wanted)}($|[^a-z0-9])`).test(String(text ?? '').toLowerCase()) ? 1 : 0;
+    });
     this.migrate();
   }
 

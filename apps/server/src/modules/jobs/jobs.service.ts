@@ -48,6 +48,8 @@ interface PlaceFilters {
   workMode?: WorkMode[];
   region?: JobRegion;
   withinDays?: number;
+  /** Words a job must not mention (whole words), e.g. a skill you do not want. */
+  exclude?: string[];
 }
 
 function placeFilters(q: PlaceFilters, where: string[], params: SQLInputValue[]): void {
@@ -58,6 +60,10 @@ function placeFilters(q: PlaceFilters, where: string[], params: SQLInputValue[])
   if (q.region) {
     where.push('region = ?');
     params.push(q.region);
+  }
+  for (const term of q.exclude ?? []) {
+    where.push("NOT has_term(title || ' ' || skills || ' ' || description, ?)");
+    params.push(term);
   }
   if (q.withinDays) {
     where.push(`${WHEN_POSTED} >= ?`);

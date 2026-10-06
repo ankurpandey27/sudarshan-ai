@@ -52,6 +52,14 @@ export class ListJobsQueryDto {
   @IsEnum(JobRegion)
   region?: JobRegion;
 
+  // ?exclude=java,php: no job whose title, skills or description has one of these words.
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').map((t: string) => t.trim()).filter(Boolean) : value))
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
+  exclude?: string[];
+
   /** Only jobs posted (or found) in the last N days. */
   @IsOptional()
   @IsInt()

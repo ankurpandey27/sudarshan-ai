@@ -29,6 +29,7 @@ import { NOT_A_RESUME, REPLACES_RESUME } from './constants/background.constants'
 import { HIGH_STAKES_QUESTION, PREFERENCE_QUESTION } from './constants/inference.constants';
 import { aiTells, isWrittenAnswer, plainWords } from './utils/human-voice.util';
 import { bareNumber, FORMAT_ERROR } from './utils/bare-number.util';
+import { yesNoAsNumber } from './utils/yes-no-number.util';
 import { REWRITE_AT_TELLS } from './constants/human-voice.constants';
 import { UNTRUSTED_RULE, untrusted } from '../llm/utils/untrusted.util';
 
@@ -144,6 +145,19 @@ export class AnswerEngineService {
         // Already a number, and the site emptied the box: put it back.
         const bare = bareNumber(fromProfile.value) ?? (/^\d+(\.\d+)?$/.test(fromProfile.value.trim()) && !field.value.trim() ? fromProfile.value.trim() : null);
         const ins = bare !== null ? toInstruction(field, bare) : null;
+        if (ins) {
+          result.instructions.push(ins);
+          result.stats.fields++;
+          result.stats.profileHits++;
+          continue;
+        }
+      }
+      // A yes/no answer the site turned down as the wrong format ("Invalid input" for "Yes" in a numbers-only box):
+      // the number the question means, worked out here - the AI asked again said "Yes" again (Book An Artist,
+      // 2026-10-06).
+      if (forced && field.error && FORMAT_ERROR.test(field.error) && [FieldKind.TEXT, FieldKind.NUMBER].includes(field.kind)) {
+        const asNumber = yesNoAsNumber(field.label || field.placeholder, field.value, ctx.profile.noticePeriodDays ?? null);
+        const ins = asNumber !== null ? toInstruction(field, asNumber) : null;
         if (ins) {
           result.instructions.push(ins);
           result.stats.fields++;

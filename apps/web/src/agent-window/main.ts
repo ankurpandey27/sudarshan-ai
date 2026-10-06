@@ -8,14 +8,14 @@ import '@fontsource/instrument-serif/latin-400-italic.css';
 import '@fontsource/jetbrains-mono/latin-400.css';
 import './agent-window.css';
 import { CHAKRA_SPOKES, CHAKRA_TEETH } from '../lib/chakra';
-import { PLATFORMS, tokensShort } from '../lib/format';
+import { PLATFORMS, platformLabel, tokensShort } from '../lib/format';
 import type { AgentEvent, JobStats, LlmUsage, Settings } from '../lib/types';
 import { signConsole } from '../lib/signature';
 
 interface Status {
   running: boolean;
   phase: 'stopped' | 'idle' | 'discovering' | 'applying' | 'waiting' | 'sleeping';
-  currentJob: { title: string; company: string } | null;
+  currentJob: { title: string; company: string; platform?: string } | null;
   nextApplyAt: string | null;
   nextDiscoveryAt: string | null;
   lastDiscoveryAt: string | null;
@@ -33,10 +33,11 @@ interface View {
   label: string;
   headline: string;
   detail: string;
-  spinning: boolean;
 }
 
 const POLL_MS = 3000;
+const SVG_NS = 'http://www.w3.org/2000/svg';
+const RIM = 178;
 const byId = (id: string) => document.getElementById(id)!;
 
 function applyTheme(): void {
@@ -50,18 +51,91 @@ function applyTheme(): void {
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 }
 
-function drawChakra(): void {
+/** The chakra itself, in a -16..16 box, for the brand mark and the centre of the orbit. */
+function chakraMarkup(): string {
   const spokes = CHAKRA_SPOKES.map(
-    (a) =>
-      `<line x1="${(Math.cos(a) * 2.6).toFixed(2)}" y1="${(Math.sin(a) * 2.6).toFixed(2)}" x2="${(Math.cos(a) * 7.6).toFixed(2)}" y2="${(Math.sin(a) * 7.6).toFixed(2)}"/>`,
+    (angle) =>
+      `<line x1="${(Math.cos(angle) * 2.6).toFixed(2)}" y1="${(Math.sin(angle) * 2.6).toFixed(2)}" x2="${(Math.cos(angle) * 7.6).toFixed(2)}" y2="${(Math.sin(angle) * 7.6).toFixed(2)}"/>`,
   ).join('');
-  byId('chakra').innerHTML =
-    `<svg viewBox="-16 -16 32 32" role="img" aria-label="Sudarshan Chakra">` +
-    `<polygon points="${CHAKRA_TEETH}" fill="var(--accent)"/>` +
-    `<circle r="10.6" fill="var(--chakra-core)"/>` +
-    `<circle r="7.6" fill="none" stroke="var(--accent)" stroke-width="1.3"/>` +
-    `<g stroke="var(--accent)" stroke-width="0.9" stroke-linecap="round">${spokes}</g>` +
-    `<circle r="2.5" fill="var(--accent)"/><circle r="0.9" fill="var(--chakra-core)"/></svg>`;
+  return (
+    `<polygon points="${CHAKRA_TEETH}" style="fill:var(--accent)"/>` +
+    `<circle r="10.6" style="fill:var(--surface)"/>` +
+    `<circle r="7.6" fill="none" stroke-width="1.3" style="stroke:var(--accent)"/>` +
+    `<g stroke-width="0.9" stroke-linecap="round" style="stroke:var(--accent)">${spokes}</g>` +
+    `<circle r="2.5" style="fill:var(--accent)"/>`
+  );
+}
+
+const point = (radius: number, angle: number) => [radius * Math.cos(angle), radius * Math.sin(angle)] as const;
+function arc(radius: number, from: number, to: number): string {
+  const [x0, y0] = point(radius, from);
+  const [x1, y1] = point(radius, to);
+  return `M ${x0.toFixed(1)} ${y0.toFixed(1)} A ${radius} ${radius} 0 ${to - from > Math.PI ? 1 : 0} 1 ${x1.toFixed(1)} ${y1.toFixed(1)}`;
+}
+const span = (index: number) => {
+  const width = (2 * Math.PI) / PLATFORMS.length;
+  const from = -Math.PI / 2 + index * width + 0.06;
+  return { from, to: from + width - 0.12 };
+};
+
+/**
+ * The orbit: the chakra in the middle, a sweep while the agent runs, queued jobs circling close in and jobs to
+ * review further out, each site's daily limit as an arc on the rim, and a comet while an application is in flight.
+ */
+function drawOrbit(): void {
+  byId('brand-mark').innerHTML = `<svg viewBox="-16 -16 32 32" aria-hidden="true">${chakraMarkup()}</svg>`;
+  const rims = PLATFORMS.map((platform, index) => {
+    const { from, to } = span(index);
+    const [lx, ly] = point(RIM + 15, (from + to) / 2);
+    return (
+      `<path d="${arc(RIM, from, to)}" fill="none" stroke-width="5" stroke-linecap="round" style="stroke:var(--line)"/>` +
+      `<path id="rim-${platform.key}" fill="none" stroke-width="5" stroke-linecap="round" style="stroke:var(--p-${platform.key});filter:drop-shadow(0 0 4px var(--p-${platform.key}))"/>` +
+      `<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle">${platform.label.toUpperCase()}</text>`
+    );
+  }).join('');
+  const [sx, sy] = point(RIM - 10, -0.5);
+  const [ex, ey] = point(RIM - 10, 0);
+  byId('orbit').innerHTML =
+    `<svg viewBox="-215 -215 430 430" role="img" aria-label="Sudarshan's orbit: today's applications against each site's limit">` +
+    `<defs><radialGradient id="core"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.5"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></radialGradient>` +
+    `<linearGradient id="sweep" x1="0" x2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:0"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:.22"/></linearGradient>` +
+    `<linearGradient id="tail" x1="0" x2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:0"/><stop offset="1" style="stop-color:var(--accent)"/></linearGradient></defs>` +
+    [60, 100, 140].map((radius) => `<circle r="${radius}" fill="none" stroke-dasharray="${radius === 100 ? '0' : '2 5'}" style="stroke:var(--line)"/>`).join('') +
+    `<g class="sweep spin"><path d="M 0 0 L ${sx.toFixed(1)} ${sy.toFixed(1)} A ${RIM - 10} ${RIM - 10} 0 0 1 ${ex.toFixed(1)} ${ey.toFixed(1)} Z" fill="url(#sweep)"/></g>` +
+    `<g class="satellites outer spin" id="sat-review"></g>` +
+    `<g class="satellites spin" id="sat-queue"></g>` +
+    rims +
+    `<g class="comet"><g id="comet-angle"><g class="comet-body"><line x1="-46" y1="0" x2="34" y2="0" stroke-width="2.6" stroke-linecap="round" stroke="url(#tail)"/><circle cx="34" r="4.5" style="fill:var(--accent);filter:drop-shadow(0 0 6px var(--accent))"/></g></g></g>` +
+    `<circle r="70" fill="url(#core)"/>` +
+    `<g transform="scale(2.4)"><g class="chakra-group">${chakraMarkup()}</g></g>` +
+    `</svg>`;
+}
+
+/** Small dots circling the chakra: one per queued job (inner ring), and jobs to review (outer ring). */
+function drawSatellites(id: string, count: number, radius: number, size: number, opacity: number): void {
+  const group = byId(id);
+  const shown = Math.min(count, id === 'sat-queue' ? 24 : 40);
+  if (group.dataset.count === String(shown)) return;
+  group.dataset.count = String(shown);
+  group.replaceChildren(
+    ...Array.from({ length: shown }, (_, index) => {
+      const [x, y] = point(radius, (index / Math.max(1, shown)) * 2 * Math.PI + (id === 'sat-queue' ? 0 : 0.3));
+      const dot = document.createElementNS(SVG_NS, 'circle');
+      dot.setAttribute('cx', x.toFixed(1));
+      dot.setAttribute('cy', y.toFixed(1));
+      dot.setAttribute('r', String(size));
+      dot.style.fill = 'var(--accent)';
+      dot.style.opacity = String(opacity);
+      return dot;
+    }),
+  );
+}
+
+/** The comet flies to the arc of the site it is applying on - the arc that grows when it lands. */
+function aimComet(job: Status['currentJob']): void {
+  const index = PLATFORMS.findIndex((platform) => platform.key === job?.platform);
+  const { from, to } = span(index < 0 ? PLATFORMS.length - 1 : index);
+  byId('comet-angle').setAttribute('transform', `rotate(${(((from + to) / 2) * 180) / Math.PI})`);
 }
 
 const escape = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -78,8 +152,7 @@ function describe(s: Status): View {
       tone: 'idle',
       label: 'Resting',
       headline: 'Sudarshan is <em>resting</em>.',
-      detail: 'Press Start agent on Lakshya and this window comes to life.',
-      spinning: false,
+      detail: 'Press Start agent on Lakshya and this window comes to life: tabs open here as it searches and applies.',
     };
   }
   switch (s.phase) {
@@ -87,19 +160,15 @@ function describe(s: Status): View {
       return {
         tone: 'work',
         label: 'Applying',
-        headline: s.currentJob
-          ? `Applying to <em>${escape(s.currentJob.title)}</em> at ${escape(s.currentJob.company)}.`
-          : 'Filling an <em>application</em>.',
+        headline: s.currentJob ? `Applying to <em>${escape(s.currentJob.title)}</em> at ${escape(s.currentJob.company)}.` : 'Filling an <em>application</em>.',
         detail: 'Watch it in the tab that just opened. Leave the form to Sudarshan until it moves on.',
-        spinning: true,
       };
     case 'discovering':
       return {
         tone: 'work',
         label: 'Searching',
         headline: 'Looking for <em>new jobs</em>.',
-        detail: 'Searching LinkedIn and Naukri for your job titles and locations.',
-        spinning: true,
+        detail: 'Searching the job sites you switched on for your job titles and locations. New jobs are scored and wait for you in Review.',
       };
     case 'waiting': {
       const wait = seconds(s.nextApplyAt);
@@ -110,7 +179,6 @@ function describe(s: Status): View {
         detail:
           (wait ? `Next application in about ${wait < 90 ? `${wait} seconds` : `${Math.round(wait / 60)} minutes`}. ` : '') +
           'Gaps between applications keep your accounts safe.',
-        spinning: true,
       };
     }
     case 'sleeping':
@@ -118,20 +186,17 @@ function describe(s: Status): View {
         tone: 'idle',
         label: 'Off hours',
         headline: 'Outside your <em>active hours</em>.',
-        detail: 'Sudarshan picks up again when your active hours start. Change them in Settings.',
-        spinning: false,
+        detail: 'Sudarshan picks up again when your active hours start. Change them in Settings → Agent.',
       };
-    default:
-      if (s.queue > 0 && s.blockedSources.some((b) => /log in/i.test(b.reason))) {
-        const sites = s.blockedSources
-          .filter((b) => /log in/i.test(b.reason))
-          .map((b) => ({ linkedin: 'LinkedIn', naukri: 'Naukri' })[b.source] ?? b.source);
+    default: {
+      const logins = s.blockedSources.filter((block) => /log in/i.test(block.reason));
+      if (s.queue > 0 && logins.length) {
+        const sites = logins.map((block) => platformLabel(block.source));
         return {
           tone: 'attention',
           label: 'Log in needed',
-          headline: `Log in to <em>${sites.join(' and ')}</em> to continue.`,
-          detail: `${s.queue} approved job${s.queue === 1 ? ' is' : 's are'} waiting. Open a new tab in this window, sign in, and Sudarshan picks them up within a couple of minutes.`,
-          spinning: false,
+          headline: `Log in to <em>${escape(sites.join(' and '))}</em> to continue.`,
+          detail: `${s.queue} approved job${s.queue === 1 ? ' is' : 's are'} waiting. Open a new tab in this window and sign in (or use Settings → Site logins); Sudarshan picks them up within a couple of minutes.`,
         };
       }
       if (s.queue === 0 && s.awaitingReview > 0) {
@@ -139,44 +204,45 @@ function describe(s: Status): View {
           tone: 'attention',
           label: 'Needs your approval',
           headline: `<em>${s.awaitingReview} job${s.awaitingReview === 1 ? '' : 's'}</em> waiting for your approval.`,
-          detail: 'Sudarshan applies only to jobs you approve. Open Review, approve the ones you want, and it starts on them right away.',
-          spinning: true,
+          detail: 'Sudarshan applies only to jobs you approve. Approve them in Review, on the radar, or in one sentence with the command bar.',
         };
       }
       if (s.openQuestions > 0) {
         return {
           tone: 'attention',
           label: 'Needs you',
-          headline: `Waiting for <em>your answer</em>.`,
+          headline: 'Waiting for <em>your answer</em>.',
           detail: `${s.openQuestions} question${s.openQuestions === 1 ? '' : 's'} only you can answer. Answer once and every waiting job continues.`,
-          spinning: true,
         };
       }
       return {
         tone: 'work',
         label: 'On watch',
         headline: s.queue ? 'Getting the <em>next job</em> ready.' : 'On watch for <em>approved jobs</em>.',
-        detail: s.queue
-          ? `${s.queue} approved job${s.queue === 1 ? '' : 's'} in the queue.`
-          : 'Approve jobs in Review and Sudarshan applies to them one by one.',
-        spinning: true,
+        detail: s.queue ? `${s.queue} approved job${s.queue === 1 ? '' : 's'} in the queue.` : 'Approve jobs in Review and Sudarshan applies to them one by one.',
       };
+    }
   }
 }
 
 function render(view: View, s: Status | null): void {
-  document.body.dataset.tone = view.tone;
+  const body = document.body;
+  body.dataset.tone = view.tone;
+  body.dataset.running = String(!!s?.running);
+  body.dataset.phase = s?.running ? s.phase : 'stopped';
+  body.dataset.busy = String(s?.phase === 'applying' || s?.phase === 'discovering');
   byId('state-label').textContent = view.label;
+  byId('eyebrow').textContent = view.tone === 'offline' ? 'Not connected' : `Mission status · ${view.label}`;
   byId('headline').innerHTML = view.headline;
   byId('detail').textContent = view.detail;
-  const chakra = byId('chakra');
-  chakra.classList.toggle('spinning', view.spinning);
-  chakra.classList.toggle('resting', !view.spinning);
   document.title = view.tone === 'offline' ? 'Sudarshan' : `Sudarshan · ${view.label}`;
 
   byId('review-link').hidden = !s || s.queue > 0 || s.awaitingReview === 0;
   byId('questions-link').hidden = !s || s.openQuestions === 0;
   if (!s) return;
+  aimComet(s.phase === 'applying' ? s.currentJob : null);
+  drawSatellites('sat-queue', s.queue, 100, 3.4, 0.95);
+  drawSatellites('sat-review', s.awaitingReview, 140, 2.2, 0.4);
   byId('queue').textContent = String(s.queue);
   byId('review').textContent = String(s.awaitingReview);
   byId('questions').textContent = String(s.openQuestions);
@@ -187,31 +253,47 @@ function render(view: View, s: Status | null): void {
   byId('model').textContent = s.llm ?? 'No AI (memory only)';
 }
 
-
+let lastApplied = -1;
 function renderToday(stats: JobStats, settings: Settings | null): void {
-  byId('applied').textContent = String(stats.appliedToday);
+  const applied = byId('applied');
+  applied.textContent = String(stats.appliedToday);
+  if (lastApplied >= 0 && stats.appliedToday > lastApplied) {
+    applied.classList.remove('bump');
+    void applied.offsetWidth;
+    applied.classList.add('bump');
+  }
+  lastApplied = stats.appliedToday;
   byId('total').textContent = stats.appliedTotal.toLocaleString();
   byId('memory').textContent = stats.memoryHitRate === null ? '–' : `${Math.round(stats.memoryHitRate * 100)}%`;
   byId('speed').textContent = stats.medianApplySeconds === null ? '–' : duration(stats.medianApplySeconds);
   byId('today-date').textContent = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short' });
   byId('sites').replaceChildren(
-    ...PLATFORMS.map(({ key, label, setting }) => {
+    ...PLATFORMS.map(({ key, label, setting }, index) => {
       const done = stats.appliedTodayByPlatform[key] ?? 0;
       const cfg = settings?.sources[setting];
       const limit = cfg?.enabled ? cfg.dailyLimit : 0;
+      const used = limit ? Math.min(1, done / limit) : 0;
+      const { from, to } = span(index);
+      const rim = document.getElementById(`rim-${key}`);
+      if (rim) {
+        rim.setAttribute('d', used > 0 ? arc(RIM, from, from + (to - from) * used) : '');
+        rim.style.stroke = used >= 1 ? 'var(--warn)' : `var(--p-${key})`;
+      }
       const li = document.createElement('li');
       li.classList.toggle('off', cfg?.enabled === false);
       const row = document.createElement('div');
       row.className = 'site-row';
       const name = document.createElement('span');
-      name.textContent = label;
+      const dot = document.createElement('i');
+      dot.style.background = `var(--p-${key})`;
+      name.append(dot, label);
       const count = document.createElement('b');
       count.textContent = cfg?.enabled === false ? 'Off' : limit ? `${done} / ${limit}` : String(done);
       row.append(name, count);
       const bar = document.createElement('div');
       bar.className = limit && done >= limit ? 'bar full' : 'bar';
       const fill = document.createElement('i');
-      fill.style.width = `${limit ? Math.min(100, (done / limit) * 100) : 0}%`;
+      fill.style.width = `${used * 100}%`;
       bar.append(fill);
       li.append(row, bar);
       return li;
@@ -229,26 +311,27 @@ function renderUsage(u: LlmUsage): void {
 
 // The feed shows outcomes, not every form step.
 const noteworthy = (e: AgentEvent) => e.level !== 'info' || /^(Applying:|Searching now|Agent (started|stopped))/.test(e.message);
-const MARK: Record<AgentEvent['level'], string> = { success: '✓', warn: '!', error: '✕', info: '·' };
+let newestShown = 0;
 
 function renderFeed(events: AgentEvent[], s: Status | null): void {
   const items = events.filter(noteworthy).slice(-40).reverse();
   if (items.length) {
+    const previous = newestShown;
     byId('feed').replaceChildren(
       ...items.map((e) => {
         const li = document.createElement('li');
         li.className = e.level;
+        // Only lines that arrived since the last look slide in.
+        if (previous && e.id > previous) li.classList.add('new');
         const time = document.createElement('time');
-        time.textContent = new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const mark = document.createElement('span');
-        mark.className = 'mark';
-        mark.textContent = MARK[e.level];
+        time.textContent = new Date(e.at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
         const text = document.createElement('span');
         text.textContent = e.message;
-        li.append(time, mark, text);
+        li.append(time, text);
         return li;
       }),
     );
+    newestShown = Math.max(...items.map((e) => e.id));
   }
   // The latest step of the application in progress.
   const step = s?.phase === 'applying' ? [...events].reverse().find((e) => /^(Step \d+|Naukri:)/.test(e.message)) : undefined;
@@ -303,7 +386,6 @@ async function poll(): Promise<void> {
         label: 'Not connected',
         headline: 'Can’t reach <em>Sudarshan</em>.',
         detail: 'Is it still running in your terminal? Start it again with npm start and this page reconnects by itself.',
-        spinning: false,
       },
       null,
     );
@@ -312,7 +394,7 @@ async function poll(): Promise<void> {
 
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
-drawChakra();
+drawOrbit();
 void poll();
 setInterval(() => void poll(), POLL_MS);
 

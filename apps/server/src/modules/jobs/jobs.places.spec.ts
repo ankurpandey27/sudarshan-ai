@@ -113,3 +113,18 @@ describe('the Approved tab lists jobs in the order they will be applied', () => 
     expect(jobs.list({ status: [JobStatus.APPROVED], sort: 'queue' }).items[0].title).toBe('Backend foreign');
   });
 });
+
+describe('excluding words, as whole words (command bar: "skip anything asking Java")', () => {
+  it('drops jobs that mention the word, keeps ones that only contain it inside another word', () => {
+    const { jobs, storage } = setup();
+    const save = (id: string, title: string, description: string) => {
+      const [saved] = jobs.saveDiscovered([{ source: JobSource.LINKEDIN, externalId: id, url: `https://www.linkedin.com/jobs/view/${id}/`, title, company: 'Acme', location: 'Pune', isRemote: false, easyApply: true, description }]);
+      storage.run('UPDATE jobs SET status = ?, score = 90 WHERE id = ?', [JobStatus.REVIEW, saved]);
+    };
+    save('1', 'Backend Engineer', 'Java/J2EE and Spring');
+    save('2', 'Frontend Engineer', 'JavaScript and React');
+    save('3', 'Node.js Developer', 'TypeScript');
+    expect(jobs.list({ status: [JobStatus.REVIEW], exclude: ['java'] }).items.map((j) => j.title).sort()).toEqual(['Frontend Engineer', 'Node.js Developer']);
+    expect(jobs.approveStrong(80, undefined, { exclude: ['java', 'react'] })).toBe(1);
+  });
+});

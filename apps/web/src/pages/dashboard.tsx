@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { useMemo, useState, type ReactNode } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { Link, useLocation } from 'react-router';
 import { useMutation } from '@tanstack/react-query';
 import { ArrowDownRight, ArrowRight, ArrowUpRight, Radar } from 'lucide-react';
 import { AttentionSummary } from '../components/attention-summary';
@@ -16,6 +16,7 @@ import { AiUsageCard } from '../components/ai-usage-card';
 import { TasteCard } from '../components/taste-card';
 import { Tabs, useTab, type TabDef } from '../components/tabs';
 import { ApplyOnCard } from '../components/apply-on-card';
+import { MissionControl } from '../components/mission/mission-control';
 import { TodayCard } from '../components/today-card';
 import { PLATFORM_COLOR } from '../components/platform-badge';
 import { Button, Card, CardHeader } from '../components/ui';
@@ -27,8 +28,9 @@ import { Sparkline } from '../components/charts/sparkline';
 import { BarList } from '../components/charts/bar-list';
 import { Pipeline } from '../components/charts/pipeline';
 
-type View = 'overview' | 'insights' | 'activity';
+type View = 'mission' | 'overview' | 'insights' | 'activity';
 const VIEWS: readonly TabDef<View>[] = [
+  { id: 'mission', label: 'Mission control' },
   { id: 'overview', label: 'Overview' },
   { id: 'insights', label: 'Insights' },
   { id: 'activity', label: 'Activity' },
@@ -54,6 +56,13 @@ export function Dashboard() {
   const { data: settings } = useSettings();
   const { data: usage } = useUsage();
   const [view, setView] = useTab(VIEWS, 'view');
+  // A link to a card ("/?view=overview#apply-on") scrolls to it once the view is on screen.
+  const { hash } = useLocation();
+  useEffect(() => {
+    if (!hash) return;
+    const timer = window.setTimeout(() => document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    return () => window.clearTimeout(timer);
+  }, [hash, view]);
   const [days, setDays] = useState<Range>(savedRange);
   const [platform, setPlatform] = useState<JobPlatform | ''>('');
   const { data: report, isLoading } = useAnalytics(days, platform);
@@ -110,7 +119,9 @@ export function Dashboard() {
 
       <Tabs tabs={VIEWS} value={view} onChange={setView} />
 
-      {view !== 'activity' && (
+      {view === 'mission' && <MissionControl />}
+
+      {(view === 'overview' || view === 'insights') && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Segmented label="Range" value={days} options={RANGES.map((r) => ({ value: r, label: `${r} days` }))} onChange={pickRange} />
           <Segmented

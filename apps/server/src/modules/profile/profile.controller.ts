@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import type { Response } from 'express';
+import { sendDataFile } from '../../common/utils/send-data-file.util';
 import { RESUME_MAX_BYTES } from './constants/profile.constants';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ProfileState } from './interfaces/profile-state.interface';
@@ -56,6 +57,6 @@ export class ProfileController {
   downloadResume(@Res() res: Response): void {
     const path = this.profile.resumePath();
     if (!path) throw new NotFoundException('No resume uploaded yet');
-    res.sendFile(path);
+    sendDataFile(res, path);
   }
 }

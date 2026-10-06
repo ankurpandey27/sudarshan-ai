@@ -197,6 +197,7 @@
     <a class="item" href="#daily">A typical day</a>
     <div class="group">The pages</div>
     <a class="item" href="#lakshya">Lakshya</a>
+    <a class="item" href="#mission">Mission control</a>
     <a class="item" href="#attention">Needs attention</a>
     <a class="item" href="#review">Review</a>
     <a class="item" href="#questions">Questions</a>
@@ -241,7 +242,7 @@
           <a class="btn primary" href="#install">Get started</a>
           <a class="btn" href="#how">How it works</a>
         </div>
-        <figure><img src="img/dashboard-dark.png" alt="Lakshya, Sudarshan's main page, in the dark theme" /></figure>
+        <figure><img src="img/dashboard-dark.png" alt="Lakshya's Mission control in the dark theme: the radar of jobs around the chakra" /></figure>
       </div>
 
       <h3>Why the name</h3>
@@ -345,14 +346,15 @@ npm start</code></pre>
       <h2>Lakshya</h2>
       <p class="sub">Your job hunt at a glance.</p>
       <div class="www">
-        <div><b>What it is</b><p>The main page: applications sent, jobs found, match rate, what is waiting, and charts of how your hunt is going.</p></div>
+        <div><b>What it is</b><p>The main page, in four views: <a href="#mission">Mission control</a> (live), Overview, Insights and Activity.</p></div>
         <div><b>Why</b><p>One look tells you whether Sudarshan is working, what it achieved and what needs you, without reading logs.</p></div>
-        <div><b>How it works</b><p>Everything updates live while the agent runs. Pick 7, 30 or 90 days and one platform or all of them.</p></div>
+        <div><b>How it works</b><p>Everything updates live while the agent runs. Overview and Insights cover 7, 30 or 90 days, for one platform or all of them.</p></div>
       </div>
       <figure><img src="img/dashboard.png" alt="Lakshya, Overview tab" /><figcaption>Overview: the headline numbers, applications per day (by platform) and the pipeline from found to applied.</figcaption></figure>
-      <h3>The three views</h3>
+      <h3>The views</h3>
       <table class="wrap">
         <tr><th>View</th><th>What you see</th></tr>
+        <tr><td>Mission control</td><td>Opens first. The live view: a radar of every job waiting for you, what the agent is doing right now, what needs you, and today on a timeline. See <a href="#mission">Mission control</a>.</td></tr>
         <tr><td>Overview</td><td><b>Applications sent</b>, <b>Jobs found</b>, <b>Match rate</b> (share of jobs worth a look) and <b>Waiting</b> (in the queue, to review, questions for you). The <b>Pipeline</b> shows how many jobs went from found, to worth a look, to approved, to applied.</td></tr>
         <tr><td>Insights</td><td><b>Match quality</b> (score spread against your apply score), <b>Where your applications went</b> per platform, <b>Skills jobs asked for that you don't list</b> (worth adding, or learning next), <b>Why jobs were skipped</b> (each reason is a setting you can change) and <b>Your interest</b>.</td></tr>
         <tr><td>Activity</td><td>The latest things the agent did, as on the Flight log.</td></tr>
@@ -362,7 +364,7 @@ npm start</code></pre>
         <figure><img src="img/dashboard-activity.png" alt="Lakshya, Activity tab" /><figcaption>Activity: what happened, most recent first.</figcaption></figure>
       </div>
       <h3>Today and Apply on</h3>
-      <p>Below the charts, <b>Today</b> shows how many applications went out today and how much of each site's daily limit is used: a bar turns orange when a site has reached its limit and waits until tomorrow. Next to it, <b>Apply on</b> has a card for every job site, with what Sudarshan does there, today's applications against the limit, and how many jobs are queued. The switch on each card turns that site on or off; a site that is off keeps its jobs waiting, nothing is lost. A card also says when a site is paused, in careful mode, or refusing applications for a while.</p>
+      <p>On Overview, below the charts, <b>Today</b> shows how many applications went out today and how much of each site's daily limit is used: a bar turns orange when a site has reached its limit and waits until tomorrow. Next to it, <b>Apply on</b> has a card for every job site, with what Sudarshan does there, today's applications against the limit, and how many jobs are queued. The switch on each card turns that site on or off; a site that is off keeps its jobs waiting, nothing is lost. A card also says when a site is paused, in careful mode, or refusing applications for a while.</p>
       <figure><img src="img/dashboard-today.png" alt="Lakshya: the Today card and the Apply on cards" /><figcaption>Today (left) and one card per job site (right), each with its switch, what it does and today's use of its limit.</figcaption></figure>
       <h3>The controls</h3>
       <ul>
@@ -371,6 +373,55 @@ npm start</code></pre>
         <li>The yellow bar ("2 need you") opens <a href="#attention">Needs attention</a>.</li>
         <li>The moon button (bottom left) switches light and dark. This guide follows it.</li>
       </ul>
+    </section>
+
+
+    <!-- ============================== MISSION CONTROL ============================== -->
+    <section class="doc" id="mission">
+      <div class="eyebrow">The pages</div>
+      <h2>Mission control</h2>
+      <p class="sub">Lakshya's first view: watch the chakra go out, finish the task and return.</p>
+      <div class="www">
+        <div><b>What it is</b><p>A live view of your hunt: a radar of every job waiting for you, a window on what the agent's browser is doing, what needs you, and today on a timeline - with a command bar to act in one sentence.</p></div>
+        <div><b>Why</b><p>Lists and charts tell you what happened. This shows it happening: where your best matches are, which country they are in, and each application as it flies out.</p></div>
+        <div><b>How it works</b><p>Everything is real and live: the dots are your jobs, the comets are the agent's applications, the pictures are its browser's own. Nothing moves that the agent is not doing.</p></div>
+      </div>
+      <figure><img src="img/mission-control.png" alt="Mission control while the agent applies: a comet in flight, the Live Eye picture and steps, and Needs you" /><figcaption>While the agent applies: a comet flies out from the chakra, the Live Eye shows the form being filled, and Needs you lists what waits on you.</figcaption></figure>
+
+      <h3>The radar</h3>
+      <p>Every job waiting in Review or queued to apply is a dot, coloured by its site (the 200 best matches when there are more).</p>
+      <table class="wrap">
+        <tr><th>On the radar</th><th>What it means</th></tr>
+        <tr><td>Distance from the chakra</td><td>The score. Closer is a better match; the rings are 90+, 80+, 70+ and 50+.</td></tr>
+        <tr><td>Left half / right half</td><td>Left: jobs in your country (the one on your Profile). Right: abroad. Jobs that do not say where sit in a wedge at the bottom ("not said"). The same split as <a href="#review">Review's Where filter</a>.</td></tr>
+        <tr><td>A ring around a dot</td><td>The job is approved and queued to apply.</td></tr>
+        <tr><td>The sweep</td><td>Circles while the agent runs - faster while it searches - and lights each job as it passes. New jobs from a search grow in.</td></tr>
+        <tr><td>Comets</td><td>An application in flight: it leaves the chakra when the agent starts on a job, flies towards the arc of the site it is applying on (a LinkedIn application flies to LinkedIn's arc), holds while the form is filled, and lands on that arc when it ends - a <b>green</b> burst when it went through, <b>orange</b> when it was handed to you or put back, <b>red</b> when it failed.</td></tr>
+        <tr><td>Arcs on the rim</td><td>Each site's daily limit, with the site's name, filling as applications go out; orange when the limit is reached. The arc a comet is flying to lights up and its name turns gold. Hover one for the numbers.</td></tr>
+        <tr><td>The chakra</td><td>Turns slowly when the agent rests, faster while it applies. The word under it says what the agent is doing.</td></tr>
+      </table>
+      <figure><img src="img/mission-probe.png" alt="A job's card on the radar, with its score breakdown and actions" /><figcaption>Hover a dot for its card: the score, what makes it up, the summary, and its actions. Click the dot to keep the card open.</figcaption></figure>
+      <p><b>Acting on a job:</b> on a job to review, <kbd>A</kbd> approves, <kbd>S</kbd> skips and <kbd>X</kbd> dismisses; on a queued job, <kbd>N</kbd> applies now and <kbd>U</kbd> moves it back to review. <kbd>Esc</kbd> closes the card. These do exactly what the same buttons on <a href="#review">Review</a> do.</p>
+
+      <h3>The command bar</h3>
+      <p>Say what you want in a sentence, then press <kbd>Enter</kbd>. <kbd>Ctrl</kbd> + <kbd>K</kbd> jumps to it.</p>
+      <figure><img src="img/mission-command.png" alt="The command bar with a sentence understood as chips, and the matching job lit on the radar" /><figcaption>The chips show what was understood; the radar dims everything else; the button says what Enter will do.</figcaption></figure>
+      <ul>
+        <li><b>It understands:</b> remote, hybrid, on-site; in your country ("in India", "my country") or abroad ("abroad", "not in India"); a score ("above 80", "85+"); a site ("on LinkedIn"); how recent ("today", "this week", "last 3 days"); and words to leave out ("skip anything asking Java", "without PHP or Angular"). Left-out words match whole words, so "Java" does not leave out JavaScript jobs.</li>
+        <li><b>Starting with apply, approve or queue</b> approves the matching jobs in Review - the button shows how many first. Anything else shows them in Review with the filters Review has (work type, where, how recent).</li>
+        <li>It is read on your computer, without any AI - it works the same with every model, or none. Words it does not know are simply not used; the chips always show what was.</li>
+      </ul>
+
+      <h3>Live Eye</h3>
+      <p>The application in progress: the newest picture of the agent's browser (one is taken at each step of the form) and each step as it happens - "filled 4 fields (3 profile, 1 memory, 0 AI)", "Submit application". When nothing is being applied to, it says why: resting, the time of the next application, or nothing approved yet. The pictures are the same ones kept for each attempt's replay in <a href="#applications">Applications</a>.</p>
+
+      <h3>Needs you</h3>
+      <p>Questions only you can answer, with their choices as one-tap buttons (or a box to type in, pre-filled with a suggestion, when a question takes several choices) and how many jobs each answer unblocks; and jobs to do by hand (a captcha, a login) with <b>Continue</b> when their tab is still open and <b>Open in agent browser</b>. The count is what waits on you now: questions, and hand-overs whose tab is still open. Answers are saved to <a href="#answers">Answer memory</a>, as on the <a href="#questions">Questions</a> page.</p>
+
+      <h3>Flight recorder</h3>
+      <figure><img src="img/mission-recorder.png" alt="The flight recorder: today's applications, hand-overs, searches and failures on a timeline" /><figcaption>Today across your active hours, in four lanes. The playhead is now.</figcaption></figure>
+      <p>Every application, hand-over, search and failure from today's <a href="#flightlog">Flight log</a>, on one line. Drag along it (or use the arrow keys) to see what had happened by then and the nearest event; let go and it returns to now.</p>
+      <div class="note info"><b>Calm when you want it.</b> With "reduce motion" turned on in your system settings, the radar and its comets stay still; everything else works the same.</div>
     </section>
 
     <!-- ============================== ATTENTION ============================== -->
@@ -557,13 +608,21 @@ npm start</code></pre>
     <section class="doc" id="window">
       <div class="eyebrow">The pages</div>
       <h2>The agent window</h2>
-      <p class="sub">The page Sudarshan's own browser shows while it works.</p>
+      <p class="sub">The page Sudarshan's own browser shows while it works - its mission control.</p>
       <div class="www">
-        <div><b>What it is</b><p>A live status page in the agent's browser: what it is doing, today's applications against each site's daily limit, totals, AI usage and the schedule.</p></div>
-        <div><b>Why</b><p>When you glance at the agent's window you see at once whether it is working, resting or waiting for you.</p></div>
-        <div><b>How it works</b><p>It updates by itself. The chakra turns faster while the agent works. <b>Open Lakshya</b> brings you back to the app.</p></div>
+        <div><b>What it is</b><p>A live status page in the agent's browser: what it is doing right now, today against each site's daily limit, the queue, a live feed, AI usage and the schedule.</p></div>
+        <div><b>Why</b><p>When you glance at the agent's window you see at once whether it is working, resting or waiting for you - and what to do about it.</p></div>
+        <div><b>How it works</b><p>It updates itself every few seconds and follows your light or dark theme. <b>Open Lakshya</b> brings you back to the app.</p></div>
       </div>
-      <figure><img src="img/agent-window.png" alt="The agent window" /><figcaption>Today against each site's limit, totals ("Filled without AI" grows as memory takes over), recent activity and AI usage.</figcaption></figure>
+      <figure><img src="img/agent-window.png" alt="The agent window: the orbit, today's applications per site, the live feed, AI usage and schedule" /><figcaption>The orbit in the middle, today on the left, the live feed, AI usage and schedule on the right.</figcaption></figure>
+      <table class="wrap">
+        <tr><th>Part</th><th>What it shows</th></tr>
+        <tr><td>The orbit</td><td>The chakra in the middle turns slowly when resting and fast while working. A sweep circles while the agent runs (faster while it searches). Each queued job is a dot circling close in; jobs waiting for your review circle further out. Each site's daily limit is an arc on the rim, filling as applications go out, orange when it is reached. While an application is in flight, a comet flies out from the chakra.</td></tr>
+        <tr><td>Mission status</td><td>What it is doing in plain words - applying (with the job and its current step), searching, pausing between applications, outside active hours, or what it needs from you (a log-in, your approval, an answer), with a button to get it done.</td></tr>
+        <tr><td>Today</td><td>Applications today against each site's limit, and totals: in the queue, to review, questions for you, the share of fields filled without AI, and the usual time per application.</td></tr>
+        <tr><td>Live feed</td><td>Searches, applications and hand-overs as they happen, newest first; new lines slide in. <b>Flight log</b> opens the full log.</td></tr>
+        <tr><td>AI usage and schedule</td><td>Tokens used today, this month and in all, then when the next application and search are due and which AI model is in use.</td></tr>
+      </table>
     </section>
 
     <!-- ============================== SETTINGS: AI ============================== -->
@@ -743,7 +802,7 @@ npm start</code></pre>
       <ul>
         <li><b>High-stakes questions are never guessed:</b> salary, notice period, joining date, relocation, visa and work permits, legal or signed declarations, ID or bank numbers, date of birth.</li>
         <li><b>A pre-filled answer that contradicts your profile is corrected,</b> for plain facts like your school, city, phone, salary and notice period. Some job sites pre-fill from an old profile of theirs.</li>
-        <li><b>Answers fit the box:</b> "30" in a box that wants a number, not "30 days"; your phone with your country code when the box shows a dialling code.</li>
+        <li><b>Answers fit the box:</b> "30" in a box that wants a number, not "30 days"; your phone with your country code when the box shows a dialling code. When a site turns down a "Yes" or "No" because its box takes only a number, the answer goes in again as the number the question means: your notice period in days for a question about notice or starting, the number the question names ("within 30 days"), or else 1 for Yes and 0 for No.</li>
         <li><b>Job posts cannot steer the AI.</b> Anything written by strangers is marked as data, never instructions. A post that tries to talk to AI tools is scored by rules only.</li>
         <li><b>Your personal identifiers never reach the AI:</b> phone, email, address, date of birth, PAN, Aadhaar, passport and bank details are hidden from it and filled from your profile only.</li>
       </ul>

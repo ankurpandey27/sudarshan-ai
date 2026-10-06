@@ -102,7 +102,7 @@ export type AgentPhase = 'stopped' | 'idle' | 'discovering' | 'applying' | 'wait
 export interface AgentStatus {
   running: boolean;
   phase: AgentPhase;
-  currentJob: { id: number; title: string; company: string } | null;
+  currentJob: { id: number; title: string; company: string; platform: JobPlatform } | null;
   nextDiscoveryAt: string | null;
   nextApplyAt: string | null;
   lastDiscoveryAt: string | null;

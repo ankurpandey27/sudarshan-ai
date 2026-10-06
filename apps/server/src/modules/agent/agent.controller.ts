@@ -1,7 +1,11 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Body, Controller, Get, HttpCode, Param, ParseIntPipe, Post, ServiceUnavailableException, ParseEnumPipe } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, NotFoundException, Param, ParseIntPipe, Post, Res, ServiceUnavailableException, ParseEnumPipe } from '@nestjs/common';
+import { existsSync } from 'node:fs';
+import { Response } from 'express';
+import { BrowserService } from '../browser/browser.service';
+import { LiveApplication } from '../apply/interfaces/live-application.interface';
 import { ApplyResult } from '../apply/interfaces/apply-adapter.interface';
 import { ApplyService } from '../apply/apply.service';
 import { BrowserUnavailableError } from '../browser/errors/browser-unavailable.error';
@@ -14,6 +18,7 @@ import { PlatformHealthService } from '../platform-health/platform-health.servic
 import { PlatformHealth } from '../platform-health/interfaces/platform-health.interface';
 import { JobPlatform } from '../jobs/enums/job-platform.enum';
 import { RescueService } from '../form-engine/rescue.service';
+import { sendDataFile } from '../../common/utils/send-data-file.util';
 
 @Controller('agent')
 export class AgentController {
@@ -23,6 +28,7 @@ export class AgentController {
     private readonly health: PlatformHealthService,
     private readonly rescue: RescueService,
     private readonly apply: ApplyService,
+    private readonly browser: BrowserService,
   ) {}
 
   @Get('insights')
@@ -41,6 +47,21 @@ export class AgentController {
   @Get('status')
   status(): AgentStatus {
     return this.agent.status();
+  }
+
+  /** The application in progress, for the Live Eye: its job and the step pictures so far. */
+  @Get('live')
+  live(): LiveApplication | null {
+    return this.apply.live();
+  }
+
+  /** A step picture of the application in progress. Finished attempts' pictures are under /jobs/:id/attempts. */
+  @Get('live/shots/:attemptId/:index')
+  liveShot(@Param('attemptId', ParseIntPipe) attemptId: number, @Param('index', ParseIntPipe) index: number, @Res() res: Response): void {
+    const file = this.apply.liveShotFile(attemptId, index);
+    const path = file ? this.browser.shotPath(file) : null;
+    if (!path || !existsSync(path)) throw new NotFoundException('No such picture - the application may have finished');
+    sendDataFile(res, path, 600);
   }
 
   @Post('start')
