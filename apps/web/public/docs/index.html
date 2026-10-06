@@ -608,13 +608,21 @@ npm start</code></pre>
     <section class="doc" id="window">
       <div class="eyebrow">The pages</div>
       <h2>The agent window</h2>
-      <p class="sub">The page Sudarshan's own browser shows while it works.</p>
+      <p class="sub">The page Sudarshan's own browser shows while it works - its mission control.</p>
       <div class="www">
-        <div><b>What it is</b><p>A live status page in the agent's browser: what it is doing, today's applications against each site's daily limit, totals, AI usage and the schedule.</p></div>
-        <div><b>Why</b><p>When you glance at the agent's window you see at once whether it is working, resting or waiting for you.</p></div>
-        <div><b>How it works</b><p>It updates by itself. The chakra turns faster while the agent works. <b>Open Lakshya</b> brings you back to the app.</p></div>
+        <div><b>What it is</b><p>A live status page in the agent's browser: what it is doing right now, today against each site's daily limit, the queue, a live feed, AI usage and the schedule.</p></div>
+        <div><b>Why</b><p>When you glance at the agent's window you see at once whether it is working, resting or waiting for you - and what to do about it.</p></div>
+        <div><b>How it works</b><p>It updates itself every few seconds and follows your light or dark theme. <b>Open Lakshya</b> brings you back to the app.</p></div>
       </div>
-      <figure><img src="img/agent-window.png" alt="The agent window" /><figcaption>Today against each site's limit, totals ("Filled without AI" grows as memory takes over), recent activity and AI usage.</figcaption></figure>
+      <figure><img src="img/agent-window.png" alt="The agent window: the orbit, today's applications per site, the live feed, AI usage and schedule" /><figcaption>The orbit in the middle, today on the left, the live feed, AI usage and schedule on the right.</figcaption></figure>
+      <table class="wrap">
+        <tr><th>Part</th><th>What it shows</th></tr>
+        <tr><td>The orbit</td><td>The chakra in the middle turns slowly when resting and fast while working. A sweep circles while the agent runs (faster while it searches). Each queued job is a dot circling close in; jobs waiting for your review circle further out. Each site's daily limit is an arc on the rim, filling as applications go out, orange when it is reached. While an application is in flight, a comet flies out from the chakra.</td></tr>
+        <tr><td>Mission status</td><td>What it is doing in plain words - applying (with the job and its current step), searching, pausing between applications, outside active hours, or what it needs from you (a log-in, your approval, an answer), with a button to get it done.</td></tr>
+        <tr><td>Today</td><td>Applications today against each site's limit, and totals: in the queue, to review, questions for you, the share of fields filled without AI, and the usual time per application.</td></tr>
+        <tr><td>Live feed</td><td>Searches, applications and hand-overs as they happen, newest first; new lines slide in. <b>Flight log</b> opens the full log.</td></tr>
+        <tr><td>AI usage and schedule</td><td>Tokens used today, this month and in all, then when the next application and search are due and which AI model is in use.</td></tr>
+      </table>
     </section>
 
     <!-- ============================== SETTINGS: AI ============================== -->
