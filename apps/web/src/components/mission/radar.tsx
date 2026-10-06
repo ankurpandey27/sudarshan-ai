@@ -64,6 +64,8 @@ interface Flight {
   head: SVGCircleElement;
   gradient: SVGLinearGradientElement;
   reachedAt: number;
+  /** The site whose arc it flies to. */
+  site: string | null;
 }
 
 /** How an application ended, from the job's new status: anything but "applying" ends its flight. */
@@ -116,6 +118,12 @@ export function Radar({
   live.current = { running, phase };
   const [hovered, setHovered] = useState<number | null>(null);
   const [pinned, setPinned] = useState<number | null>(null);
+  // Sites a comet is flying to right now: their arc lights up and their name turns gold.
+  const [aimedAt, setAimedAt] = useState<Record<string, number>>({});
+  const aim = (site: string | null, change: 1 | -1) => {
+    if (!site) return;
+    setAimedAt((current) => ({ ...current, [site]: Math.max(0, (current[site] ?? 0) + change) }));
+  };
   const still = useMemo(() => matchMedia('(prefers-reduced-motion: reduce)').matches, []);
 
   const placed = useMemo(
@@ -175,8 +183,24 @@ export function Radar({
     head.style.filter = 'drop-shadow(0 0 6px var(--accent))';
     cometLayer.current.append(line, head);
     const job = jobs.find((candidate) => candidate.id === jobId);
-    const angle = siteAngle(platform ?? job?.platform) ?? (job ? angleFor(job) : angleFor({ id: jobId, region: null }));
-    flights.current.set(jobId, { jobId, angle, startedAt: performance.now(), endedAt: null, outcome: null, line, head, gradient, reachedAt: 0 });
+    const site = platform || job?.platform;
+    const angle = siteAngle(site) ?? (job ? angleFor(job) : angleFor({ id: jobId, region: null }));
+    // Which site a comet flies to, readable on the page (and in tests).
+    line.dataset.site = site ?? '';
+    line.dataset.job = String(jobId);
+    flights.current.set(jobId, { jobId, angle, startedAt: performance.now(), endedAt: null, outcome: null, line, head, gradient, reachedAt: 0, site: site ?? null });
+    if (siteAngle(site) !== null) aim(site ?? null, 1);
+    // Drawn where it starts at once: a comet with no frame yet (a tab in the background) must not point the wrong way.
+    const start = pointAt(50, angle);
+    const tail = pointAt(30, angle);
+    for (const node of [line, gradient]) {
+      node.setAttribute('x1', String(tail.x));
+      node.setAttribute('y1', String(tail.y));
+      node.setAttribute('x2', String(start.x));
+      node.setAttribute('y2', String(start.y));
+    }
+    head.setAttribute('cx', String(start.x));
+    head.setAttribute('cy', String(start.y));
   };
 
   useEffect(() => {
@@ -281,6 +305,7 @@ export function Radar({
             flight.head.remove();
             flight.gradient.remove();
             flights.current.delete(flight.jobId);
+            if (siteAngle(flight.site ?? undefined) !== null) aim(flight.site, -1);
             continue;
           }
         }
@@ -373,10 +398,29 @@ export function Radar({
           const from = -Math.PI / 2 + index * span + 0.05;
           const to = from + span - 0.1;
           const used = site.limit ? Math.min(1, site.done / site.limit) : 0;
+          const aimed = (aimedAt[site.key] ?? 0) > 0;
+          const name = pointAt(RIM - 20, (from + to) / 2);
           return (
             <g key={site.key}>
               <title>{`${site.label}: ${site.enabled ? `${site.done} of ${site.limit} today` : 'off'}`}</title>
-              <path d={arcPath(RIM, from, to)} fill="none" strokeWidth={5} strokeLinecap="round" style={{ stroke: 'var(--line)', opacity: site.enabled ? 1 : 0.4 }} />
+              <path
+                d={arcPath(RIM, from, to)}
+                fill="none"
+                strokeWidth={aimed ? 7 : 5}
+                strokeLinecap="round"
+                className={aimed ? 'arc-aimed' : undefined}
+                style={{ stroke: aimed ? site.color : 'var(--line)', opacity: aimed ? 0.55 : site.enabled ? 1 : 0.4 }}
+              />
+              <text
+                x={name.x}
+                y={name.y}
+                textAnchor="middle"
+                dominantBaseline="middle"
+                pointerEvents="none"
+                style={{ fill: aimed ? 'var(--accent)' : 'var(--ink-3)', font: `${aimed ? 600 : 400} 9.5px "JetBrains Mono", monospace`, letterSpacing: '0.12em', opacity: aimed || site.enabled ? 1 : 0.5 }}
+              >
+                {site.label.toUpperCase()}
+              </text>
               {used > 0 && (
                 <path d={arcPath(RIM, from, from + (to - from) * used)} fill="none" strokeWidth={5} strokeLinecap="round" style={{ stroke: used >= 1 ? 'var(--warn)' : site.color, filter: `drop-shadow(0 0 4px ${site.color})` }} />
               )}

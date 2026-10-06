@@ -27,6 +27,10 @@
 
 .radar-hit { cursor: pointer; }
 
+/* The arc a comet is flying to. */
+.arc-aimed { animation: arc-aimed 1.4s ease-in-out infinite; }
+@keyframes arc-aimed { 50% { opacity: 0.95; } }
+
 .mission-probe { animation: mission-rise 0.18s ease-out; }
 @keyframes mission-rise { from { opacity: 0; transform: translateY(4px); } }
 
@@ -46,5 +50,5 @@
 @keyframes command-caret { 50% { opacity: 0; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .radar-dot, .mission-probe, .live-scan, .needs-glow, .count-bump, .command-caret { animation: none !important; }
+  .radar-dot, .arc-aimed, .mission-probe, .live-scan, .needs-glow, .count-bump, .command-caret { animation: none !important; }
 }
