@@ -1,0 +1,50 @@
+/* Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License. */
+/* SPDX-License-Identifier: MIT */
+
+/* Mission control: Lakshya's live view. Built on the app's tokens, so it follows light and dark. */
+
+.mission-stage {
+  background:
+    radial-gradient(60% 55% at 50% 50%, color-mix(in oklab, var(--accent) 9%, transparent), transparent 70%),
+    var(--surface);
+}
+
+.radar-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition: opacity 0.3s ease;
+  cursor: pointer;
+}
+.radar-dot.twinkle { animation: radar-twinkle 3.4s ease-in-out infinite; }
+.radar-dot.ping { animation: radar-ping 0.75s ease-out; }
+.radar-dot.born { animation: radar-born 0.9s cubic-bezier(0.2, 0.9, 0.3, 1.4) both; }
+.radar-dot.dim { opacity: 0.18; }
+.radar-dot.hot { filter: drop-shadow(0 0 6px var(--accent)); }
+
+@keyframes radar-twinkle { 50% { opacity: 0.45; } }
+@keyframes radar-ping { 0% { transform: scale(2.4); filter: brightness(1.8); } 100% { transform: none; } }
+@keyframes radar-born { from { transform: scale(0); opacity: 0; } }
+
+.radar-hit { cursor: pointer; }
+
+.mission-probe { animation: mission-rise 0.18s ease-out; }
+@keyframes mission-rise { from { opacity: 0; transform: translateY(4px); } }
+
+.live-scan {
+  background: linear-gradient(180deg, transparent, color-mix(in oklab, var(--accent) 22%, transparent), transparent);
+  animation: live-scan 2.6s ease-in-out infinite;
+}
+@keyframes live-scan { 0% { top: 0%; } 100% { top: 92%; } }
+
+.needs-glow { animation: needs-glow 2.4s ease-in-out infinite; }
+@keyframes needs-glow { 50% { box-shadow: inset 2px 0 0 var(--warn), 0 0 22px -10px var(--warn); } }
+
+.count-bump { display: inline-block; animation: count-bump 0.5s ease; }
+@keyframes count-bump { 30% { transform: scale(1.12); color: var(--accent); } }
+
+.command-caret { animation: command-caret 1s steps(1) infinite; }
+@keyframes command-caret { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .radar-dot, .mission-probe, .live-scan, .needs-glow, .count-bump, .command-caret { animation: none !important; }
+}

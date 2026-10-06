@@ -69,7 +69,7 @@ export class JobsController {
   @Post('approve-strong')
   @HttpCode(200)
   approveStrong(@Body() dto: ApproveStrongDto): { updated: number } {
-    return { updated: this.jobs.approveStrong(dto.minScore, dto.platform, { workMode: dto.workMode, region: dto.region, withinDays: dto.withinDays }) };
+    return { updated: this.jobs.approveStrong(dto.minScore, dto.platform, { workMode: dto.workMode, region: dto.region, withinDays: dto.withinDays, exclude: dto.exclude }) };
   }
 
   /** Back to review - out of the queue, or from "needs attention"; a job being applied to right now is not touched. */

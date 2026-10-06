@@ -38,6 +38,7 @@ import { AttemptShot } from '../jobs/interfaces/attempt.interface';
 import { LearnersTrainerService } from '../learners/learners-trainer.service';
 import { CONTINUE_IDLE_MS, NEW_QUESTIONS, PAGE_SWAPPED_ERROR, TAB_CLOSED, TAB_CLOSED_ENDING, MAX_NETWORK_RETRIES, MAX_OPEN_TABS, MAX_SHOTS, NETWORK_ERROR } from './constants/apply.constants';
 import { OpenTab } from './interfaces/open-tab.interface';
+import { LiveApplication } from './interfaces/live-application.interface';
 import { RunFormOptions } from '../form-engine/interfaces/form-run.interface';
 import { AppSettings } from '../settings/interfaces/app-settings.interface';
 import { onJobBoard } from './utils/offsite-url.util';
@@ -51,6 +52,8 @@ export class ApplyService {
 
   // Step pictures of each running attempt, saved with it when it finishes.
   private readonly shots = new Map<number, AttemptShot[]>();
+  /** Attempts in progress and their job, for the Live Eye. */
+  private readonly liveJobs = new Map<number, number>();
   // Tabs handed over to you, by job: carried on from once you have unblocked them.
   private readonly tabs = new Map<number, OpenTab>();
 
@@ -92,6 +95,7 @@ export class ApplyService {
     };
     const attemptId = this.jobs.startAttempt(job.id);
     this.shots.set(attemptId, []);
+    this.liveJobs.set(attemptId, job.id);
     this.jobs.setStatus(job.id, JobStatus.APPLYING, null);
     this.pending.clearForJob(job.id);
     step(`Applying: ${job.title} @ ${job.company}`);
@@ -273,6 +277,7 @@ export class ApplyService {
     };
     const attemptId = this.jobs.startAttempt(job.id);
     this.shots.set(attemptId, []);
+    this.liveJobs.set(attemptId, job.id);
     this.jobs.setStatus(job.id, JobStatus.APPLYING, null);
     step(`Continuing: ${job.title} @ ${job.company} - from where it was handed to you`);
     const page = tab.page;
@@ -339,6 +344,21 @@ export class ApplyService {
    * button that got it there; one that got stuck blames only the button that led into the dead end
    * (e.g. "Save and close", which leaves the form). Hand-overs (captcha, questions, login) teach nothing yet.
    */
+  /** The newest application in progress and the step pictures taken so far - what Lakshya's Live Eye shows. */
+  live(): LiveApplication | null {
+    const newest = [...this.liveJobs.entries()].at(-1);
+    if (!newest) return null;
+    const [attemptId, jobId] = newest;
+    const shots = (this.shots.get(attemptId) ?? []).map((shot, index) => ({ index, label: shot.label, at: shot.at }));
+    return { jobId, attemptId, shots };
+  }
+
+  /** A step picture of an attempt still in progress - only those, nothing else on disk. */
+  liveShotFile(attemptId: number, index: number): string | null {
+    if (!this.liveJobs.has(attemptId)) return null;
+    return this.shots.get(attemptId)?.[index]?.file ?? null;
+  }
+
   /** A picture of the page for this attempt's replay (at most a couple of dozen per attempt). */
   private async shoot(attemptId: number, jobId: number, page: Page, label: string): Promise<void> {
     const list = this.shots.get(attemptId);
@@ -369,6 +389,7 @@ export class ApplyService {
   ): Promise<ApplyResult> {
     this.jobs.saveShots(attemptId, this.shots.get(attemptId) ?? []);
     this.shots.delete(attemptId);
+    this.liveJobs.delete(attemptId);
     const screenshot = page && final.status !== JobStatus.APPLIED ? await this.browser.screenshot(page, `job-${job.id}`) : null;
     this.jobs.finishAttempt(
       attemptId,

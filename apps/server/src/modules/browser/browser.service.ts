@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { Injectable, Logger, OnApplicationShutdown, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import puppeteer, { Browser, Page } from 'puppeteer-core';
@@ -191,6 +191,11 @@ export class BrowserService implements OnApplicationShutdown {
   }
 
   /** A small picture of the page for the step-by-step replay; its file name, or null. */
+  /** Where a step picture is on disk. */
+  shotPath(file: string): string {
+    return join(this.screenshotsDir, basename(file));
+  }
+
   async stepShot(page: Page, name: string): Promise<string | null> {
     try {
       mkdirSync(this.screenshotsDir, { recursive: true });

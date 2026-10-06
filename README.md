@@ -15,7 +15,7 @@ NestJS + React, SQLite, a real Chrome you can watch. Any AI provider, a local mo
   <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/runs%20on-Windows%20%7C%20macOS%20%7C%20Linux-555" />
 </p>
 
-<p align="center"><img src="apps/web/public/docs/img/dashboard.png" width="860" alt="Lakshya, Sudarshan's main page (demo data)" /></p>
+<p align="center"><img src="apps/web/public/docs/img/dashboard-dark.png" width="860" alt="Lakshya's Mission control: the radar of jobs around the chakra (demo data)" /></p>
 
 > **Using Sudarshan, not developing it?** Read the **user guide**: open Sudarshan and click **Documentation** in the sidebar, or open [`apps/web/public/docs/index.html`](apps/web/public/docs/index.html). It explains every page and setting with screenshots.
 > This README is for people who want to run it from source, fork it, or build on it.
@@ -126,6 +126,7 @@ sudarshan-ai/
 │  └─ web/                        React app
 │     ├─ src/pages/               Lakshya, Review, Questions, Applications, Answers, Stories, Activity, Profile, Settings, Onboarding
 │     ├─ src/components/          shared UI (layout, cards, job row, charts…)
+│     │  └─ mission/              Lakshya's Mission control: radar, command bar, Live Eye, Needs you, flight recorder
 │     ├─ src/lib/                 API client, queries, SSE events, theme, formatting
 │     ├─ src/agent-window/        the status page shown in the agent's browser
 │     └─ public/docs/             the user guide (static HTML, screenshots, fonts)
@@ -214,6 +215,7 @@ Installer-only: `SUDARSHAN_REPO`, `SUDARSHAN_HOME`, `SUDARSHAN_SHORTCUT_DIR`, `S
 
 - **One database file**, `agent.db` in the data folder, opened through `StorageService` (`common/storage`). Tables include `jobs`, `attempts`, `answers`, `pending_questions`, `profile`, `settings`, `activity`, `recipes`, `widget_recipes`, `playbook_steps`, `stories`, `learners`, `llm_usage`.
 - **Migrations are forward-only**, an array of SQL strings in `common/storage/constants/migrations.constants.ts`. To change the schema, append a new entry; never edit an old one. The database records its version and runs only what is new.
+- **`has_term(text, term)`** is a SQL function `StorageService` registers on every connection: the term as whole words (so "Java" is not in "JavaScript"). The jobs list's `exclude` filter uses it.
 - **Settings** are key-value rows (`llm`, `search`, `sources`, `agent`, …) holding JSON, validated by the DTOs in `modules/settings/dto`.
 - **Secrets** (AI keys, Telegram token, mailbox password) are encrypted with AES-256-GCM by `SecretBoxService`, using `secret.key` generated on first run. Backups never include it.
 - **The agent's browser profile** lives in `browser-profile/` inside the data folder, so logins persist and the user's own Chrome profile is never touched.
@@ -236,6 +238,7 @@ Installer-only: `SUDARSHAN_REPO`, `SUDARSHAN_HOME`, `SUDARSHAN_SHORTCUT_DIR`, `S
 | AI rescue | `modules/form-engine/rescue.service.ts` |
 | Learning from the user | `modules/learning/learning.service.ts` and `scripts/recorder.script.ts` |
 | Live updates | `common/events` → `GET /api/events/stream` (SSE) → `apps/web/src/lib/events.tsx` |
+| Mission control (Lakshya's first view) | `apps/web/src/components/mission/mission-control.tsx`. The radar (`radar.tsx`) places jobs from `GET /api/jobs?status=review,approved,applying` (ring = score, half = `region`) and animates the SVG directly in one `requestAnimationFrame` loop; comets start on `apply.step` "Applying:" events and land on `job.updated`. Live Eye polls `GET /api/agent/live` and shows `GET /api/agent/live/shots/:attemptId/:index` (`ApplyService.live()`, only pictures of the attempt in progress). The command bar's sentence parser is `apps/web/src/lib/command.ts` - rules, no AI - and maps to the jobs filters (`workMode`, `region`, `minScore`, `platform`, `withinDays`, `exclude`) and `POST /api/jobs/approve-strong`. The flight recorder reads `GET /api/events/history?day=…`. |
 
 Functions named `…InPage` run inside the browser through `page.evaluate`, so they must be self-contained: no imports or outside variables.
 

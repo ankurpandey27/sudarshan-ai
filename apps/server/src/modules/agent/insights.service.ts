@@ -218,7 +218,7 @@ export class InsightsService {
           title: `${sourceLabel(block.source)} is switched off`,
           detail: `You have approved ${sourceLabel(block.source)} jobs, but applying there is off, so they wait.`,
           fix: `Turn ${sourceLabel(block.source)} on under "Apply on" to apply to them, or leave it off.`,
-          actions: [{ label: 'Apply on', to: '/#apply-on' }],
+          actions: [{ label: 'Apply on', to: '/?view=overview#apply-on' }],
         });
         continue;
       }

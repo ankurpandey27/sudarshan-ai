@@ -49,7 +49,9 @@ export const useJobs = (params: {
   region?: string;
   withinDays?: number;
   homeFirst?: boolean;
-}) => {
+  /** Comma-separated words a job must not mention: "java,php". */
+  exclude?: string;
+}, options: { enabled?: boolean } = {}) => {
   const qs = new URLSearchParams(
     Object.entries(params)
       .filter(([, v]) => v !== undefined && v !== '')
@@ -59,6 +61,7 @@ export const useJobs = (params: {
     queryKey: ['jobs', params],
     queryFn: () => api.get<JobList>(`/jobs?${qs}`),
     placeholderData: (prev) => prev,
+    enabled: options.enabled ?? true,
   });
 };
 
