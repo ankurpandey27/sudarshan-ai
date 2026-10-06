@@ -44,6 +44,11 @@ export const useJobs = (params: {
   page?: number;
   limit?: number;
   minScore?: number;
+  /** Comma-separated: "remote,hybrid". */
+  workMode?: string;
+  region?: string;
+  withinDays?: number;
+  homeFirst?: boolean;
 }) => {
   const qs = new URLSearchParams(
     Object.entries(params)

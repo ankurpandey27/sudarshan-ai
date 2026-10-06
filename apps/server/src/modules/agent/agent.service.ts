@@ -61,6 +61,8 @@ export class AgentService implements OnApplicationShutdown {
   ) {
     // Subscribe here, before any bootstrap hook can emit.
     this.events.stream().subscribe((e) => {
+      // Your country or places may have changed: every job's place is worked out again.
+      if (e.type === AgentEventType.PROFILE_UPDATED) this.scoring.classifyPlaces(true);
       if (e.type === AgentEventType.PROFILE_UPDATED && !this.discovery.isRunning()) {
         void this.scoring.scoreNew(1000).catch((err: Error) => this.log('error', `Re-scoring failed: ${err.message}`));
       }
@@ -193,7 +195,7 @@ export class AgentService implements OnApplicationShutdown {
       const platforms = await this.eligiblePlatforms();
       // Something may have started while platforms were checked (Apply now).
       if (this.applying) return;
-      const job = this.jobs.nextToApply(platforms);
+      const job = this.jobs.nextToApply(platforms, s.agent.homeFirst !== false);
       if (!job) {
         if (this.discovery.isRunning()) {
           this.setPhase(AgentPhase.DISCOVERING);

@@ -6,15 +6,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Check, Inbox, Rocket, Search, SkipForward, Undo2, X } from 'lucide-react';
 import { api } from '../lib/api';
 import { cn, platformLabel } from '../lib/format';
-import { useAgent, useJobs, useSettings, useStats, useTaste } from '../lib/queries';
+import { useAgent, useJobs, useProfile, useSettings, useStats, useTaste } from '../lib/queries';
 import { useDebounced } from '../lib/use-debounced';
 import { useSaved } from '../lib/use-saved';
-import type { JobPlatform } from '../lib/types';
+import type { JobPlatform, JobRegion, WorkMode } from '../lib/types';
 import { PlatformFilter } from '../components/platform-filter';
 import { JobRow } from '../components/job-row';
 import { Pagination } from '../components/pagination';
 import { useTab, type TabDef } from '../components/tabs';
-import { Button, Card, Empty, Input, PageTitle } from '../components/ui';
+import { Button, Card, Empty, Input, PageTitle, Select } from '../components/ui';
 import { useToast } from '../components/toast';
 import { InfoTip } from '../components/info-tip';
 
@@ -38,7 +38,11 @@ const STATUS: Record<TabId, string> = { review: 'review', queued: 'approved', sk
 export function Review() {
   const [tab, setTab] = useTab(TABS);
   const [platform, setPlatform] = useState<JobPlatform | ''>('');
-  const [sort, setSort] = useState<'score' | 'taste'>('score');
+  const [sort, setSort] = useSaved<'score' | 'taste' | 'newest'>('sudarshan.review.sort', 'score');
+  // Saved in this browser, so the view you like stays set.
+  const [workMode, setWorkMode] = useSaved<WorkMode | ''>('sudarshan.review.workMode', '');
+  const [region, setRegion] = useSaved<JobRegion | ''>('sudarshan.review.region', '');
+  const [withinDays, setWithinDays] = useSaved<number>('sudarshan.review.withinDays', 0);
   const [text, setText] = useState('');
   const search = useDebounced(text.trim());
   const [page, setPage] = useState(1);
@@ -49,7 +53,7 @@ export function Review() {
   useEffect(() => {
     setPage(1);
     setSelected(new Set());
-  }, [tab, platform, sort, search, pageSize]);
+  }, [tab, platform, sort, search, pageSize, workMode, region, withinDays]);
 
   const { data: taste } = useTaste();
   const { data: agent } = useAgent();
@@ -58,9 +62,17 @@ export function Review() {
   const { data: stats } = useStats();
   const { data: settings } = useSettings();
   const threshold = settings?.agent.minApplyScore ?? 70;
-  const { data, isLoading, isFetching } = useJobs({ status: STATUS[tab], platform, sort, search, page, limit: pageSize });
-  // Strong matches across every page, not just this one.
-  const { data: strong } = useJobs({ status: 'review', platform, minScore: threshold, limit: 1 });
+  const place = { workMode, region, withinDays: withinDays || undefined };
+  const sortBy = sort === 'taste' && taste?.status !== 'ready' ? 'score' : sort;
+  // The queue is listed in the order the agent will apply in, unless you pick Newest.
+  const listSort = tab === 'queued' && sortBy === 'score' ? 'queue' : sortBy;
+  const homeFirst = listSort === 'queue' ? settings?.agent.homeFirst !== false : undefined;
+  const { data, isLoading, isFetching } = useJobs({ status: STATUS[tab], platform, sort: listSort, homeFirst, search, page, limit: pageSize, ...place });
+  // Strong matches across every page (with the same filters), not just this one.
+  const { data: strong } = useJobs({ status: 'review', platform, minScore: threshold, limit: 1, ...place });
+  const { data: profile } = useProfile();
+  const country = profile?.profile.country?.trim();
+  const filtered = !!(workMode || region || withinDays);
   const strongCount = strong?.total ?? 0;
   const qc = useQueryClient();
   const toast = useToast();
@@ -78,7 +90,14 @@ export function Review() {
     onError: (e: Error) => toast('error', e.message),
   });
   const approveStrong = useMutation({
-    mutationFn: () => api.post<{ updated: number }>('/jobs/approve-strong', { minScore: threshold, ...(platform ? { platform } : {}) }),
+    mutationFn: () =>
+      api.post<{ updated: number }>('/jobs/approve-strong', {
+        minScore: threshold,
+        ...(platform ? { platform } : {}),
+        ...(workMode ? { workMode: [workMode] } : {}),
+        ...(region ? { region } : {}),
+        ...(withinDays ? { withinDays } : {}),
+      }),
     onSuccess: (r) => done(DONE.approve(r.updated)),
     onError: (e: Error) => toast('error', e.message),
   });
@@ -106,7 +125,7 @@ export function Review() {
         actions={
           tab === 'review' && strongCount > 0 ? (
             <Button variant="primary" icon={<Rocket className="size-4" />} onClick={() => approveStrong.mutate()} loading={approveStrong.isPending}>
-              Approve {strongCount === 1 ? 'the 1 job' : `all ${strongCount}`} scoring {threshold}+
+              Approve {strongCount === 1 ? 'the 1 job' : `all ${strongCount}`} scoring {threshold}+{filtered ? ' shown' : ''}
             </Button>
           ) : undefined
         }
@@ -146,29 +165,68 @@ export function Review() {
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <PlatformFilter counts={data?.platforms} value={platform} onChange={setPlatform} />
-        {taste?.status === 'ready' && (
-          <div className="flex items-center gap-2 text-[12.5px] text-ink-3">
-            Sort
-            <div className="flex rounded-lg border border-line bg-surface p-0.5" role="radiogroup" aria-label="Sort">
-              {(
-                [
-                  ['score', 'Best match'],
-                  ['taste', 'Your interest'],
-                ] as const
-              ).map(([id, label]) => (
-                <button
-                  key={id}
-                  role="radio"
-                  aria-checked={sort === id}
-                  onClick={() => setSort(id)}
-                  className={cn('rounded-md px-2.5 py-1', sort === id ? 'bg-surface-2 font-semibold text-ink' : 'hover:text-ink')}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
+      </div>
+
+      <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-[12.5px] text-ink-3">
+        <Choice
+          label="Work"
+          value={workMode}
+          onChange={setWorkMode}
+          options={[
+            ['', 'All'],
+            ['remote', 'Remote'],
+            ['hybrid', 'Hybrid'],
+            ['onsite', 'On-site'],
+          ]}
+        />
+        <Choice
+          label="Where"
+          value={region}
+          onChange={setRegion}
+          options={[
+            ['', 'Anywhere'],
+            ['home', country ? `In ${country}` : 'My country'],
+            ['abroad', 'Abroad'],
+            ['unknown', 'Not said'],
+          ]}
+        />
+        <label className="flex items-center gap-2">
+          Found
+          <Select value={withinDays} onChange={(e) => setWithinDays(Number(e.target.value))} aria-label="Found within" className="h-8 w-auto py-0 text-[12.5px]">
+            <option value={0}>Any time</option>
+            <option value={1}>Last 24 hours</option>
+            <option value={3}>Last 3 days</option>
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+          </Select>
+        </label>
+        {filtered && (
+          <button className="text-info hover:underline" onClick={() => (setWorkMode(''), setRegion(''), setWithinDays(0))}>
+            Clear filters
+          </button>
         )}
+        <div className="ml-auto flex items-center gap-2">
+          Sort
+          <div className="flex rounded-lg border border-line bg-surface p-0.5" role="radiogroup" aria-label="Sort">
+            {(
+              [
+                ['score', tab === 'queued' ? 'Apply order' : 'Best match'],
+                ['newest', 'Newest'],
+                ...(taste?.status === 'ready' ? ([['taste', 'Your interest']] as const) : []),
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={sort === id}
+                onClick={() => setSort(id)}
+                className={cn('rounded-md px-2.5 py-1', sort === id ? 'bg-surface-2 font-semibold text-ink' : 'hover:text-ink')}
+              >
+                {label}
+              </button>
+              ))}
+          </div>
+        </div>
       </div>
 
       {tab === 'queued' && held.size > 0 && (
@@ -298,5 +356,27 @@ export function Review() {
         />
       </Card>
     </>
+  );
+}
+
+/** A small row of choices, like the Sort switch. */
+function Choice<T extends string>({ label, value, onChange, options }: { label: string; value: T; onChange: (v: T) => void; options: readonly (readonly [T, string])[] }) {
+  return (
+    <div className="flex items-center gap-2">
+      {label}
+      <div className="flex rounded-lg border border-line bg-surface p-0.5" role="radiogroup" aria-label={label}>
+        {options.map(([id, text]) => (
+          <button
+            key={id || 'all'}
+            role="radio"
+            aria-checked={value === id}
+            onClick={() => onChange(id)}
+            className={cn('rounded-md px-2.5 py-1', value === id ? 'bg-surface-2 font-semibold text-ink' : 'hover:text-ink')}
+          >
+            {text}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

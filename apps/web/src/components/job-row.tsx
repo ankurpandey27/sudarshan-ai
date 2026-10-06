@@ -62,7 +62,10 @@ export function JobRow({
           <div className="mt-1.5 flex flex-wrap gap-1">
             <PlatformBadge platform={job.platform} site={job.site} />
             {job.taste !== null && <TasteChip taste={job.taste} reasons={job.tasteReasons} />}
-            {job.isRemote && <Badge tone="info">Remote</Badge>}
+            {job.workMode === 'hybrid' ? (
+              <Badge tone="info">Hybrid</Badge>
+            ) : (job.workMode === 'remote' || (!job.workMode && job.isRemote)) && <Badge tone="info">Remote</Badge>}
+            {job.region === 'abroad' && <Badge tone="warn">Abroad</Badge>}
             {job.easyApply && job.source !== 'web' && <Badge tone="good">Easy Apply</Badge>}
             {job.origin === 'link' && <Badge tone="accent">Your list</Badge>}
             {job.salaryRaw && <Badge>{job.salaryRaw}</Badge>}

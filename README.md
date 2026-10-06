@@ -1,564 +1,335 @@
 <p align="center">
-  <img src="apps/web/public/sudarshan.svg" width="120" alt="Sudarshan Chakra logo" />
+  <img src="apps/web/public/sudarshan.svg" width="110" alt="Sudarshan Chakra logo" />
 </p>
 
 <h1 align="center">Sudarshan</h1>
 
 <p align="center"><b>Goes out. Finishes the task. Returns.</b><br/>
-A job application agent that runs on your own laptop - LinkedIn, Naukri, Indeed, Instahyre and any career site.<br/>
-Bring any AI key, use a free local model, or no AI at all. Free and open source.</p>
+A local-first job application agent: it searches job sites, scores jobs against your profile, fills and submits the applications you approve, and reports back.<br/>
+NestJS + React, SQLite, a real Chrome you can watch. Any AI provider, a local model, or none.</p>
 
 <p align="center">
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-e8a317" /></a>
   <img alt="Node 22.13+" src="https://img.shields.io/badge/node-%E2%89%A5%2022.13-339933" />
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6" />
   <img alt="Windows, macOS, Linux" src="https://img.shields.io/badge/runs%20on-Windows%20%7C%20macOS%20%7C%20Linux-555" />
-  <img alt="Local-first" src="https://img.shields.io/badge/data-stays%20on%20your%20computer-1b1814" />
 </p>
 
----
+<p align="center"><img src="apps/web/public/docs/img/dashboard.png" width="860" alt="Lakshya, Sudarshan's main page (demo data)" /></p>
 
-## Why "Sudarshan"?
-
-In the **Dwapar Yug**, Shri Krishna's **Sudarshan Chakra** was released once - and did the rest on its own. It went out, completed its task with perfect precision, and **returned to his finger**.
-
-That is exactly what this agent does:
-
-- **Goes out** - searches LinkedIn, Naukri, Indeed and Instahyre, and career sites, for you.
-- **Finishes the task** - fills and submits the applications, answering screening questions from what it knows about you.
-- **Returns** - comes back with results: what was applied, what needs your answer, and why.
-
-*Sudarshan* (सुदर्शन) also means **"auspicious vision"** - it sees every job, and applies only where you truly fit.
-
-The logo is the chakra itself: a gold saw-toothed rim around twelve spokes. Inside the app it **always turns** - slowly while resting, faster while the agent is out working.
-
-The main page is called **Lakshya** (लक्ष्य, "the target") - the aim Arjuna never took his eyes off, and the target the Sudarshan Chakra never missed. Here the target is your next job.
+> **Using Sudarshan, not developing it?** Read the **user guide**: open Sudarshan and click **Documentation** in the sidebar, or open [`apps/web/public/docs/index.html`](apps/web/public/docs/index.html). It explains every page and setting with screenshots.
+> This README is for people who want to run it from source, fork it, or build on it.
 
 ---
 
 ## Contents
 
-1. [What it does](#what-it-does)
-2. [Why it is fast](#why-it-is-fast)
-3. [Quick start](#quick-start)
-4. [First-run setup](#first-run-setup)
-5. [Connecting an AI model (every provider, step by step)](#connecting-an-ai-model)
-6. [The Excel sheet](#the-excel-sheet)
-7. [Daily use](#daily-use)
-8. [When something goes wrong](#when-something-goes-wrong)
-9. [Safety and privacy](#safety-and-privacy)
-10. [Backups: keeping your data safe](#backups-keeping-your-data-safe)
-11. [Configuration](#configuration)
-12. [Updating and removing](#updating-and-removing)
-13. [For developers](#for-developers)
-14. [How Sudarshan learns](#how-sudarshan-learns)
-15. [What Sudarshan can't do on its own](#what-sudarshan-cant-do-on-its-own)
-16. [Status and known gaps](#status-and-known-gaps)
-17. [Contributing](#contributing)
-
----
-
-## What it does
-
-- **Reads your resume (PDF)** into a profile: name, contact, title, city, links, years of experience, skills (with years), education.
-- **Imports an Excel sheet** of your known answers, extra job links (any site) and preferences.
-- **Searches** LinkedIn, Naukri, Indeed, Instahyre, Foundit, Hirist and Himalayas (remote jobs open to your country) for your keywords and locations, and queues links you add from any career site. Each platform has its own on/off switch under **Apply on**.
-- **Scores every job** against your profile and explains the score (matched / missing skills, salary, location).
-- **Applies** - LinkedIn Easy Apply, Naukri (including its chat-style questions), Instahyre (one click), and generic career sites - in its own browser window you can watch.
-- **Applies on Indeed** - Sudarshan fills the steps and presses Submit itself. When Indeed shows a real captcha (an "I'm not a robot" box or a picture test), it leaves the tab open; you solve it and press Submit, and the job turns Applied by itself.
-- **Remembers every answer**, so forms get faster and cheaper over time.
-- **Asks you only what it cannot know**, once, and reuses your answer forever.
-- **Explains itself** - the "What needs attention" panel tells you, in plain words, anything stopping it and how to fix it.
-- **Tells you without you watching** - a summary of the day at the hour you choose, and one message when applications need you (a captcha, a question), as desktop notifications and, if you like, on your phone through Telegram.
-- **Reads employers' replies** (optional) - connect your mailbox and each application shows what came back: received, a test, an interview, an offer, or "not selected".
-- **Uses the right resume** - add a resume per kind of role (Frontend, Data...) and each application attaches the one made for that job.
-- **Checks your profile** - skills you have but have not listed, and skills many jobs ask for, from the jobs it finds.
-- **Learns and recovers** - see [How Sudarshan learns](#how-sudarshan-learns).
-
-## Why it is fast
-
-Browser agents that "look at a screenshot, think, click, repeat" need 30-60 AI calls and minutes per application. Sudarshan never lets the AI drive the browser:
-
-| | Screenshot-driven agent | Sudarshan |
-|---|---|---|
-| Finding jobs | Scroll and read pages | LinkedIn's public job listings over plain HTTP (your account untouched); Naukri's, Indeed's and Instahyre's own search data read from the page |
-| Reading a form | One screenshot per step | **One pass** reads every question, type, option, required flag and error |
-| Answering | An AI call per field | **Profile rules -> answer memory -> one batched AI call** for whatever is left |
-| Filling | One click per AI turn | **One pass** fills everything (typeaheads, uploads, radios, dropdowns) |
-| Unknown sites | Re-think every visit | The first visit's path is saved as a per-site **recipe** and replayed without AI |
-| Scoring jobs | 1 call per job | Free rules first, then **8 jobs per AI call** |
-
-**Answer memory** compounds: after a few dozen applications most forms fill with **zero** AI calls - the dashboard shows this as **"Filled without AI"**.
+- [Quick start](#quick-start)
+- [How it works](#how-it-works)
+- [Tech stack](#tech-stack)
+- [Repository layout](#repository-layout)
+- [Development](#development)
+- [Configuration](#configuration)
+- [Data and storage](#data-and-storage)
+- [The main flows in code](#the-main-flows-in-code)
+- [Extending Sudarshan](#extending-sudarshan)
+- [Testing](#testing)
+- [Conventions](#conventions)
+- [Security model](#security-model)
+- [Forking and rebranding](#forking-and-rebranding)
+- [Contributing](#contributing)
+- [Disclaimer and license](#disclaimer-and-license)
 
 ---
 
 ## Quick start
 
-**You need**
-
-- [Node.js](https://nodejs.org) **22.13 or newer** (the LTS download is fine). Check with `node -v`.
-- **Google Chrome**, **Microsoft Edge** or **Brave** (already on most computers).
-- Works on **Windows, macOS and Linux**. No database, Docker or Python to install.
-
-**Install with one command** - it installs Node.js if you do not have it, downloads Sudarshan, adds a **Sudarshan** shortcut and starts it:
-
-Windows (in PowerShell):
-
-```powershell
-irm https://raw.githubusercontent.com/ankurpandey27/sudarshan-ai/master/install.ps1 | iex
-```
-
-macOS or Linux (in a terminal):
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/ankurpandey27/sudarshan-ai/master/install.sh | bash
-```
-
-Next time, open it from the **Sudarshan** shortcut on your Desktop (Windows), `Sudarshan.command` on the Desktop (macOS) or your applications menu (Linux). Installed this way, it **updates itself** each time it starts.
-
-**Or run it yourself:**
+You need **Node.js 22.13+** (for the built-in `node:sqlite`) and **Chrome, Edge or Brave**. Nothing else: no database, Docker or Python.
 
 ```bash
 git clone https://github.com/ankurpandey27/sudarshan-ai.git
 cd sudarshan-ai
-npm start
+npm start            # installs, builds if needed, starts on http://localhost:4747
 ```
 
-No Git? Click **Code -> Download ZIP** on this page, unzip it, open a terminal in the `sudarshan-ai` folder and run `npm start`.
+`npm start` (`scripts/start.mjs`) installs dependencies, rebuilds only when sources are newer than the build, downloads the answer-matching model once (about 130 MB, into `models/`), starts the server and opens the browser. Exit code 75 from the server means "restart me" (used after restoring a backup), and `start.mjs` relaunches it.
 
-That's the only command. The first run installs and builds (a few minutes), downloads the answer-matching model (about 130 MB, once, into the `models` folder), then opens **http://localhost:4747** in your browser. Later runs start in seconds and rebuild automatically after you pull updates. Without internet the model is skipped - Sudarshan works without it and fetches it on a later start.
-
-**Stop:** press `Ctrl + C` in the terminal.
+End users can also install with one command; the installers (`install.ps1`, `install.sh`) add Node.js if missing, clone the repo, create a desktop shortcut, and turn on self-update on each start.
 
 ---
 
-## First-run setup
+## How it works
 
-The wizard has four steps (all but the resume are optional):
+```mermaid
+flowchart LR
+  subgraph Web["apps/web (React, Vite)"]
+    UI[Pages and Settings]
+  end
+  subgraph Server["apps/server (NestJS)"]
+    API[REST API /api] --> Agent[Agent loop]
+    Agent --> Discovery[Discovery sources]
+    Agent --> Scoring[Scoring]
+    Agent --> Apply[Apply adapters]
+    Apply --> Runner[Form runner]
+    Runner --> Answers[Answer engine]
+    Answers --> LLM[LLM transports]
+    Runner --> Rescue[AI rescue]
+    Learning[Learning] --> Runner
+    Events[Events / SSE]
+  end
+  Browser[(Agent's Chrome<br/>puppeteer-core)]
+  DB[(SQLite<br/>node:sqlite)]
+  UI <--> API
+  Events --> UI
+  Discovery --> Browser
+  Apply --> Browser
+  Server --> DB
+```
 
-1. **Choose a brain** - pick an AI provider and model, or skip. See [Connecting an AI model](#connecting-an-ai-model).
-2. **Your resume** - drop your PDF. Then fill **notice period, current CTC and expected CTC** - nearly every Indian job form asks for them.
-3. **Your answers** - download the Excel template, fill what you know, upload it. See [The Excel sheet](#the-excel-sheet).
-4. **Where to look** - job titles and locations (add `Remote` for remote roles), then **log in to LinkedIn and Naukri** inside the browser window Sudarshan opens. It keeps its own browser profile, so you log in once and it never sees your password.
+1. **Discover.** Each job site is a `DiscoverySource`. Sources run in parallel and write jobs into the `jobs` table, which is also the queue.
+2. **Score.** Exclusions, then a rule-based engine (skills with years, experience, salary, location), then optional batched AI scoring. Jobs go to `review`, `approved` or `skipped`.
+3. **Apply.** The agent takes one approved job at a time (paced, within active hours and per-site daily limits). An `ApplyAdapter` reaches the form; the form runner fills it.
+4. **Fill.** The page is read in one pass by an in-page extractor; answers come from **profile rules, then answer memory, then one batched AI call, then the user**; everything is filled in one pass and checked again.
+5. **Learn.** Answers, per-site steps (recipes), how to operate each kind of field (widget recipes), and four small on-device models are updated from confirmed applications.
+6. **Report.** Everything is an event: stored in `activity` and streamed to the UI over Server-Sent Events.
 
-Then open **Lakshya** (the main page) and press **Start agent**.
-
-> **Tip for your first run:** in **Settings**, turn on **"Stop before the final Submit"**. Sudarshan fills every form and waits for you to press Submit - check a few, then turn it off.
-
----
-
-## Connecting an AI model
-
-Open **Settings -> AI model** (or step 1 of the wizard), then for any provider:
-
-1. Click the provider.
-2. Paste the key (if it needs one).
-3. Pick a model - press the **refresh button** next to the Model box to load the provider's live model list.
-4. Press **Test connection** (makes one real call), then **Save model**.
-
-Keys are stored **encrypted on your computer** and are never shown again (only a hint like `sk-...3456`).
-
-You can also add a **Fallback model** (Settings -> AI model -> *Fallback model (optional)*). If the main one fails or runs out of credits, Sudarshan switches automatically. A local Ollama model is a great fallback.
-
-### Which one should I pick?
-
-| Your situation | Pick | Cost |
-|---|---|---|
-| Want zero cost, have internet | **Google Gemini** (`gemini-2.5-flash`) | Free tier |
-| Want zero cost, fastest | **Groq** (`llama-3.3-70b-versatile`) | Free tier |
-| Want zero cost, fully offline and private | **Ollama** (`qwen2.5:7b`) | Free, runs on your PC |
-| Want the best answers on long free-text questions | **Anthropic Claude** or **OpenAI** | Pay per use |
-| One key for many models | **OpenRouter** or **OpenCode Zen** | Pay per use |
-
-Because of answer memory, usage is small: typically one short call for a brand-new form, and none for repeated questions. The **daily token budget** in Settings caps paid spend (local models are unlimited).
-
-### Anthropic (Claude)
-
-1. Create a key at **https://console.anthropic.com/settings/keys** (add a little credit under Billing).
-2. Settings -> **Anthropic Claude** -> paste the key.
-3. Model: **`claude-haiku-4-5`** (fast, cheapest), **`claude-sonnet-5`** (balanced) or **`claude-opus-5`** (most capable).
-4. Test connection -> Save model.
-
-### OpenAI
-
-1. Create a key at **https://platform.openai.com/api-keys** and add credit under *Settings -> Billing*. (A key with no credit returns *"You have no credits remaining"* - Sudarshan will show exactly that on the dashboard.)
-2. Settings -> **OpenAI** -> paste the key.
-3. Model: **`gpt-5-mini`** (recommended), or press refresh to choose another.
-4. Test connection -> Save model.
-
-### Google Gemini - free tier
-
-1. Get a key at **https://aistudio.google.com/apikey** (sign in with Google, *Create API key*).
-2. Settings -> **Google Gemini** -> paste the key.
-3. Model: **`gemini-2.5-flash`** (free tier, fast) or `gemini-2.5-pro`.
-4. Test connection -> Save model.
-
-### Groq - free tier
-
-1. Create a key at **https://console.groq.com/keys**.
-2. Settings -> **Groq** -> paste the key.
-3. Model: **`llama-3.3-70b-versatile`** (or press refresh for the current list).
-4. Test connection -> Save model.
-
-### OpenRouter
-
-1. Create a key at **https://openrouter.ai/keys** and add credit.
-2. Settings -> **OpenRouter** -> paste the key.
-3. Model: e.g. `google/gemini-2.5-flash`, `anthropic/claude-sonnet-5`, `deepseek/deepseek-chat` - press refresh to browse all.
-4. Test connection -> Save model.
-
-### OpenCode Zen
-
-1. Create a key at **https://opencode.ai/zen** (pay-as-you-go).
-2. Settings -> **OpenCode Zen** -> paste the key.
-3. Model: press refresh and pick any Zen model (for example a DeepSeek, Qwen, Kimi, GLM, Claude, GPT or Gemini model). Sudarshan detects the right protocol for each model family automatically.
-4. Test connection -> Save model.
-
-> **What about OpenCode Go?** Go is a subscription meant **only for coding agents** - its terms ask clients to *"send typical coding agent traffic"* and say traffic is monitored for abuse. Job-application traffic is not coding traffic, so using a Go key here could get your subscription flagged. Sudarshan therefore does not offer Go; use **Zen** (above), which has no such restriction, and keep Go for coding in OpenCode.
-
-### Ollama - free, offline, private
-
-1. Install from **https://ollama.com** (Windows, macOS, Linux).
-2. Download a model in a terminal:
-   ```bash
-   ollama pull qwen2.5:7b      # recommended: good JSON, ~5 GB, 8 GB RAM
-   # smaller machines:  ollama pull llama3.2:3b   (~2 GB)
-   # bigger machines:   ollama pull qwen2.5:14b   (16 GB+ RAM)
-   ```
-3. Make sure Ollama is running (it starts automatically after install; or run `ollama serve`).
-4. Settings -> **Ollama (local, free)** -> Model **`qwen2.5:7b`** (press refresh to list the models you have). No key needed.
-5. Test connection -> Save model. The first call can take a while as the model loads.
-
-### LM Studio - free, offline
-
-1. Install **https://lmstudio.ai**, download a model (e.g. *Qwen2.5 7B Instruct*), load it.
-2. In LM Studio open the **Developer / Local Server** tab and press **Start Server** (default `http://localhost:1234`).
-3. Settings -> **LM Studio (local, free)** -> press refresh -> pick the loaded model.
-4. Test connection -> Save model.
-
-### Custom (any OpenAI-compatible server)
-
-For DeepSeek, Together, Fireworks, a self-hosted vLLM, etc.:
-
-1. Settings -> **Custom (OpenAI-compatible)**.
-2. **Server URL** - the base URL including `/v1`, e.g. `https://api.deepseek.com/v1`.
-3. Paste the key (if the server needs one) and the model id (e.g. `deepseek-chat`).
-4. Test connection -> Save model.
-
-### No AI at all
-
-Skip the step. Sudarshan still works from your profile and answer memory: rule-based scoring, and any question it cannot answer comes to your **Questions** page instead of being drafted by AI.
+The AI never drives the browser screenshot by screenshot. It answers what rules and memory cannot, picks a button on an unfamiliar page, and rescues a stuck application for a few steps.
 
 ---
 
-## The Excel sheet
+## Tech stack
 
-Download the template from the wizard or **Settings -> Spreadsheet -> Template**. One `.xlsx` (or `.csv`) with up to three sheets - all optional:
-
-**Answers** - questions you already know the answers to. They go straight into answer memory.
-
-| Question | Answer |
+| Layer | Choice |
 |---|---|
-| What is your notice period? | 30 days |
-| Expected CTC (in lakhs per annum) | 18 |
-| Are you willing to relocate? | Yes |
-| How many years of experience do you have with Node.js? | 4 |
-
-**Job Links** - any job URLs. LinkedIn and Naukri links use their own adapters; everything else uses the generic career-site engine. They are queued straight away.
-
-| URL | Title | Company | Notes |
-|---|---|---|---|
-
-**Preferences** - `Setting | Value` rows: Keywords, Locations, Remote only, Easy Apply only, Posted within days, Exclude companies, Exclude title words, Mode (`review`/`auto`), Min apply score, LinkedIn daily limit, Naukri daily limit, Notice period days, Current CTC, Expected CTC (e.g. `18 LPA`), Willing to relocate.
+| Server | NestJS 11, TypeScript (strict), `class-validator` DTOs |
+| Storage | SQLite through Node's built-in `node:sqlite` (WAL), forward-only migrations |
+| Browser | `puppeteer-core` driving the user's own Chrome / Edge / Brave with a persistent profile |
+| AI | Anthropic SDK; any OpenAI-compatible API (OpenAI, Gemini, Groq, OpenRouter, Ollama, LM Studio, custom); OpenCode Zen |
+| On-device ML | A small multilingual sentence model (`@huggingface/transformers`) for similar questions; tiny learners trained on the user's data |
+| Web | React 19, Vite, Tailwind CSS v4, TanStack Query, live updates over SSE |
+| Tests | Jest (unit), Jest + real headless Chrome against HTML fixtures (browser) |
 
 ---
 
-## Daily use
+## Repository layout
 
-| Page | What it is for |
+```
+sudarshan-ai/
+├─ apps/
+│  ├─ server/                     NestJS app (the agent and the API)
+│  │  ├─ src/
+│  │  │  ├─ main.ts, app.module.ts, app.setup.ts   bootstrap, security, static web, SPA fallback
+│  │  │  ├─ config/               configuration.ts (SUDARSHAN_* environment variables)
+│  │  │  ├─ common/               storage (SQLite + migrations), crypto, events, security, logging, utils
+│  │  │  └─ modules/              one folder per feature (see below)
+│  │  └─ test/                    browser tests + fixtures/ (HTML replicas of real forms)
+│  └─ web/                        React app
+│     ├─ src/pages/               Lakshya, Review, Questions, Applications, Answers, Stories, Activity, Profile, Settings, Onboarding
+│     ├─ src/components/          shared UI (layout, cards, job row, charts…)
+│     ├─ src/lib/                 API client, queries, SSE events, theme, formatting
+│     ├─ src/agent-window/        the status page shown in the agent's browser
+│     └─ public/docs/             the user guide (static HTML, screenshots, fonts)
+├─ scripts/                       start.mjs (the one command), dev.mjs, fetch-model.mjs, test-browser.mjs
+├─ install.ps1, install.sh        one-command installers
+└─ models/                        the downloaded sentence model (not in Git)
+```
+
+### Server modules (`apps/server/src/modules`)
+
+| Module | Responsibility |
 |---|---|
-| **Lakshya** | Your job hunt at a glance: start/stop, **What needs attention**, today's applications vs limits, the live **flight log**, AI spend |
-| **Review** | Scored jobs with the reason. Approve them one by one, or all strong matches at once (*Approve all N jobs scoring 70+*). In **Auto** mode strong matches are queued for you |
-| **Questions** | Questions only you can answer - answer once, every waiting job continues |
-| **Applications** | Everything applied / needing attention, with the step-by-step trace of each attempt. Export to Excel, paste more links |
-| **Answer memory** | See and edit everything Sudarshan has learned |
-| **Story Bank** | A short interview about your real work; written answers are built on it |
-| **Profile** | Your details, skills (with years), CTC, notice period, resume, resumes for other roles, and **Profile check** (skills to add in one click) |
-| **Settings** | AI model, search, per-site daily limits, pacing, active hours, dry-run mode, **Notifications** (daily summary, Telegram, replies from your email), **Data & backups** |
+| `agent` | The loop: discovery schedule, one-at-a-time applying, pacing, active hours, daily limits; insights for *Needs attention* |
+| `discovery` | Job search per site (`sources/*.source.ts`), de-duplication, description enrichment |
+| `scoring` | Exclusions, rule-based engine, batched AI scoring, skip reasons |
+| `jobs` | The `jobs` table (also the queue), attempts, statuses, platforms, work mode (remote/hybrid/on-site) and region (home/abroad/unknown) |
+| `apply` | `ApplyService` orchestration; adapters for LinkedIn, Naukri (chat questions), Indeed and any web form; closed/applied detection |
+| `form-engine` | `FormRunnerService` (fill, check, advance), `AnswerEngineService`, profile rules, in-page scripts, recipes, AI rescue |
+| `answers` | Answer memory, pending questions, similar-question search |
+| `learning` / `learners` | Learning from forms the user finishes; four small self-checking models |
+| `llm` | Provider presets, transports, fallback model, daily budget, usage log, capability detection |
+| `profile` | Resume PDF to profile, profile check, skill years |
+| `browser` | The agent's Chrome, per-site login state, screenshots |
+| `settings` | User settings (key-value rows), encrypted keys |
+| `stories` | Story Bank for written answers |
+| `notifications` / `inbox` | Desktop and Telegram messages, daily summary; reading employer replies over IMAP |
+| `backup` | Daily backups, off-machine copy, restore |
+| `resumes` | Extra resumes per kind of role |
+| `workbook` | Excel import, template, tracker export |
+| `analytics`, `taste`, `platform-health`, `applied-sync`, `housekeeping`, `health` | Charts, interest ranking, per-site failure pauses, Indeed "Applied" sync, cleanup, health endpoint |
 
-**Modes** - *Review* (default): Sudarshan finds and scores, you approve, it applies. *Auto*: it applies to anything above your auto-apply score on its own.
-
----
-
-## When something goes wrong
-
-Look at **Lakshya -> What needs attention** first. Every problem is listed there with **what happened, how to fix it, and a button** that takes you there. Common ones:
-
-| You see | Meaning | Fix |
-|---|---|---|
-| *Your \<provider\> account has no credits* | The AI key works but has no balance | Add credit, or switch to Gemini / Groq / Ollama (free) |
-| *API key was rejected* | Wrong or expired key | Paste a new key, press Test connection |
-| *All N jobs were skipped* | Nothing matched - the reasons are listed (skills, salary, location...) | Follow the fix shown; press **Re-score jobs** after changing your profile |
-| *N jobs waiting for your approval* | You are in Review mode | Approve jobs in **Review** |
-| *Not logged in to LinkedIn / Naukri* | The agent's browser session expired | Press **Log in** and sign in in the window that opens |
-| *Applying this fast can get your accounts restricted* | A daily limit, the gap between applications or the active hours is faster than a person | **Settings -> Platforms & limits -> Use safe pace**, then Save |
-| *Sudarshan was stopped right after pressing Submit* | It was closed or crashed at the moment it sent an application | Check the site or your email; mark it Applied or queue it again. It never sends twice by itself |
-| *Profile is missing ...* | Forms will ask for these | Fill them on **Profile** |
-| *Port 4747 is already in use* (terminal) | Sudarshan is already running | Open http://localhost:4747, or stop the other one |
-| *No Chrome, Edge or Brave found* | No supported browser | Install Google Chrome |
-| A captcha appears | The site wants a human | The form is already filled and the tab is open in Sudarshan's browser. Solve the captcha and press Submit - the job turns **Applied** by itself. The agent keeps applying to other jobs meanwhile |
-
-Each failed application also keeps a **screenshot** and a **step-by-step trace** (Applications -> open the job -> Attempts).
+Each module follows the standard NestJS feature layout: `*.module.ts`, `*.controller.ts`, `*.service.ts`, and `dto/`, `interfaces/`, `enums/`, `constants/`, `utils/`, `scripts/` folders as needed. Unit tests sit next to the code as `*.spec.ts`.
 
 ---
 
-## Safety and privacy
+## Development
 
-**What the AI never sees.** Anything that identifies you - your phone number, email, address, date of birth, PAN, Aadhaar, passport or bank details - is never sent to the AI model: not in your past answers, not in hints, and not in page text (it is replaced by "[hidden]"). Those fields are filled from your profile and your own saved answers only.
+```bash
+npm install
+npm run dev          # server in watch mode on :4747 + Vite UI with hot reload on :5173
+```
 
-- **Everything stays on your computer**, in your data folder (see [Where your data is](#where-your-data-is)): the database, your resume, the agent's browser profile, logs, screenshots and daily backups.
-- **API keys are encrypted** (AES-256-GCM) with a key generated on your machine, and never sent back to the page.
-- **No passwords stored** - you log in to job sites in the agent's own browser window.
-- **Local only** - the server listens on `127.0.0.1` and rejects requests from other websites.
-- The only traffic leaving your machine goes to the job sites you use and the AI provider you chose (none with a local model) - and, only if you turn them on, Telegram (to your own bot) and your mailbox (read only).
-- **Your mailbox** (optional, Settings -> Notifications) is read on your computer with an app password, never by an AI. Only replies about your applications are kept - the sender, the subject and what they mean - never the email itself.
-- **Never sent twice.** Sudarshan notes the moment it presses Submit. If it is stopped right then, the job waits for you to check instead of being sent again.
+| Command | What it does |
+|---|---|
+| `npm start` | Production-like run: build if needed, start, open the browser |
+| `npm run dev` | Server (`nest start --watch`) and Vite together |
+| `npm run build` | Build web, then server |
+| `npm run typecheck` | `tsc --noEmit` for server and web |
+| `npm run lint` | ESLint on the server (`src` and `test`) |
+| `npm test` | Unit tests, then browser tests |
+| `npm test -w apps/server` | Unit tests only |
+| `npm run test:browser -w apps/server` | Browser tests only (needs Chrome or Edge) |
 
-**Indeed is off by default.** Indeed restricts automation more than any other site here and often shows a security check ("Just a moment..."). Sudarshan waits for it to clear, goes slowly (12-18 s between pages, 15 applications a day by default), and hands the check to you if it stays. Turn it on under **Apply on** and log in to Indeed in the agent browser - logged out, Indeed shows only the first page of results and no application form. Indeed's review page is protected by Google's invisible reCAPTCHA ("This site is protected by reCAPTCHA"), which usually needs nothing from you: Sudarshan presses Submit itself. Only when Indeed shows a real captcha to solve does it hand the application to you.
+Run a second, throwaway instance next to your real one (useful for live testing without touching your data):
 
-**Protect your accounts.** LinkedIn does not allow automated applications and restricts accounts that apply too fast. Defaults are deliberately conservative: **25 LinkedIn / 40 Naukri applications per day**, random 40-110 s gaps, active 8:00-23:00, a real visible browser, and captchas always handed to you. If you set a pace faster than a person (more than 30 a day on LinkedIn, under 30 s between applications, or applying through the night), **What needs attention** and Settings warn you, with a one-click **Use safe pace**. Raise limits at your own risk; you are responsible for how you use this tool.
+```bash
+cd apps/server
+SUDARSHAN_DATA_DIR=/tmp/sudarshan-test SUDARSHAN_PORT=4799 SUDARSHAN_OPEN_BROWSER=false \
+  node --disable-warning=ExperimentalWarning dist/main.js
+```
 
----
-
-## Backups: keeping your data safe
-
-Everything Sudarshan knows about you - your saved answers, the steps it has learned for each site, every job and application, and what its learners have learned - is in **one file**, `agent.db`. Sudarshan copies that file for you once a day, so a damaged file never costs you more than a day.
-
-### Where your data is
-
-Your data folder is in your home folder:
-
-| Your computer | Data folder |
-| --- | --- |
-| Windows | `C:\Users\<your name>\.sudarshan` |
-| macOS | `/Users/<your name>/.sudarshan` |
-| Linux | `/home/<your name>/.sudarshan` |
-
-If you used Sudarshan before it was renamed, the folder is called `.job-apply-agent` instead (for example `C:\Users\<your name>\.job-apply-agent`). Sudarshan keeps using it; nothing needs moving. If you set `SUDARSHAN_DATA_DIR`, the data folder is wherever that points.
-
-Inside it:
-
-| What | Where | What it holds |
-| --- | --- | --- |
-| Your database | `agent.db` (with `agent.db-wal` and `agent.db-shm` next to it) | Profile, answers, jobs, applications, learned steps, learners |
-| Backups | `backups\agent-YYYY-MM-DD.db` | One full copy per day, the last 7 kept |
-| Encryption key | `secret.key` | Unlocks your saved AI keys - keep it with your data |
-| Browser profile | `browser-profile` | The agent's own logins to job sites |
-| Your resume | `uploads` | The resume file you uploaded |
-| Screenshots, logs | `screenshots`, `logs` | Cleared automatically after 30 days |
-
-**Opening the folder on Windows:** names starting with a dot are often hidden when you browse. Instead, click the address bar of File Explorer, paste `%USERPROFILE%\.sudarshan` (or `%USERPROFILE%\.job-apply-agent`) and press **Enter**.
-
-**On macOS:** in Finder press **Cmd + Shift + G**, type `~/.sudarshan` and press **Return**.
-
-### How the daily backup works
-
-1. Once a day, while Sudarshan is running, it writes a complete backup to the `backups` folder, named by the date: `agent-2026-10-01.db`. One file holds your whole database **and your resumes**.
-2. The copy is made safely while Sudarshan keeps working - you never need to stop it.
-3. The last **7** are kept; older ones are deleted by themselves.
-4. The flight log says when it happened: *"Backed up your data to ..."*.
-
-You do not need to do anything for this to happen. **Settings -> Data & backups** shows the last backup and has **Back up now**.
-
-### Keeping a copy somewhere else
-
-The `backups` folder is on the same disk as your data: it protects you from a damaged file, not from a broken disk or a lost laptop. So:
-
-1. Open **Settings -> Data & backups**.
-2. Under **Also copy each backup to this folder**, enter a folder that syncs elsewhere - OneDrive, Google Drive, Dropbox - or a USB disk, as a full path (for example `C:\Users\you\OneDrive\Sudarshan backups`). Press **Save changes**.
-3. Press **Back up now** to check it works. From then on every daily backup is copied there too, and the last 7 are kept; nothing else in that folder is touched.
-
-**Download a backup** gives you one file to keep anywhere.
-
-**AI keys are never in a backup** (`secret.key` stays out of it). A backup cannot leak your keys; after restoring, enter your AI key again in Settings. The same goes for a connected mailbox or Telegram bot.
-
-Backups hold your personal details and answers: keep them somewhere private, and never share or upload them publicly.
-
-### Restoring a backup
-
-Use this if your data is damaged, you want to go back to an earlier day, or you are moving to a new computer. It replaces your current data with the backup.
-
-1. Open **Settings -> Data & backups -> Restore from a backup**.
-2. Choose the file: a daily backup (`agent-2026-10-01.db` from the `backups` folder or your backup folder) or a downloaded one (`sudarshan-backup-....db`).
-3. Press **Restore**. Sudarshan checks it is a backup it can read, keeps your current data in `backups` as `before-restore-...db`, **restarts by itself** and puts your resumes back. The page reloads when it is ready.
-4. Enter your AI key again in **Settings -> AI model**.
-
-On a new computer: install Sudarshan, open it, and restore the backup the same way.
+The UI talks to the API under `/api`. Every write must carry the header `x-jaa-client: 1`, which keeps other websites from driving the local server.
 
 ---
 
 ## Configuration
 
-Everything is set from the UI. For power users, environment variables:
+Everything a user sets is in the UI and stored in the database. Environment variables are for developers and packagers; each also works with the legacy `JAA_` prefix.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `SUDARSHAN_PORT` | `4747` | Port of the local app |
-| `SUDARSHAN_DATA_DIR` | `~/.sudarshan` | Where data is stored |
-| `SUDARSHAN_OPEN_BROWSER` | `true` | Set `false` to not open the browser on start |
-| `LOG_LEVEL` | `info` | `debug` for more detail |
+| `SUDARSHAN_PORT` | `4747` | HTTP port |
+| `SUDARSHAN_HOST` | `127.0.0.1` | Bind address (keep it local) |
+| `SUDARSHAN_DATA_DIR` | `~/.sudarshan` (or the older `~/.job-apply-agent` when only that exists) | Database, browser profile, uploads, backups, logs |
+| `SUDARSHAN_OPEN_BROWSER` | `true` | Open the UI on start |
+| `SUDARSHAN_WEB_DIST` | `apps/web/dist` | Where the built UI is served from |
+| `SUDARSHAN_MODELS_DIR` | `models/` | Where the sentence model lives |
+| `SUDARSHAN_SKIP_MODEL` | unset | `1` never downloads the sentence model |
+| `LOG_LEVEL` | `info` | `debug` for more |
 
-
-
----
-
-## Updating and removing
-
-**Update** to the latest version: installed with the one-line installer, it updates itself each time it starts (only when nothing in its folder was changed by hand; offline, it simply starts). Run the installer again any time to update too. Running it yourself from a clone:
-
-```bash
-cd sudarshan-ai
-git pull
-npm start          # installs and rebuilds only what changed
-```
-
-Your data is not in the project folder, so updating never touches it.
-
-**Remove Sudarshan completely:**
-
-1. Stop it (`Ctrl + C`) and delete the `sudarshan-ai` folder.
-2. Delete your data folder: `~/.sudarshan` (`%USERPROFILE%\.sudarshan` on Windows, or `.job-apply-agent` from before the rename). This erases your profile, resume copy, answers, encrypted keys and the agent's logged-in browser profile.
+Installer-only: `SUDARSHAN_REPO`, `SUDARSHAN_HOME`, `SUDARSHAN_SHORTCUT_DIR`, `SUDARSHAN_NO_START`, `SUDARSHAN_AUTO_UPDATE`.
 
 ---
 
-## For developers
+## Data and storage
+
+- **One database file**, `agent.db` in the data folder, opened through `StorageService` (`common/storage`). Tables include `jobs`, `attempts`, `answers`, `pending_questions`, `profile`, `settings`, `activity`, `recipes`, `widget_recipes`, `playbook_steps`, `stories`, `learners`, `llm_usage`.
+- **Migrations are forward-only**, an array of SQL strings in `common/storage/constants/migrations.constants.ts`. To change the schema, append a new entry; never edit an old one. The database records its version and runs only what is new.
+- **Settings** are key-value rows (`llm`, `search`, `sources`, `agent`, …) holding JSON, validated by the DTOs in `modules/settings/dto`.
+- **Secrets** (AI keys, Telegram token, mailbox password) are encrypted with AES-256-GCM by `SecretBoxService`, using `secret.key` generated on first run. Backups never include it.
+- **The agent's browser profile** lives in `browser-profile/` inside the data folder, so logins persist and the user's own Chrome profile is never touched.
+
+---
+
+## The main flows in code
+
+| Flow | Start reading at |
+|---|---|
+| The agent loop | `modules/agent/agent.service.ts` → `tick()` |
+| Searching | `modules/discovery/discovery.service.ts` → `runSource()`; sites in `modules/discovery/sources/` |
+| Scoring | `modules/scoring/` |
+| Where and how a job is worked | `modules/jobs/utils/job-place.util.ts` (`workModeOf`, `regionOf`, places learned from listings); `JobsService.classifyPlaces`, run by `ScoringService` before each scoring run, at start-up and when the profile changes |
+| Queue order | `queueOrder()` in `modules/jobs/jobs.service.ts`: used by `nextToApply` and the Approved tab (`sort=queue`), with jobs in your country first when `agent.homeFirst` is on |
+| Applying | `modules/apply/apply.service.ts` → `applyTo()`; reaching the form in `modules/apply/adapters/*.adapter.ts` (`prepare()`) |
+| Filling a form | `modules/form-engine/form-runner.service.ts` → `run()`, `fillAndCheck()`, `chooseAction()` |
+| Reading a page | `modules/form-engine/scripts/extract-form.script.ts` (runs inside the page) |
+| Answering | `modules/form-engine/answer-engine.service.ts` → `resolve()`; rules in `utils/profile-rules.util.ts`; prompt in `utils/answer-prompt.util.ts` |
+| AI rescue | `modules/form-engine/rescue.service.ts` |
+| Learning from the user | `modules/learning/learning.service.ts` and `scripts/recorder.script.ts` |
+| Live updates | `common/events` → `GET /api/events/stream` (SSE) → `apps/web/src/lib/events.tsx` |
+
+Functions named `…InPage` run inside the browser through `page.evaluate`, so they must be self-contained: no imports or outside variables.
+
+---
+
+## Extending Sudarshan
+
+### Add a job site (search)
+
+1. Add the platform to `modules/jobs/enums/job-platform.enum.ts`, and map it in `modules/jobs/constants/job-platform.constants.ts`, `utils/platform.util.ts` (host → platform) and `utils/source-label.util.ts`.
+2. Write `modules/discovery/sources/<site>.source.ts` implementing `DiscoverySource` (`search`, optionally `enrich` and `combine`), and register it in the discovery module.
+3. If the site lists one country's jobs only, add it to `SITE_COUNTRY` in `modules/jobs/constants/countries.constants.ts` so its bare "Remote" jobs get a region.
+4. Add its on/off switch and daily limit to the sources settings (`modules/settings`) and the safe-pace table.
+5. If it needs a login, add it to `SITES` in `modules/browser/constants/sites.constants.ts` (login URL and auth cookies; leave cookies empty and Sudarshan learns them the first time the user logs in), and to `apply/constants/site-of-platform.constants.ts`.
+6. On the web side, add its label and colour (`apps/web/src/lib/format.ts`, `--p-<site>` in `tokens.css`), its safe pace (`lib/safe-pace.ts`) and its one-line description in `ABOUT` (`components/apply-on-card.tsx`).
+
+### Add an apply path
+
+Most sites need nothing: `WebApplyAdapter` follows Apply buttons, handles cookie banners, bot checks, profile walls and embedded hiring systems, then the generic form runner fills the form. Write an `ApplyAdapter` only for a site with its own flow (like Naukri's chat): implement `matches`, `prepare` and, if needed, `runForm`, and add it to `ApplyService`.
+
+### Add an AI provider
+
+Add the kind to `modules/llm/enums/llm-provider-kind.enum.ts` and a preset (base URL, key hint, default model) to `modules/llm/constants/llm-presets.constants.ts`. OpenAI-compatible providers need nothing else; others need a transport in `modules/llm/transports`. Never hard-code which models can do what: capabilities (images, prompt size) are found by trying and remembered per model.
+
+### Teach it a new kind of question
+
+Add a rule to `modules/form-engine/utils/profile-rules.util.ts` (a `test` regex on the question, an `answer` from the profile, and a `key`). High-stakes topics belong in `constants/inference.constants.ts` so the AI never guesses them.
+
+### Change the schema or settings
+
+Append a migration (see [Data and storage](#data-and-storage)). For a new setting, add it to the DTO in `modules/settings/dto`, its default in `modules/settings/constants/default-settings.constants.ts`, and the field in `apps/web/src/pages/settings.tsx`.
+
+---
+
+## Testing
 
 ```bash
-npm run dev         # server (watch) on :4747 + UI with hot reload on :5173
-npm test            # unit tests + a real-browser run of a LinkedIn-style multi-step form
-npm run typecheck
-npm run lint
+npm test -w apps/server                 # ~570 unit tests
+npm run test:browser -w apps/server     # ~65 tests in a real headless Chrome
 ```
 
-```
-apps/
-  server/   NestJS + TypeScript, SQLite (node:sqlite), puppeteer-core
-    modules/
-      settings      user settings, encrypted keys
-      llm           Anthropic SDK / OpenAI-compatible / OpenCode Zen transports, fallback,
-                    daily budget, auth & credit-error circuit breaker, usage log
-      profile       resume PDF -> profile (rules + AI), self-repair
-      answers       answer memory (normalised keys + guarded fuzzy match), pending questions
-      jobs          the jobs table is also the queue (crash-safe)
-      discovery     LinkedIn guest API (HTTP); Naukri, Indeed, Instahyre (their own search data in the browser)
-      scoring       exclusions -> keyword filter -> weighted engine -> batched AI score
-      browser       one persistent Chrome/Edge profile, per-site login state
-      form-engine   in-page extractor + filler, profile rules, answer engine, recipes
-      apply         LinkedIn Easy Apply, Naukri (incl. chat questions), Instahyre, generic career sites; Indeed Apply (hands over at a real captcha)
-      agent         the loop (discovery, one-at-a-time applying, caps, pacing) + insights
-      workbook      Excel import / template / tracker export
-  web/      React 19 + Vite + Tailwind v4 + TanStack Query, live updates over SSE
-scripts/    start.mjs (the one command), dev.mjs
-```
+- **Unit tests** cover rules, scoring, answering, detection patterns and services, with in-memory SQLite (`new StorageService(':memory:')`) and a fake LLM.
+- **Browser tests** load HTML fixtures from `apps/server/test/fixtures/`: small replicas of real forms (LinkedIn's redraws, Greenhouse dropdowns, Ashby's yes/no buttons, Hirist screening, a job page with an ad over Apply…). When a real site breaks something, the fix comes with a fixture that reproduces it.
+- **Live testing** is still the final check: job sites change often. Use a throwaway data folder and port (see [Development](#development)), keep *Stop before the final Submit* on, and watch the Flight log.
 
-## How Sudarshan learns
+Before a pull request: `npm test`, `npm run typecheck` and `npm run lint` must pass.
 
-Everything below runs and is stored on your computer. None of it needs an AI model, except where it says so.
+---
 
-**Your answers.** Every answer - yours, from your profile, or from the AI - goes into **Answer memory** and is reused for the same question on any site. Your own answers always win. An AI answer is saved only after the form shows it took, so a fill that failed never becomes a lesson.
+## Conventions
 
-**Your Story Bank.** Written questions ("Why are you a fit?", "Describe a challenge you solved", "Tell us about a workflow you automated") are where applications stand out or sound generic. Open **Story Bank** in the menu and answer a short interview, once: your proudest work, something you made faster and by how much, a hard problem, a time you led. If an answer has no number, date or name, Sudarshan asks once for one, then saves it as it is. On every job site, the stories that fit the job are given to the AI, which builds written answers on their facts and never changes their numbers. Edit or delete them any time.
+- **Feature modules** in the NestJS layout above; code goes in the module it belongs to, shared code in `common/`.
+- **Comments say why**, often with the real case that caused them (site and date), so a later change does not undo a fix by accident.
+- **Work with any AI model.** No lists of which models can do what; detect and remember.
+- **Never solve or bypass captchas, never create accounts, never type passwords.** Hand over to the user and carry on after.
+- **Never guess personal or high-stakes facts.** Ask the user once; remember the answer.
+- **Personal data never reaches the AI** (identifiers are masked) and **never goes in the repository** (logs, fixtures and screenshots use made-up data).
+- Commit messages describe the behaviour change and the case behind it.
 
-**Answers that sound like you.** Written answers follow plain-writing rules: no "leverage", "robust", "seamless", "spearheaded", no "It's not just X, it's Y", no "I am thrilled to apply", at most one dash. Every written answer is checked; AI-ish words become plain ones without any AI call, and an answer that still reads as AI is rewritten once, with the same facts. (Rules adapted from [linkedin-skills](https://github.com/sergebulaev/linkedin-skills), MIT.)
+---
 
-**Job posts cannot steer the AI.** Job posts, web pages and form questions are written by strangers. In every AI prompt they are fenced off and marked as data, never instructions. A job post that tries to talk to AI tools ("ignore previous instructions", "rate this job 100") is never shown to the AI at all: it is scored by rules only, and its summary in Review tells you why.
+## Security model
 
-**How to work each kind of field.** Forms are built from many kinds of controls: plain boxes, dropdowns that open, searchable dropdowns, chips, custom radio buttons. After filling, Sudarshan reads every field again to check the answer took - not empty, not still "Select an option", no error on it. When one did not:
+- The server binds to `127.0.0.1`, sends a strict Content-Security-Policy (no inline scripts), and refuses writes without the `x-jaa-client` header, so other websites cannot use it.
+- Secrets are encrypted at rest and never returned to the UI (only a hint such as `sk-...3456`).
+- Text from job posts, pages and form questions is fenced as untrusted data in every prompt; posts that address AI tools are scored by rules only.
+- Submits are recorded the moment they are pressed, so a crash never sends an application twice.
 
-1. It tries the way that worked for this kind of field before.
-2. Then the other ways a person would operate it: click it open and click the option; type to search and pick a suggestion; type and press Enter; click the choice's own words.
-3. If none works, it asks the AI once, showing it the field (a picture when the model takes images, and its code), and tries what the AI says.
-4. Whatever worked is remembered for that site, and for every site once it has worked on several. Next time that kind of field is filled the right way first, with no trial and no AI.
+---
 
-The flight log says when a field "needed another way to fill - learned for next time", or which ways were tried when none worked.
+## Forking and rebranding
 
-**Answers to similar questions.** A small multilingual model runs on your computer (about 130 MB, no GPU): `npm install` / `npm start` download it once into the project's `models` folder, then it works offline. It is not in the Git repository (it is larger than GitHub allows per file); for an offline machine, copy the `models` folder over. `SUDARSHAN_MODELS_DIR` keeps it elsewhere, `SUDARSHAN_SKIP_MODEL=1` never downloads it. When a question goes to the AI, it finds your own saved answers to questions that *mean* the same - in any wording or language - and shows them to the AI, which decides whether one really answers this question. They are never filled in by themselves: similar-looking questions can ask opposite things ("current" vs "expected" CTC, 10th vs 12th board). Only your answers and your spreadsheet's are shown, never the AI's own earlier guesses, and a "years of X" question sees only past answers about X. Measured on real saved answers (40 questions, 2026-09-30): answered right 19 vs 15 before, asked the user 12 vs 15 times, wrong 9 vs 10. The flight log says when it helped. Turn it off in **Settings -> Agent -> Use my past answers for similar questions**; if the model cannot run on a computer, everything works as before.
+- The product name, colours and fonts live in `apps/web/src/tokens.css`, `styles.css` and the logo files in `apps/web/public/`. The user guide (`apps/web/public/docs/`) uses the same tokens.
+- The data folder name and environment prefix are in `apps/server/src/config/configuration.ts`.
+- The default port is `4747`; the installers point at this repository through `SUDARSHAN_REPO`.
+- The guide's screenshots are taken from a demo data folder with a made-up candidate. Retake them after UI changes rather than using your own data.
+- MIT licensed: keep the copyright notice and license file in your fork.
 
-**Rescuing stuck applications.** When the usual way gets stuck on a site Sudarshan does not know ("No way forward found"), an AI takes over from the same page for up to 8 steps: it reads a numbered list of the page's controls (and a screenshot, if your model accepts images), presses what moves the application on and chooses options such as "How did you hear about us?". It never types your details (those still come from your profile, your answers or you), never presses anything that withdraws, deletes or leaves the application, never touches passwords, codes or captchas, and keeps the Submit rules ("Stop before the final Submit", careful mode). Every step that ends in a confirmed application is learned for that site, so the next application there needs no AI, and the button learner picks it up within a minute. It works with any AI model: images only where the model accepts them (found out by trying, remembered per model), a shorter page where a model says the prompt is too long. If it fails 5 times in a row with a model, it pauses and **Needs attention** says so; a larger model usually does better. Switch it off in **Settings -> Agent -> Rescue stuck applications with AI**.
-
-**Carrying on after you unblock it.** A job handed to you for a captcha or a login keeps its tab. Solve the captcha and leave the tab for a few seconds, and Sudarshan carries on by itself and presses Submit; or press **Continue** on the job in **Applications**. While it carries on, its own clicks are not learned as yours.
-
-**Replay.** Each application keeps a small picture of the page at every step. Open a job in **Applications -> Attempts** to see where it went and where it got stuck (pictures are cleared after 30 days).
-
-**Learning from your applications.** Four small models train on your computer from what Sudarshan does every day, and retrain every few hours (**Settings -> Agent -> Learning from your applications** shows each one; **Train now** retrains at once):
-- *Which of your details a field asks for* - from every field a rule fills and every question you answered with one of your details ("Contact No" -> your phone). It then recognises new wordings and languages, and fills them with the same rule.
-- *Whether two questions ask the same thing* - from your saved answers (the same reply means the same question). It keeps past answers about something else ("current" vs "expected" CTC) away from the AI.
-- *Which button moves an application forward* - from buttons that got applications confirmed, and ones that led into dead ends. On a site it has never seen, it picks the button that moves on before asking the AI.
-- *Which applications will go through without you* - from every attempt's result. It puts likely successes first within the same score band; it never skips a job.
-
-Each one first **checks itself** on cases it has not seen, and acts only once it is right often enough (95% for the first three; ranking right 75% of the time for the last); if it slips, it goes back to checking. Each can be switched off. Nothing leaves your computer.
-
-**Each site's steps.** For every site and every kind of step (for example Indeed's resume step), Sudarshan remembers which button moved the form forward - but only from applications the site actually **confirmed**. A page changing is not proof: a button that left the form (such as a notifications link) is never learned. Next time it presses the learned button first. If a click changes nothing - the site was redesigned - it notes that and tries the next safe button (never *Save and close*, *Withdraw* or *Delete*). If an application gets stuck, only the button that led into the dead end gets a strike.
-
-**From you, when it gets stuck.** A stuck application stays open in its tab. When you finish it by hand, Sudarshan saves the answers you typed or picked (only those - not what the site filled in itself) straight away. The buttons you pressed are learned once the site confirms the application; if you close the tab instead, they are forgotten. It also notes **how** you operated a field the site built itself - opened it and clicked an option, typed and picked a suggestion, typed and pressed Enter, clicked a choice's words - and fills that kind of field your way next time, on that site. When the site shows its confirmation - even an hour later, on a new page - the job is marked Applied. For applications it did not see go through, **Applications -> Check Indeed** reads your Indeed "My jobs - Applied" list and marks those jobs Applied (matched by Indeed's own job id; it only reads the page).
-
-**What it does not do.** It remembers answers and buttons; it does not work out new kinds of pages on its own. When a site changes how its forms work, the fix is still a code change.
-
-**When a site changes.** If a platform's last three applications all got stuck - with no success since - Sudarshan stops applying there instead of failing quietly, and **What needs attention** says so. Finish one stuck application by hand (it learns the new steps), or press **Try again carefully**: it resumes and stops before every Submit until one application goes through. Captchas, questions for you and logins never count as the site changing.
-
-**Your interest.** What the jobs you apply to or approve have in common is what you like: the skills they ask for most, their title words and platforms; anything you skip or dismiss again and again counts against a job. After 15 jobs you kept, each job in Review shows **"87% your interest"** - how much it looks like the ones you apply to (hover for what it shares and what counts against it). Review can be sorted by **Your interest**, and in **Auto** mode a job very unlike yours waits for your review instead of being sent. (A meaning model comparing whole job descriptions was measured too, and ranked worse - so it is not used here.) Lakshya's **Your interest** card shows what you like - the skills and platforms common to the jobs you keep - and what you skip, but only what you have really turned down. It only ranks - your own rules (score, skip lists, limits) always come first.
-
-**Your core skills.** Settings -> What to search -> **Core skills** (blank = your search keywords). A job asking for one - in its title, skill list or description, however it is spelled - is never skipped for a low score: it waits in Review, saying why. A job asking for two or more of them scores a little higher.
-
-**Searching.** The job sites are searched at the same time. On LinkedIn, Naukri and Indeed all your keywords go into one "any of these" search per location, instead of one search per keyword.
-
-## What Sudarshan can't do on its own
-
-It fills most application forms by itself - LinkedIn Easy Apply, Naukri, Instahyre and company career sites such as Keka, Greenhouse and Lever - and uploads your resume. A few things are left to you, on purpose:
-
-- **Captchas** ("I'm not a robot", picture puzzles, type-the-code boxes) - Sudarshan never solves them. It fills everything else and hands the application to you.
-- **Sites that make you create an account or log in**, or **verify with a code sent to your email or phone (OTP)** - these become **"Do by hand"** in Applications.
-- **Indeed** - Sudarshan submits Indeed applications itself; when Indeed shows a real captcha, you solve it and press Submit in the open tab.
-
-### What happens when a form has a captcha
-
-1. **Sudarshan fills the whole form** - contact details, resume, questions, every step it can - and stops at the captcha. It never presses Submit on a captcha form.
-2. **The tab stays open** in Sudarshan's browser window, and the job moves to **Applications -> Do by hand** with the note *"Filled - only the captcha is left"*. The flight log says the same.
-3. **The agent carries on** with the next job in the queue - it does not sit and wait, so one captcha never holds up the rest.
-4. **You finish it whenever you like:** switch to that tab and solve the captcha (tick "I'm not a robot", pick the pictures, or type the code). Then either press **Submit** yourself, or just leave the tab: a few seconds later Sudarshan carries on and presses Submit for you (or press **Continue** on the job in Applications).
-5. **Sudarshan is still watching that tab.** When the site confirms the application, it marks the job **Applied** by itself ("Finished by you") - no need to mark it by hand - and remembers any answers you added for next time.
-
-If you close the tab without submitting, the job stays in **Do by hand**: open it from Applications, apply on the site, then press **I applied**.
-
-When it gets stuck on a form, the tab stays open: finish it there and Sudarshan learns your answers and that site's steps for next time. The same list is behind the **(i)** on the **Apply on** card in Lakshya.
-
-## Status and known gaps
-
-- **Verified against live accounts:** LinkedIn Easy Apply (multi-page forms, screening questions), Naukri one-click apply, Instahyre one-click apply, and company career-site forms (Keka).
-- **Also verified:** resume parsing, Excel import, LinkedIn and Naukri discovery, scoring, the form engine in a real browser, learning from forms you finish, security and key encryption.
-- **Foundit and Hirist (2026-10-02):** search verified on live data (17 and 16 jobs for one profile's searches); log in to each once from **Settings -> Site logins** (the login is checked like LinkedIn's). Applying while logged in has not been verified yet - keep **Stop before the final Submit** on for your first ones. Foundit listings that only point to LinkedIn are left to the LinkedIn search.
-- **Himalayas (2026-10-02):** remote jobs from its public API, only those open to your country (83 for one profile's searches). Applying needs a Himalayas login: press **Log in** for it under **Settings -> Site logins** once.
-- **Logins Sudarshan learns.** For a site whose login it does not know yet, it notes the cookies when you press **Log in**, and the secure ones that appear after you sign in become that site's login check - it shows **Connected** from then on.
-- **Cutshort and Wellfound** are not searched: Cutshort shows results only to logged-in users, and Wellfound has almost no listings for Indian cities. Paste their job links under Applications -> Add job links instead.
-- **LinkedIn to company sites (2026-10-02):** "Apply" on a LinkedIn job follows to the company's site (for example SAP SuccessFactors) and hands the job to you when that site needs an account.
-- **Indeed:** search is verified. Indeed's review page uses invisible reCAPTCHA, which usually lets an application through; when it asks for a real captcha, Sudarshan never solves it - it hands the application over.
-- **Naukri chat questionnaire:** tested against a replica of Naukri's chat (Yes/No and typed questions, the "typing" pause, the hidden file input), using your saved answers and profile first; not yet verified on a live application end to end. Job sites change their pages often - keep **Stop before the final Submit** on for your first applications on a new site, and report what the flight log shows.
+---
 
 ## Contributing
 
-Bug reports and pull requests are welcome. Job sites change their pages often, so the most useful report is:
+Issues and pull requests are welcome. Job sites change their pages often, so the most useful bug report includes:
 
 1. What you expected and what happened.
-2. The lines from the **flight log** around the problem (Lakshya, or the Flight log page).
-3. For a failed application: the step-by-step trace from **Applications -> the job -> Attempts**.
+2. The **Flight log** lines around the problem.
+3. For a failed application: the step trace from **Applications → the job → Attempts**.
 
-Please **remove personal details** (name, email, phone, salary) before posting logs or screenshots. For code changes, run `npm test`, `npm run typecheck` and `npm run lint` before opening a pull request.
+Remove personal details (name, email, phone, salary) before posting. For a site-specific fix, add an HTML fixture that reproduces the page and a browser test.
 
-## Disclaimer
+---
 
-Sudarshan automates actions in your own browser, on your own accounts. Automated applying may break a job site's terms of service, and sites can restrict accounts that apply too fast. The defaults are conservative, but **you are responsible for how you use it**. It is not affiliated with LinkedIn, Naukri or any AI provider.
+## Disclaimer and license
 
-## License
+Sudarshan automates actions in the user's own browser, on their own accounts. Automated applying may break a job site's terms of service, and sites can restrict accounts that apply too fast. The defaults are conservative, but users are responsible for how they use it. It is not affiliated with LinkedIn, Naukri, Indeed or any AI provider.
 
-Created by **[Ankur Pandey](https://github.com/ankurpandey27)**.
-
-MIT - see [LICENSE](LICENSE). If you build on Sudarshan, keep the copyright notice, as the license asks.
+Created by **[Ankur Pandey](https://github.com/ankurpandey27)**. MIT; see [LICENSE](LICENSE).

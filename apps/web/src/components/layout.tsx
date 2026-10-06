@@ -5,6 +5,7 @@ import { useState, type ReactNode } from 'react';
 import { useSaved } from '../lib/use-saved';
 import { NavLink, Outlet } from 'react-router';
 import {
+  BookOpen,
   BookOpenCheck,
   NotebookPen,
   Briefcase,
@@ -88,6 +89,23 @@ export function Layout() {
       <Item rail={rail} to="/activity" icon={<ScrollText className="size-4" />} label="Flight log" />
       <Item rail={rail} to="/profile" icon={<UserRound className="size-4" />} label="Profile" />
       <Item rail={rail} to="/settings" icon={<Settings2 className="size-4" />} label="Settings" />
+      {/* The user guide: a page of its own, opened beside the app. */}
+      <a
+        href="/docs/index.html"
+        target="_blank"
+        rel="noopener"
+        title={rail ? 'Documentation' : 'How every part of Sudarshan works - opens in a new tab'}
+        aria-label={rail ? 'Documentation' : undefined}
+        className={cn(
+          'relative flex h-9 items-center gap-2.5 rounded-lg text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink',
+          rail ? 'mx-auto w-10 justify-center' : 'px-2.5',
+        )}
+      >
+        <span className="text-ink-3">
+          <BookOpen className="size-4" />
+        </span>
+        {!rail && <span className="flex-1">Documentation</span>}
+      </a>
     </nav>
   );
 

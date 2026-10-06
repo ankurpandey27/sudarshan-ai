@@ -312,6 +312,12 @@ export function SettingsPage() {
                 hint={pastAnswersHint(agentStatus?.meaningModel)}
               />
               <Toggle
+                checked={draft.agent.homeFirst !== false}
+                onChange={(v) => agent('homeFirst', v)}
+                label="Apply to jobs in my country first"
+                hint="Jobs in the country on your profile (on-site, hybrid or remote) are applied to before jobs abroad, so remote jobs from other countries never use up a site's daily limit first. Each job's place is shown in Review."
+              />
+              <Toggle
                 checked={draft.agent.carefulAfterPause}
                 onChange={(v) => agent('carefulAfterPause', v)}
                 label="Careful mode after a pause"

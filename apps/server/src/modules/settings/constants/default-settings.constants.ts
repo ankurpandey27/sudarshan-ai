@@ -53,6 +53,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
     pastAnswers: true,
     rescue: true,
     carefulAfterPause: false,
+    homeFirst: true,
     backupFolder: '',
     dailySummaryHour: 21,
     notifyNeedsYou: true,

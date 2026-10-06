@@ -75,6 +75,8 @@ export interface AgentSettings {
    * one application goes through. Off: it simply resumes. Your choice (2026-09-30).
    */
   carefulAfterPause: boolean;
+  /** Apply to jobs in your country before jobs abroad (remote or not). */
+  homeFirst: boolean;
   /** A folder of yours (OneDrive, Google Drive, a USB disk) the daily backup is copied to; '' for none. */
   backupFolder: string;
   /** Hour of the day (0-23) the daily summary is sent; -1 for none. */

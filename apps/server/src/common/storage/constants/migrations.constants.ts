@@ -312,4 +312,11 @@ export const MIGRATIONS: string[] = [
   `
   DELETE FROM widget_recipes WHERE domain LIKE '%greenhouse.io';
   `,
+  // How each job is worked (remote, hybrid, on-site) and where it is from your country (home, abroad, unknown),
+  // for Review's filters and "your country first" (2026-10-06). Filled in by the scoring service.
+  `
+  ALTER TABLE jobs ADD COLUMN work_mode TEXT;
+  ALTER TABLE jobs ADD COLUMN region TEXT;
+  CREATE INDEX idx_jobs_region ON jobs (region);
+  `,
 ];

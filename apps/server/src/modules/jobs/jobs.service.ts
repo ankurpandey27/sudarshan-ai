@@ -22,9 +22,48 @@ import { JobStats } from './interfaces/job-stats.interface';
 import { ListJobsQueryDto } from './dto/list-jobs-query.dto';
 import { JobLinkDto } from './dto/job-link.dto';
 import { toJob } from './utils/job.mapper.util';
+import { learnAbroadPlaces, learnHomePlaces, regionOf, workModeOf } from './utils/job-place.util';
+import { platformOf } from './utils/platform.util';
+import { JobRegion, WorkMode } from './enums/job-place.enum';
 import { toAttempt } from './utils/attempt.mapper.util';
 import { parseJobUrl } from './utils/job-url.util';
 import { TasteService } from '../taste/taste.service';
+
+/** When a job was posted, or found when the site does not say. */
+const WHEN_POSTED = 'COALESCE(posted_at, discovered_at)';
+
+/** The order approved jobs are applied in - also how the Approved tab lists them. */
+function queueOrder(homeFirst: boolean): string {
+  return `(origin = 'link') DESC,
+    ${homeFirst ? "CASE region WHEN 'home' THEN 0 WHEN 'abroad' THEN 2 ELSE 1 END," : ''}
+    -- A job whose site did not answer waits behind the others: an unreachable site (chiletrabajos.cl, 2026-10-05)
+    -- was tried four times in a row, two minutes each, ahead of every other approved job.
+    (SELECT COUNT(*) FROM attempts a WHERE a.job_id = jobs.id AND a.result = 'network') ASC,
+    CAST(COALESCE(score, 0) / 10 AS INTEGER) DESC, COALESCE(success_chance, 0.5) DESC,
+    COALESCE(score, 0) DESC, discovered_at`;
+}
+
+/** Review's place filters: how the job is worked, where it is, how recent. */
+interface PlaceFilters {
+  workMode?: WorkMode[];
+  region?: JobRegion;
+  withinDays?: number;
+}
+
+function placeFilters(q: PlaceFilters, where: string[], params: SQLInputValue[]): void {
+  if (q.workMode?.length) {
+    where.push(`work_mode IN (${q.workMode.map(() => '?').join(',')})`);
+    params.push(...q.workMode);
+  }
+  if (q.region) {
+    where.push('region = ?');
+    params.push(q.region);
+  }
+  if (q.withinDays) {
+    where.push(`${WHEN_POSTED} >= ?`);
+    params.push(new Date(Date.now() - q.withinDays * 86_400_000).toISOString());
+  }
+}
 
 @Injectable()
 export class JobsService implements OnApplicationBootstrap {
@@ -255,6 +294,7 @@ export class JobsService implements OnApplicationBootstrap {
       where.push('score >= ?');
       params.push(q.minScore);
     }
+    placeFilters(q, where, params);
     // Counts per platform use every filter except the platform itself.
     const base = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const platforms: Record<string, number> = {};
@@ -267,7 +307,11 @@ export class JobsService implements OnApplicationBootstrap {
     }
     const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
     const order =
-      q.sort === 'recent'
+      q.sort === 'queue'
+        ? queueOrder(q.homeFirst === true)
+        : q.sort === 'newest'
+        ? `${WHEN_POSTED} DESC, COALESCE(score, -1) DESC`
+        : q.sort === 'recent'
         ? 'updated_at DESC'
         : q.sort === 'applied'
           ? 'applied_at DESC'
@@ -285,16 +329,16 @@ export class JobsService implements OnApplicationBootstrap {
     return this.storage.all<JobRow>('SELECT * FROM jobs WHERE status = ? ORDER BY discovered_at LIMIT ?', [JobStatus.NEW, limit]).map(toJob);
   }
 
-  nextToApply(platforms: JobPlatform[]): Job | null {
+  /**
+   * The next approved job. With `homeFirst`, jobs in your country go before unknown ones, and those before jobs abroad -
+   * within each, the usual order. Foreign remote jobs used up LinkedIn's daily limit before the ones in India were
+   * reached (2026-10-06).
+   */
+  nextToApply(platforms: JobPlatform[], homeFirst = false): Job | null {
     if (platforms.length === 0) return null;
     const row = this.storage.get<JobRow>(
       `SELECT * FROM jobs WHERE status = ? AND ${PLATFORM_SQL} IN (${platforms.map(() => '?').join(',')})
-       ORDER BY (origin = 'link') DESC,
-         -- A job whose site did not answer waits behind the others: an unreachable site (chiletrabajos.cl, 2026-10-05)
-         -- was tried four times in a row, two minutes each, ahead of every other approved job.
-         (SELECT COUNT(*) FROM attempts a WHERE a.job_id = jobs.id AND a.result = 'network') ASC,
-         CAST(COALESCE(score, 0) / 10 AS INTEGER) DESC, COALESCE(success_chance, 0.5) DESC,
-         COALESCE(score, 0) DESC, discovered_at LIMIT 1`,
+       ORDER BY ${queueOrder(homeFirst)} LIMIT 1`,
       [JobStatus.APPROVED, ...platforms],
     );
     return row ? toJob(row) : null;
@@ -326,6 +370,41 @@ export class JobsService implements OnApplicationBootstrap {
         [JobStatus.APPROVED, new Date().toISOString(), JobStatus.NEEDS_INPUT],
       ).changes ?? 0,
     );
+  }
+
+  /**
+   * Works out how and where every job is (or only the ones not done yet). `home` gives your country's names and your
+   * own places; the places in your country are learned from all the listings each time, so a city first seen with
+   * "India" after it is known on its own later.
+   */
+  classifyPlaces(home: { country: string[]; ownPlaces: string[] }, all = false): number {
+    const rows = this.storage.all<Pick<JobRow, 'id' | 'source' | 'url' | 'apply_url' | 'title' | 'location' | 'is_remote' | 'description' | 'work_mode' | 'region'>>(
+      'SELECT id, source, url, apply_url, title, location, is_remote, substr(description, 1, 4000) description, work_mode, region FROM jobs',
+    );
+    const listing = (r: (typeof rows)[number]) => ({
+      platform: platformOf(r.source as JobSource, r.url, r.apply_url),
+      url: r.url,
+      title: r.title,
+      location: r.location,
+      isRemote: r.is_remote === 1,
+      description: r.description,
+    });
+    const listings = rows.map(listing);
+    const places = learnHomePlaces(home.country, home.ownPlaces, listings);
+    const ctx = { country: home.country, places, abroad: learnAbroadPlaces(home.country, places, listings) };
+    let changed = 0;
+    this.storage.transaction(() => {
+      for (const r of rows) {
+        if (!all && r.region !== null && r.work_mode !== null) continue;
+        const l = listing(r);
+        const mode = workModeOf(l);
+        const region = regionOf(l, ctx);
+        if (mode === r.work_mode && region === r.region) continue;
+        this.storage.run('UPDATE jobs SET work_mode = ?, region = ? WHERE id = ?', [mode, region, r.id]);
+        changed++;
+      }
+    });
+    return changed;
   }
 
   queuedCount(): number {
@@ -402,14 +481,15 @@ export class JobsService implements OnApplicationBootstrap {
   }
 
   /** Approves every job in Review scoring at least `minScore` (optionally on one platform) - all pages, not just the one shown. */
-  approveStrong(minScore: number, platform?: JobPlatform): number {
-    const ids = this.storage
-      .all<{ id: number }>(`SELECT id FROM jobs WHERE status = ? AND score >= ?${platform ? ` AND ${PLATFORM_SQL} = ?` : ''}`, [
-        JobStatus.REVIEW,
-        minScore,
-        ...(platform ? [platform] : []),
-      ])
-      .map((r) => r.id);
+  approveStrong(minScore: number, platform?: JobPlatform, place: PlaceFilters = {}): number {
+    const where = ['status = ?', 'score >= ?'];
+    const params: SQLInputValue[] = [JobStatus.REVIEW, minScore];
+    if (platform) {
+      where.push(`${PLATFORM_SQL} = ?`);
+      params.push(platform);
+    }
+    placeFilters(place, where, params);
+    const ids = this.storage.all<{ id: number }>(`SELECT id FROM jobs WHERE ${where.join(' AND ')}`, params).map((r) => r.id);
     return this.setStatusMany(ids, JobStatus.APPROVED, 'Approved by you', [JobStatus.REVIEW], true);
   }
 

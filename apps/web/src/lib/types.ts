@@ -20,6 +20,9 @@ export interface ScoreDetail {
 
 export type JobPlatform = 'linkedin' | 'naukri' | 'indeed' | 'instahyre' | 'foundit' | 'hirist' | 'himalayas' | 'other';
 
+export type WorkMode = 'remote' | 'hybrid' | 'onsite';
+export type JobRegion = 'home' | 'abroad' | 'unknown';
+
 export interface Job {
   id: number;
   source: JobSource;
@@ -32,6 +35,10 @@ export interface Job {
   company: string;
   location: string;
   isRemote: boolean;
+  /** How the job is worked; null until classified. */
+  workMode: WorkMode | null;
+  /** In your country, abroad, or not said; null until classified. */
+  region: JobRegion | null;
   easyApply: boolean;
   salaryRaw: string | null;
   description: string;
@@ -188,6 +195,7 @@ export interface Settings {
     pastAnswers: boolean;
     rescue: boolean;
     carefulAfterPause: boolean;
+    homeFirst: boolean;
     backupFolder: string;
     dailySummaryHour: number;
     notifyNeedsYou: boolean;

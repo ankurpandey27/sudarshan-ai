@@ -2,10 +2,11 @@
 // SPDX-License-Identifier: MIT
 
 import { Transform } from 'class-transformer';
-import { IsArray, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
+import { IsArray, IsBoolean, IsEnum, IsIn, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { JobSource } from '../enums/job-source.enum';
 import { JobPlatform } from '../enums/job-platform.enum';
 import { JobStatus } from '../enums/job-status.enum';
+import { JobRegion, WorkMode } from '../enums/job-place.enum';
 
 export class ListJobsQueryDto {
   // ?status=review,approved
@@ -29,8 +30,34 @@ export class ListJobsQueryDto {
   search?: string;
 
   @IsOptional()
-  @IsIn(['score', 'recent', 'applied', 'taste'])
-  sort?: 'score' | 'recent' | 'applied' | 'taste';
+  // "newest": by when the job was posted (or found, when the site does not say).
+  // "queue": the order approved jobs are applied in.
+  @IsIn(['score', 'recent', 'applied', 'taste', 'newest', 'queue'])
+  sort?: 'score' | 'recent' | 'applied' | 'taste' | 'newest' | 'queue';
+
+  /** With sort=queue: jobs in your country first, as the agent does when that setting is on. */
+  @IsOptional()
+  @Transform(({ value }) => value === true || value === 'true')
+  @IsBoolean()
+  homeFirst?: boolean;
+
+  // ?workMode=remote,hybrid
+  @IsOptional()
+  @Transform(({ value }) => (typeof value === 'string' ? value.split(',').filter(Boolean) : value))
+  @IsArray()
+  @IsEnum(WorkMode, { each: true })
+  workMode?: WorkMode[];
+
+  @IsOptional()
+  @IsEnum(JobRegion)
+  region?: JobRegion;
+
+  /** Only jobs posted (or found) in the last N days. */
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  withinDays?: number;
 
   @IsOptional()
   @IsInt()

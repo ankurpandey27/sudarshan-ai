@@ -16,6 +16,7 @@ import { AiUsageCard } from '../components/ai-usage-card';
 import { TasteCard } from '../components/taste-card';
 import { Tabs, useTab, type TabDef } from '../components/tabs';
 import { ApplyOnCard } from '../components/apply-on-card';
+import { TodayCard } from '../components/today-card';
 import { PLATFORM_COLOR } from '../components/platform-badge';
 import { Button, Card, CardHeader } from '../components/ui';
 import { useToast } from '../components/toast';
@@ -152,7 +153,8 @@ export function Dashboard() {
               </div>
             </Card>
           </div>
-          <div className="mt-5">
+          <div className="mt-5 grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]">
+            <TodayCard />
             <ApplyOnCard />
           </div>
         </>

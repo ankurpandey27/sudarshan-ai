@@ -69,47 +69,46 @@ export function ApplyOnCard() {
           </InfoTip>
         }
       />
-      <div className="flex flex-wrap gap-2 px-5 py-4">
+      <div className="grid gap-3 px-5 py-4 sm:grid-cols-2 lg:grid-cols-3">
         {PLATFORMS.map((p) => {
           const cfg = settings?.sources[p.setting];
           const enabled = cfg?.enabled ?? false;
           const queued = stats?.queuedByPlatform[p.key] ?? 0;
           const today = stats?.appliedTodayByPlatform[p.key] ?? 0;
+          const health = healthOf(p.key);
           return (
-            <Pill
+            <SiteCard
               key={p.key}
+              title={p.label}
+              dot={p.key}
+              description={ABOUT[p.key]}
               enabled={enabled}
               disabled={!settings || set.isPending}
               onToggle={() => set.mutate({ setting: p.setting, enabled: !enabled })}
-              label={
-                <>
-                  <PlatformDot platform={p.key} /> {p.label}
-                </>
-              }
-              meta={
-                healthOf(p.key) === 'broken'
-                  ? 'paused - site changed?'
-                  : healthOf(p.key) === 'careful'
-                    ? 'careful mode'
-                    : healthOf(p.key) === 'cooling'
-                      ? `refusing for now - again at ${untilOf(p.key)}`
+              used={enabled ? { done: today, limit: cfg?.dailyLimit ?? 0 } : null}
+              status={
+                health === 'broken'
+                  ? { text: 'Paused - its pages seem to have changed', tone: 'warn' }
+                  : health === 'careful'
+                    ? { text: 'Careful mode - stops before each Submit', tone: 'warn' }
+                    : health === 'cooling'
+                      ? { text: `Refusing for now - again at ${untilOf(p.key)}`, tone: 'warn' }
                       : enabled
-                        ? `${today}/${cfg?.dailyLimit ?? '-'} today${queued ? ` · ${queued} queued` : ''}`
-                        : queued
-                          ? `off · ${queued} waiting`
-                          : 'off'
+                        ? { text: queued ? `${queued} queued` : 'Nothing queued' }
+                        : { text: queued ? `Off - ${queued} waiting` : 'Off' }
               }
             />
           );
         })}
         {settings && (
-          <Pill
+          <SiteCard
+            title="Company career sites"
+            description="Follows “Apply on company site” and fills the company's own form - Greenhouse, Lever, Ashby, Workday and others."
             enabled={settings.sources.externalSites.enabled}
             disabled={set.isPending}
             onToggle={() => set.mutate({ setting: 'externalSites', enabled: !settings.sources.externalSites.enabled })}
-            title="When a job says 'Apply on company site', follow it and fill the company's form (Keka, Greenhouse, Lever...)"
-            label="Company career sites"
-            meta={settings.sources.externalSites.enabled ? `up to ${settings.sources.externalSites.dailyLimit}/day` : 'off'}
+            used={null}
+            status={{ text: settings.sources.externalSites.enabled ? `Up to ${settings.sources.externalSites.dailyLimit} a day` : 'Off' }}
           />
         )}
       </div>
@@ -117,41 +116,82 @@ export function ApplyOnCard() {
   );
 }
 
-function Pill({
+/** What each site is and how Sudarshan applies there. */
+const ABOUT: Record<string, string> = {
+  linkedin: 'Easy Apply inside LinkedIn; other jobs go on to the company’s own site.',
+  naukri: 'One-click apply, including its chat-style screening questions.',
+  indeed: 'Indeed Apply. Log in for more than the first page; a real captcha comes to you.',
+  instahyre: 'One-click apply to tech jobs.',
+  foundit: 'One-click apply, or on to the company’s own site.',
+  hirist: 'Tech jobs - one click, or its short screening form.',
+  himalayas: 'Remote jobs open to your country, applied to on the company’s form.',
+  other: 'Job links you add from any career site.',
+};
+
+function SiteCard({
+  title,
+  dot,
+  description,
   enabled,
   disabled,
   onToggle,
-  label,
-  meta,
-  title,
+  used,
+  status,
 }: {
+  title: string;
+  dot?: string;
+  description: string;
   enabled: boolean;
   disabled: boolean;
   onToggle: () => void;
-  label: React.ReactNode;
-  meta: string;
-  title?: string;
+  /** Today's applications against the daily limit, when it is on. */
+  used: { done: number; limit: number } | null;
+  status: { text: string; tone?: 'warn' };
 }) {
+  const full = !!used?.limit && used.done >= used.limit;
   return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={enabled}
-      disabled={disabled}
-      onClick={onToggle}
-      title={title}
+    <div
       className={cn(
-        'flex items-center gap-2.5 rounded-full border py-1.5 pr-3.5 pl-1.5 text-left transition-[background-color,border-color,transform] duration-200 active:scale-[0.98] disabled:opacity-60',
-        enabled ? 'border-accent/45 bg-accent-soft/45' : 'border-line bg-surface hover:border-line-strong',
+        'flex flex-col rounded-xl border p-3.5 transition-colors',
+        enabled ? 'border-accent/35 bg-accent-soft/25' : 'border-line bg-surface-2/40',
       )}
     >
-      <span className={cn('relative h-5 w-9 shrink-0 rounded-full transition-colors', enabled ? 'bg-accent' : 'bg-line-strong')}>
-        <span
-          className={cn('absolute top-0.5 left-0 size-4 rounded-full bg-surface shadow transition-transform', enabled ? 'translate-x-4.5' : 'translate-x-0.5')}
-        />
-      </span>
-      <span className="flex items-center gap-1.5 text-[13px] font-semibold whitespace-nowrap">{label}</span>
-      <span className={cn('text-[12px] whitespace-nowrap tabular', enabled ? 'text-ink-2' : 'text-ink-3')}>{meta}</span>
-    </button>
+      <div className="flex items-start justify-between gap-3">
+        <h4 className={cn('flex items-center gap-1.5 text-[14px] font-semibold', !enabled && 'text-ink-2')}>
+          {dot && <PlatformDot platform={dot as never} />}
+          {title}
+        </h4>
+        <button
+          type="button"
+          role="switch"
+          aria-checked={enabled}
+          aria-label={`${title}: ${enabled ? 'on' : 'off'}`}
+          disabled={disabled}
+          onClick={onToggle}
+          className={cn('relative h-5 w-9 shrink-0 rounded-full transition-colors disabled:opacity-60', enabled ? 'bg-accent' : 'bg-line-strong')}
+        >
+          <span
+            className={cn('absolute top-0.5 left-0 size-4 rounded-full bg-surface shadow transition-transform', enabled ? 'translate-x-4.5' : 'translate-x-0.5')}
+          />
+        </button>
+      </div>
+      <p className="mt-1 mb-3 text-[12.5px] leading-snug text-ink-3">{description}</p>
+      <div className="mt-auto">
+        {used && used.limit > 0 && (
+          <>
+            <div className="flex items-baseline justify-between text-[12px]">
+              <span className="text-ink-3">Today</span>
+              <b className={cn('tabular', full ? 'text-warn' : 'text-ink')}>
+                {used.done} / {used.limit}
+              </b>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface-2">
+              <i className={cn('block h-full rounded-full', full ? 'bg-warn' : 'bg-accent')} style={{ width: `${Math.min(100, (used.done / used.limit) * 100)}%` }} />
+            </div>
+          </>
+        )}
+        <p className={cn('mt-1.5 text-[12px]', status.tone === 'warn' ? 'font-medium text-warn' : 'text-ink-3')}>{status.text}</p>
+      </div>
+    </div>
   );
 }

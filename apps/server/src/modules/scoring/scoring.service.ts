@@ -1,12 +1,13 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, Optional, OnApplicationBootstrap } from '@nestjs/common';
 import { EventsService } from '../../common/events/events.service';
 import { AgentEventType } from '../../common/events/enums/agent-event-type.enum';
 import { canonicalSkill } from '../discovery/utils/job-normalizer.util';
 import { coreSkillsIn, coreSkillsOf, skillLabel, skillList } from './utils/core-skill.util';
 import { JobsService } from '../jobs/jobs.service';
+import { countryNames } from '../jobs/utils/job-place.util';
 import { JobSource } from '../jobs/enums/job-source.enum';
 import { JobStatus } from '../jobs/enums/job-status.enum';
 import { Job, ScoreDetail } from '../jobs/interfaces/job.interface';
@@ -42,7 +43,7 @@ import { STEERING_NOTE } from './constants/scoring.constants';
 import { hasSkill } from '../profile/utils/has-skill.util';
 
 @Injectable()
-export class ScoringService {
+export class ScoringService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ScoringService.name);
   private last: LastScoringRun | null = null;
   private inFlight: Promise<ScoringRunResult> | null = null;
@@ -67,8 +68,30 @@ export class ScoringService {
     return this.inFlight;
   }
 
+  /**
+   * Works out how each job is worked and where it is from your country, for Review's filters and "your country
+   * first". `all` redoes every job - after your country or places change.
+   */
+  classifyPlaces(all = false): number {
+    try {
+      const p = this.profile.get();
+      return this.jobs.classifyPlaces(
+        { country: countryNames(p.country), ownPlaces: [p.city, p.state, ...this.settings.get().search.locations].filter(Boolean) },
+        all,
+      );
+    } catch (err) {
+      this.logger.warn(`Could not classify job places: ${(err as Error).message}`);
+      return 0;
+    }
+  }
+
+  onApplicationBootstrap(): void {
+    this.classifyPlaces(true);
+  }
+
   private async run(limit: number): Promise<ScoringRunResult> {
     const out: ScoringRunResult = { scored: 0, review: 0, queued: 0, skipped: 0, llmCalls: 0, skippedBy: {} };
+    this.classifyPlaces();
     const pending = this.jobs.unscored(limit);
     if (pending.length === 0) return out;
     const startedAt = Date.now();

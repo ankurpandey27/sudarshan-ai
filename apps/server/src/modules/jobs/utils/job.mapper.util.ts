@@ -4,6 +4,7 @@
 import { JobSource } from '../enums/job-source.enum';
 import { platformOf, siteOf } from './platform.util';
 import { JobStatus } from '../enums/job-status.enum';
+import { JobRegion, WorkMode } from '../enums/job-place.enum';
 import { Job, JobRow, ScoreDetail } from '../interfaces/job.interface';
 
 export function toJob(row: JobRow): Job {
@@ -19,6 +20,8 @@ export function toJob(row: JobRow): Job {
     company: row.company,
     location: row.location,
     isRemote: row.is_remote === 1,
+    workMode: (row.work_mode as WorkMode | null) ?? null,
+    region: (row.region as JobRegion | null) ?? null,
     easyApply: row.easy_apply === 1,
     salaryRaw: row.salary_raw,
     salaryMin: row.salary_min,

@@ -4,6 +4,7 @@
 import { JobSource } from '../enums/job-source.enum';
 import { JobPlatform } from '../enums/job-platform.enum';
 import { JobStatus } from '../enums/job-status.enum';
+import { JobRegion, WorkMode } from '../enums/job-place.enum';
 
 export interface ScoreDetail {
   technical: number;
@@ -32,6 +33,10 @@ export interface Job {
   company: string;
   location: string;
   isRemote: boolean;
+  /** Remote, hybrid or on-site; null until classified. */
+  workMode: WorkMode | null;
+  /** In your country, abroad, or unknown; null until classified. */
+  region: JobRegion | null;
   easyApply: boolean;
   salaryRaw: string | null;
   salaryMin: number | null;
@@ -71,6 +76,8 @@ export interface JobRow {
   description: string;
   skills: string;
   posted_at: string | null;
+  work_mode: string | null;
+  region: string | null;
   status: string;
   score: number | null;
   score_detail: string | null;
