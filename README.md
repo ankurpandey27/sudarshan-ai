@@ -304,6 +304,7 @@ Before a pull request: `npm test`, `npm run typecheck` and `npm run lint` must p
 
 - The server binds to `127.0.0.1`, sends a strict Content-Security-Policy (no inline scripts), and refuses writes without the `x-jaa-client` header, so other websites cannot use it.
 - Secrets are encrypted at rest and never returned to the UI (only a hint such as `sk-...3456`).
+- Files from the data folder (step pictures, resumes) are sent with `sendDataFile` (`common/utils/send-data-file.util.ts`), never a bare `res.sendFile`: the data folder is a dot-folder, which Express refuses by default. Pass only paths you built inside the data folder.
 - Text from job posts, pages and form questions is fenced as untrusted data in every prompt; posts that address AI tools are scored by rules only.
 - Submits are recorded the moment they are pressed, so a crash never sends an application twice.
 

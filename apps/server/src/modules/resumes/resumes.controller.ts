@@ -8,6 +8,7 @@ import { RESUME_MAX_BYTES } from '../profile/constants/profile.constants';
 import { ResumeMetaDto } from './dto/resume-meta.dto';
 import { Resume } from './interfaces/resume.interface';
 import { ResumesService } from './resumes.service';
+import { sendDataFile } from '../../common/utils/send-data-file.util';
 
 @Controller('resumes')
 export class ResumesController {
@@ -38,6 +39,6 @@ export class ResumesController {
 
   @Get(':id/file')
   file(@Param('id', ParseIntPipe) id: number, @Res() res: Response): void {
-    res.sendFile(this.resumes.filePath(id));
+    sendDataFile(res, this.resumes.filePath(id));
   }
 }

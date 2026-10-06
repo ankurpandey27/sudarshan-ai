@@ -236,7 +236,7 @@ export class AgentService implements OnApplicationShutdown {
 
   /** Claims the single apply slot synchronously (no await before it is set), then applies. */
   private async runApply(job: ReturnType<JobsService['get']>, before?: () => Promise<unknown>, work?: () => Promise<ApplyResult>): Promise<ApplyResult> {
-    this.currentJob = { id: job.id, title: job.title, company: job.company };
+    this.currentJob = { id: job.id, title: job.title, company: job.company, platform: job.platform };
     this.idleNote = null;
     this.setPhase(AgentPhase.APPLYING);
     this.applying = (async () => {

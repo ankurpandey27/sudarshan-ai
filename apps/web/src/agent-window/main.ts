@@ -15,7 +15,7 @@ import { signConsole } from '../lib/signature';
 interface Status {
   running: boolean;
   phase: 'stopped' | 'idle' | 'discovering' | 'applying' | 'waiting' | 'sleeping';
-  currentJob: { title: string; company: string } | null;
+  currentJob: { title: string; company: string; platform?: string } | null;
   nextApplyAt: string | null;
   nextDiscoveryAt: string | null;
   lastDiscoveryAt: string | null;
@@ -131,14 +131,11 @@ function drawSatellites(id: string, count: number, radius: number, size: number,
   );
 }
 
-let cometFor = '';
+/** The comet flies to the arc of the site it is applying on - the arc that grows when it lands. */
 function aimComet(job: Status['currentJob']): void {
-  const key = job ? `${job.title}@${job.company}` : '';
-  if (key === cometFor) return;
-  cometFor = key;
-  let hash = 0;
-  for (const char of key) hash = (Math.imul(hash, 31) + char.charCodeAt(0)) | 0;
-  byId('comet-angle').setAttribute('transform', `rotate(${(Math.abs(hash) % 360) - 90})`);
+  const index = PLATFORMS.findIndex((platform) => platform.key === job?.platform);
+  const { from, to } = span(index < 0 ? PLATFORMS.length - 1 : index);
+  byId('comet-angle').setAttribute('transform', `rotate(${(((from + to) / 2) * 180) / Math.PI})`);
 }
 
 const escape = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);

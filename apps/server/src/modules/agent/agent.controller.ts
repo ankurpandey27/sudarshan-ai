@@ -18,6 +18,7 @@ import { PlatformHealthService } from '../platform-health/platform-health.servic
 import { PlatformHealth } from '../platform-health/interfaces/platform-health.interface';
 import { JobPlatform } from '../jobs/enums/job-platform.enum';
 import { RescueService } from '../form-engine/rescue.service';
+import { sendDataFile } from '../../common/utils/send-data-file.util';
 
 @Controller('agent')
 export class AgentController {
@@ -60,8 +61,7 @@ export class AgentController {
     const file = this.apply.liveShotFile(attemptId, index);
     const path = file ? this.browser.shotPath(file) : null;
     if (!path || !existsSync(path)) throw new NotFoundException('No such picture - the application may have finished');
-    res.setHeader('cache-control', 'private, max-age=600');
-    res.sendFile(path);
+    sendDataFile(res, path, 600);
   }
 
   @Post('start')

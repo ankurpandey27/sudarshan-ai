@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+import { JobPlatform } from '../../jobs/enums/job-platform.enum';
 import { ScoringProgress } from '../../scoring/interfaces/scoring-progress.interface';
 import { LastScoringRun } from '../../scoring/interfaces/llm-score.interface';
 import { AgentPhase } from '../enums/agent-phase.enum';
@@ -11,7 +12,8 @@ import { RescueStatus } from '../../form-engine/interfaces/rescue-status.interfa
 export interface AgentStatus {
   running: boolean;
   phase: AgentPhase;
-  currentJob: { id: number; title: string; company: string } | null;
+  /** The job being applied to, with its site (where its comet flies on the radar). */
+  currentJob: { id: number; title: string; company: string; platform: JobPlatform } | null;
   nextDiscoveryAt: string | null;
   nextApplyAt: string | null;
   lastDiscoveryAt: string | null;

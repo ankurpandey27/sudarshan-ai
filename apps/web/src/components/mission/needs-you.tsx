@@ -15,12 +15,15 @@ import { useToast } from '../toast';
 /** Everything waiting on you, answerable right here: questions in one tap, hand-overs with their tab. */
 export function NeedsYou() {
   const { data: questions } = useQuestions();
-  const { data: handed } = useJobs({ status: 'manual', sort: 'recent', limit: 3 });
+  const { data: handed } = useJobs({ status: 'manual', sort: 'recent', limit: 20 });
   const { data: openTabs } = useQuery({ queryKey: ['open-tabs'], queryFn: () => api.get<number[]>('/agent/open-tabs'), refetchInterval: 10_000 });
   const asked = questions ?? [];
-  // "Do by hand" jobs: a captcha, a login, a site Sudarshan could not finish. Continue only where the tab is still open.
-  const waiting = handed?.items ?? [];
-  const total = asked.length + (handed?.total ?? 0);
+  // "Do by hand" jobs: a captcha, a login, a site Sudarshan could not finish. Those whose tab is still open come
+  // first and are the ones counted here - all of them ever ("168") is a list, not something waiting on you now.
+  const recent = handed?.items ?? [];
+  const open = recent.filter((job) => openTabs?.includes(job.id));
+  const waiting = [...open, ...recent.filter((job) => !openTabs?.includes(job.id))];
+  const total = asked.length + open.length;
 
   return (
     <Card>
@@ -59,6 +62,9 @@ export function NeedsYou() {
   );
 }
 
+/** Questions that take more than one choice, answered as "A | B". */
+const MULTI_CHOICE = new Set(['checkbox-group', 'checkbox', 'multiselect']);
+
 function QuestionRow({ question, glow }: { question: PendingQuestion; glow: boolean }) {
   const qc = useQueryClient();
   const toast = useToast();
@@ -76,7 +82,8 @@ function QuestionRow({ question, glow }: { question: PendingQuestion; glow: bool
   return (
     <div className={cn('rounded-xl border border-line bg-gradient-to-r from-warn-soft/60 to-transparent px-3 py-2.5 shadow-[inset_2px_0_0_var(--warn)]', glow && 'needs-glow')}>
       <p className="text-[12.5px] text-ink">{question.questionEn ?? question.question}</p>
-      {options.length > 0 && options.length <= 6 ? (
+      {/* One tap picks one choice; a question that takes several ("Hyderabad | Bengaluru") gets the box, pre-filled. */}
+      {options.length > 0 && options.length <= 6 && !MULTI_CHOICE.has(question.fieldType) ? (
         <div className="mt-2 flex flex-wrap items-center gap-1.5">
           {options.map((option, index) => (
             <button

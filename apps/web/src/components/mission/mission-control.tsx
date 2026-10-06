@@ -96,6 +96,7 @@ export function MissionControl() {
               running={!!agent?.running}
               phase={agent?.phase ?? 'stopped'}
               applyingJobId={agent?.currentJob?.id ?? null}
+              applyingPlatform={agent?.currentJob?.platform ?? null}
               limits={limits}
               country={country}
               highlight={highlight}

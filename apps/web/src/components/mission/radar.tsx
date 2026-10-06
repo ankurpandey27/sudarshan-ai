@@ -83,6 +83,7 @@ export function Radar({
   running,
   phase,
   applyingJobId,
+  applyingPlatform,
   limits,
   country,
   highlight,
@@ -93,6 +94,8 @@ export function Radar({
   running: boolean;
   phase: string;
   applyingJobId: number | null;
+  /** The site of the job being applied to. */
+  applyingPlatform?: string | null;
   limits: SiteLimit[];
   country: string | null;
   /** Jobs the command bar matches; the rest dim. Null: no filter. */
@@ -137,7 +140,17 @@ export function Radar({
   }, [jobs]);
 
   // --- comets: one per application, from the events the agent sends
-  const launch = (jobId: number) => {
+  // Each comet flies to its own site's arc on the rim - the arc that grows when it lands. Aiming at the job's dot
+  // sent an Indian LinkedIn job towards Hirist's arc on the left (2026-10-06).
+  const limitsRef = useRef(limits);
+  limitsRef.current = limits;
+  const siteAngle = (platform: string | undefined): number | null => {
+    const index = limitsRef.current.findIndex((site) => site.key === platform);
+    if (index < 0) return null;
+    const span = (2 * Math.PI) / limitsRef.current.length;
+    return -Math.PI / 2 + (index + 0.5) * span;
+  };
+  const launch = (jobId: number, platform?: string) => {
     if (flights.current.has(jobId) || !cometLayer.current || !defsRef.current) return;
     const svgNs = 'http://www.w3.org/2000/svg';
     const gradient = document.createElementNS(svgNs, 'linearGradient');
@@ -162,7 +175,7 @@ export function Radar({
     head.style.filter = 'drop-shadow(0 0 6px var(--accent))';
     cometLayer.current.append(line, head);
     const job = jobs.find((candidate) => candidate.id === jobId);
-    const angle = job ? angleFor(job) : angleFor({ id: jobId, region: null });
+    const angle = siteAngle(platform ?? job?.platform) ?? (job ? angleFor(job) : angleFor({ id: jobId, region: null }));
     flights.current.set(jobId, { jobId, angle, startedAt: performance.now(), endedAt: null, outcome: null, line, head, gradient, reachedAt: 0 });
   };
 
@@ -176,7 +189,7 @@ export function Radar({
     const fresh = events.filter((event) => event.id > seenEvent.current!).reverse();
     seenEvent.current = Math.max(seenEvent.current, newest);
     for (const event of fresh) {
-      if (event.type === 'apply.step' && event.jobId && /^(Applying|Continuing):/.test(event.message)) launch(event.jobId);
+      if (event.type === 'apply.step' && event.jobId && /^(Applying|Continuing):/.test(event.message)) launch(event.jobId, event.source);
       if (event.type === 'job.updated') {
         // One job ("… -> applied", with its id) or several at once ({ ids, status }).
         const outcome = outcomeOf(event.data?.status as JobStatus | undefined);
@@ -193,11 +206,16 @@ export function Radar({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [events]);
 
-  // The job being applied to when the page opened gets its comet too.
+  // The job being applied to when the page opened gets its comet too - and is re-aimed at its site's arc once the
+  // site is known (a comet launched before it flew towards the job's dot instead, 2026-10-06).
   useEffect(() => {
-    if (applyingJobId) launch(applyingJobId);
+    if (!applyingJobId) return;
+    const flight = flights.current.get(applyingJobId);
+    const angle = siteAngle(applyingPlatform ?? undefined);
+    if (flight && angle !== null && flight.endedAt === null) flight.angle = angle;
+    else if (!flight) launch(applyingJobId, applyingPlatform ?? undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [applyingJobId]);
+  }, [applyingJobId, applyingPlatform]);
 
   // --- one animation loop for the chakra, the sweep, the pings and the comets
   useEffect(() => {

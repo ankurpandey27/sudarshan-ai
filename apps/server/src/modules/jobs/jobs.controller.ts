@@ -16,6 +16,7 @@ import { Job } from './interfaces/job.interface';
 import { JobStats } from './interfaces/job-stats.interface';
 import { JobsService } from './jobs.service';
 import { ApproveStrongDto } from './dto/approve-strong.dto';
+import { sendDataFile } from '../../common/utils/send-data-file.util';
 
 @Controller('jobs')
 export class JobsController {
@@ -47,8 +48,7 @@ export class JobsController {
     const listed = !!attempt && name === file && attempt.shots.some((s) => s.file === name);
     const path = join(this.config.getOrThrow<string>('paths.screenshots'), name);
     if (!listed || !existsSync(path)) throw new NotFoundException('No such picture (old pictures are cleared after 30 days)');
-    res.setHeader('cache-control', 'private, max-age=86400');
-    res.sendFile(path);
+    sendDataFile(res, path, 86400);
   }
 
   @Post('approve')
