@@ -37,15 +37,43 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const RIM = 178;
 const byId = (id: string) => document.getElementById(id)!;
 
-function applyTheme(): void {
-  let theme: string | null = null;
+const SUN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+
+/** The saved choice (the same key as the app), or the computer's setting when there is none. */
+function savedTheme(): 'light' | 'dark' | null {
   try {
-    theme = localStorage.getItem('jaa-theme');
+    const theme = localStorage.getItem('jaa-theme');
+    return theme === 'dark' || theme === 'light' ? theme : null;
   } catch {
     // Storage can be blocked; fall back to the system setting.
+    return null;
   }
-  const dark = theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function applyTheme(): void {
+  const dark = (savedTheme() ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  // The button shows what it switches to: a sun in the dark, a moon in the light - as in the app.
+  const toggle = document.getElementById('theme-toggle');
+  if (toggle) {
+    toggle.innerHTML = dark ? SUN : MOON;
+    const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+  }
+}
+
+/** This window runs in the agent's own browser, which does not share the app's saved choice - so it has its own switch. */
+function toggleTheme(): void {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try {
+    localStorage.setItem('jaa-theme', next);
+  } catch {
+    // Not remembered - it still switches for now.
+  }
+  document.documentElement.dataset.theme = next;
+  applyTheme();
 }
 
 /** The chakra itself, in a -16..16 box, for the brand mark and the centre of the orbit. */
@@ -391,6 +419,11 @@ async function poll(): Promise<void> {
 
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+byId('theme-toggle').addEventListener('click', toggleTheme);
+// Switched in another tab of this browser (the app opened here): follow it.
+window.addEventListener('storage', (event) => {
+  if (event.key === 'jaa-theme') applyTheme();
+});
 drawOrbit();
 void poll();
 setInterval(() => void poll(), POLL_MS);

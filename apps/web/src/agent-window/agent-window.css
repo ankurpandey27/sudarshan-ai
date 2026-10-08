@@ -136,6 +136,26 @@ a {
   background: var(--bad);
 }
 
+.icon-button {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  border-radius: 0.6rem;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: background-color 150ms ease, color 150ms ease, transform 160ms var(--ease-out);
+}
+.icon-button:hover {
+  background: var(--surface-2);
+  color: var(--ink);
+}
+.icon-button:active {
+  transform: scale(0.94);
+}
+
 .button {
   display: inline-flex;
   align-items: center;
