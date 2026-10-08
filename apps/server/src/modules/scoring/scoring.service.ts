@@ -8,6 +8,7 @@ import { canonicalSkill } from '../discovery/utils/job-normalizer.util';
 import { coreSkillsIn, coreSkillsOf, skillLabel, skillList } from './utils/core-skill.util';
 import { JobsService } from '../jobs/jobs.service';
 import { countryNames } from '../jobs/utils/job-place.util';
+import { CLASSIFY_AFTER_START_MS } from './constants/startup.constants';
 import { JobSource } from '../jobs/enums/job-source.enum';
 import { JobStatus } from '../jobs/enums/job-status.enum';
 import { Job, ScoreDetail } from '../jobs/interfaces/job.interface';
@@ -85,8 +86,9 @@ export class ScoringService implements OnApplicationBootstrap {
     }
   }
 
+  // After the server is up: it used to run before the app could answer at all (2026-10-08).
   onApplicationBootstrap(): void {
-    this.classifyPlaces(true);
+    setTimeout(() => this.classifyPlaces(true), CLASSIFY_AFTER_START_MS).unref();
   }
 
   private async run(limit: number): Promise<ScoringRunResult> {

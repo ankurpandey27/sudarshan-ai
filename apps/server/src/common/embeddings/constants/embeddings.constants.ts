@@ -15,3 +15,6 @@ export const EMBEDDING_DIMS = 384;
 export const EMBEDDING_BATCH = 32;
 /** Giving up on loading (a first download on a slow line can take a while). */
 export const EMBEDDING_LOAD_TIMEOUT_MS = 10 * 60_000;
+
+/** The meaning model is warmed this long after startup, unless something needs it sooner. */
+export const EMBEDDING_WARM_AFTER_MS = 20_000;
