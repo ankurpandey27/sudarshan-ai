@@ -102,7 +102,7 @@ export class AgentController {
   }
 
   /** Resume a platform that was paused because its pages seemed to change; it stops before Submit until one works. */
-  /** Jobs whose tab is still open for you, so Sudarshan can carry on in them. */
+  /** Jobs whose tab is still open for you, so Sudarshan AI can carry on in them. */
   @Get('open-tabs')
   openTabs(): number[] {
     return this.apply.openTabs();

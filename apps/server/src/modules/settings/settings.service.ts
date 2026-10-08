@@ -112,7 +112,7 @@ export class SettingsService {
       if (!this.keyUnreadableWarned) {
         this.keyUnreadableWarned = true;
         this.logger.warn(
-          'Your saved AI API key could not be unlocked (secret.key is missing or was replaced). Sudarshan runs without AI until you enter the key again in Settings -> AI model.',
+          'Your saved AI API key could not be unlocked (secret.key is missing or was replaced). Sudarshan AI runs without AI until you enter the key again in Settings -> AI model.',
         );
       }
       return { ...llm, apiKey: '' };

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/common';
-import { TRAIN_EVERY_MS, TRAIN_SOON_MS } from './constants/learners.constants';
+import { TRAIN_AFTER_START_MS, TRAIN_EVERY_MS, TRAIN_SOON_MS } from './constants/learners.constants';
 import { ButtonLearnerService } from './button-learner.service';
 import { FieldLearnerService } from './field-learner.service';
 import { OutcomeLearnerService } from './outcome-learner.service';
@@ -15,6 +15,7 @@ import { QuestionLearnerService } from './question-learner.service';
 @Injectable()
 export class LearnersTrainerService implements OnApplicationBootstrap, OnApplicationShutdown {
   private readonly logger = new Logger(LearnersTrainerService.name);
+  private first: NodeJS.Timeout | null = null;
   private timer: NodeJS.Timeout | null = null;
   private running: Promise<void> | null = null;
   private soon: NodeJS.Timeout | null = null;
@@ -27,12 +28,16 @@ export class LearnersTrainerService implements OnApplicationBootstrap, OnApplica
   ) {}
 
   onApplicationBootstrap(): void {
-    void this.trainAll();
+    // Not during startup: training runs the meaning model over every saved question and took the whole machine while
+    // the app was opening (2026-10-08). The first run waits until the app is up and in use.
+    this.first = setTimeout(() => void this.trainAll(), TRAIN_AFTER_START_MS);
+    this.first.unref();
     this.timer = setInterval(() => void this.trainAll(), TRAIN_EVERY_MS);
     this.timer.unref();
   }
 
   onApplicationShutdown(): void {
+    if (this.first) clearTimeout(this.first);
     if (this.timer) clearInterval(this.timer);
     if (this.soon) clearTimeout(this.soon);
   }

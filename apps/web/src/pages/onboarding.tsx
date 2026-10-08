@@ -44,25 +44,25 @@ export function Onboarding() {
           <div className="flex items-center gap-3">
             <SudarshanMark size={44} spinning />
             <div>
-              <p className="font-display text-[26px] leading-none">Sudarshan</p>
+              <p className="font-display text-[26px] leading-none">Sudarshan AI</p>
               <p className="mt-1 text-[12px] font-semibold tracking-[0.12em] text-accent uppercase">Goes out. Finishes the task. Returns.</p>
             </div>
           </div>
-          <h1 className="mt-6 font-display text-[44px] leading-[1.02] tracking-tight">
+          <h1 className="mt-6 font-display text-[38px] leading-[1.05]">
             Apply while you <em className="text-accent">live your life.</em>
           </h1>
           <p className="mt-4 text-[14px] text-ink-2">
-            Everything runs on your laptop. Your resume, answers and logins never leave it. Four quick steps and Sudarshan takes over.
+            Everything runs on your laptop. Your resume, answers and logins never leave it. Four quick steps and Sudarshan AI takes over.
           </p>
           <details className="mt-4 rounded-lg border border-line bg-surface/60 px-3 py-2 text-[13px] text-ink-2">
-            <summary className="cursor-pointer font-semibold text-ink">Why "Sudarshan"?</summary>
+            <summary className="cursor-pointer font-semibold text-ink">Why "Sudarshan AI"?</summary>
             <p className="mt-2">
               In the Dwapar Yug, Shri Krishna's Sudarshan Chakra was released once and did the rest on its own: it went out, completed its task
               with perfect precision, and returned to his finger.
             </p>
             <p className="mt-2">
               That is this agent. You set it off once - it goes out to LinkedIn, Naukri and career sites, finishes the applications, and comes
-              back with results. <i>Sudarshan</i> also means "auspicious vision": it sees every job and applies only where you fit.
+              back with results. <i>Sudarshan AI</i> also means "auspicious vision": it sees every job and applies only where you fit.
             </p>
           </details>
           <ol className="mt-8 space-y-1">
@@ -105,7 +105,7 @@ function StepHead({ n, title, children }: { n: number; title: string; children: 
   return (
     <div className="mb-6">
       <p className="text-[12px] font-semibold text-ink-3">STEP {n} OF 4</p>
-      <h2 className="mt-1 font-display text-[30px] leading-tight">{title}</h2>
+      <h2 className="mt-1 font-display text-[26px] leading-tight">{title}</h2>
       <p className="mt-1.5 max-w-xl text-[13.5px] text-ink-2">{children}</p>
     </div>
   );

@@ -134,7 +134,7 @@ describe('Learning from the user (real browser)', () => {
     await page.goto(url);
     await learning.watch(page, target);
 
-    // Sudarshan moves on: another tab is busy for a long while (an hour, in real life; a minute here).
+    // Sudarshan AI moves on: another tab is busy for a long while (an hour, in real life; a minute here).
     const other = await browser.newPage();
     await other.setContent('<input id="q"><button>Next</button>');
     for (let i = 0; i < 6; i++) {

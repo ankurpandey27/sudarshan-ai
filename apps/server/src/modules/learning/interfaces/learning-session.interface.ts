@@ -4,7 +4,7 @@
 import { LearnedMove } from '../../form-engine/interfaces/learned-move.interface';
 
 export interface LearningSession {
-  /** Sudarshan is working in the tab itself (continuing after you): its own clicks are not learned as yours. */
+  /** Sudarshan AI is working in the tab itself (continuing after you): its own clicks are not learned as yours. */
   paused?: boolean;
   /** When you last typed or clicked in the tab. */
   lastActivity?: number;

@@ -18,7 +18,7 @@ export function NeedsYou() {
   const { data: handed } = useJobs({ status: 'manual', sort: 'recent', limit: 20 });
   const { data: openTabs } = useQuery({ queryKey: ['open-tabs'], queryFn: () => api.get<number[]>('/agent/open-tabs'), refetchInterval: 10_000 });
   const asked = questions ?? [];
-  // "Do by hand" jobs: a captcha, a login, a site Sudarshan could not finish. Those whose tab is still open come
+  // "Do by hand" jobs: a captcha, a login, a site Sudarshan AI could not finish. Those whose tab is still open come
   // first and are the ones counted here - all of them ever ("168") is a list, not something waiting on you now.
   const recent = handed?.items ?? [];
   const open = recent.filter((job) => openTabs?.includes(job.id));

@@ -6,7 +6,7 @@ import { EMBEDDED_ATS } from '../constants/apply.constants';
 
 /**
  * The address to open for an application that a company's career page shows inside a frame from a
- * hiring system (LVT's page embeds Ashby, 2026-09-29) - the form is in the frame, which Sudarshan
+ * hiring system (LVT's page embeds Ashby, 2026-09-29) - the form is in the frame, which Sudarshan AI
  * does not read. Null when there is none.
  */
 export function embeddedApplicationUrl(page: Page): string | null {

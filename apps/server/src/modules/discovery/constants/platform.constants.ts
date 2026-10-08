@@ -60,7 +60,7 @@ export const FOUNDIT_PAGE_DELAY_MS: [number, number] = [3_000, 6_000];
 export const FOUNDIT_DENIED_RETRY_MS = 20_000;
 
 // Hirist's public job search API (what hirist.tech/search loads). Verified 2026-10-02: plain HTTP, 20 per page;
-// the place is part of the free-text query there, so Sudarshan searches by keyword and filters places itself.
+// the place is part of the free-text query there, so Sudarshan AI searches by keyword and filters places itself.
 export const HIRIST_SEARCH_API = 'https://gladiator.hirist.tech/job/search';
 export const HIRIST_PAGE_SIZE = 20;
 export const HIRIST_MAX_PAGES = 5;

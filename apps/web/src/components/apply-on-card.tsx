@@ -11,7 +11,7 @@ import { Card, CardHeader } from './ui';
 import { InfoTip } from './info-tip';
 import { useToast } from './toast';
 
-/** Which platforms Sudarshan searches and applies on. Off = its jobs wait, nothing is lost. */
+/** Which platforms Sudarshan AI searches and applies on. Off = its jobs wait, nothing is lost. */
 export function ApplyOnCard() {
   const { data: settings } = useSettings();
   const { data: stats } = useStats();
@@ -46,11 +46,11 @@ export function ApplyOnCard() {
           on === PLATFORMS.length
             ? 'Every platform is on.'
             : on === 0
-              ? 'Everything is off - Sudarshan will not apply anywhere.'
+              ? 'Everything is off - Sudarshan AI will not apply anywhere.'
               : 'Only platforms that are on are searched and applied to. Switching one off keeps its jobs waiting.'
         }
         action={
-          <InfoTip title="What Sudarshan can and can't do">
+          <InfoTip title="What Sudarshan AI can and can't do">
             <span className="block">
               It fills most application forms by itself - LinkedIn Easy Apply, Naukri, Indeed, Instahyre and company career sites (Keka, Greenhouse, Lever...) -
               and uploads your resume.
@@ -65,7 +65,7 @@ export function ApplyOnCard() {
               <b>Sites that make you create an account or log in</b>, or <b>verify with a code sent to your email or phone (OTP)</b> - these become "Do by hand"
               in Applications.
             </span>
-            <span className="mt-2 block">When it gets stuck, the tab stays open: finish it there and Sudarshan learns your answers for next time.</span>
+            <span className="mt-2 block">When it gets stuck, the tab stays open: finish it there and Sudarshan AI learns your answers for next time.</span>
           </InfoTip>
         }
       />
@@ -116,7 +116,7 @@ export function ApplyOnCard() {
   );
 }
 
-/** What each site is and how Sudarshan applies there. */
+/** What each site is and how Sudarshan AI applies there. */
 const ABOUT: Record<string, string> = {
   linkedin: 'Easy Apply inside LinkedIn; other jobs go on to the company’s own site.',
   naukri: 'One-click apply, including its chat-style screening questions.',

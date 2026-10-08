@@ -9,7 +9,7 @@ import type { FormSnapshot } from '../../form-engine/interfaces/form-field.inter
  * form taken at that instant - a click on "Next" replaces the fields right after.
  * Only trusted (human) events count, and secret fields never trigger a report.
  * It also notes how you operate each field (opened it and clicked an option, typed and pressed Enter...),
- * so a field Sudarshan could not fill is done your way next time.
+ * so a field Sudarshan AI could not fill is done your way next time.
  */
 export function learnRecorderInPage(): void {
   type Extract = (scope: string | null) => FormSnapshot;
@@ -97,7 +97,7 @@ export function learnRecorderInPage(): void {
     clearTimeout(timer);
     timer = setTimeout(() => report({ type: 'edit' }), 500);
   };
-  // Sudarshan worked in this tab (its clicks are trusted too): what it touched is not yours (Valerie Group,
+  // Sudarshan AI worked in this tab (its clicks are trusted too): what it touched is not yours (Valerie Group,
   // 2026-10-05: the AI's tick on "I have built this myself" was saved as your answer when the tab closed).
   win.__sudarshanForget = () => {
     touchedEls.clear();

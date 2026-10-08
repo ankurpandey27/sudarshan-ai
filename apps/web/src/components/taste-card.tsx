@@ -18,7 +18,7 @@ const label = (f: string) =>
           ? 'Remote jobs'
           : f;
 
-/** What Sudarshan has learned about the jobs you want, from your own Approve / Skip decisions. */
+/** What Sudarshan AI has learned about the jobs you want, from your own Approve / Skip decisions. */
 export function TasteCard() {
   const { data: t } = useTaste();
   if (!t) return null;

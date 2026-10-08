@@ -17,7 +17,7 @@ const MODE: Record<LearnerStatus['mode'], { text: string; tone: 'good' | 'warn' 
   off: { text: 'Off', tone: 'neutral' },
 };
 
-/** The learners: small models that train on this computer from what Sudarshan does every day. */
+/** The learners: small models that train on this computer from what Sudarshan AI does every day. */
 export function LearnersCard() {
   const { data } = useLearners();
   const qc = useQueryClient();
@@ -40,7 +40,7 @@ export function LearnersCard() {
     <Card>
       <CardHeader
         title="Learning from your applications"
-        hint="Small models trained on this computer from what Sudarshan does every day. Each acts only once it has proven itself."
+        hint="Small models trained on this computer from what Sudarshan AI does every day. Each acts only once it has proven itself."
         action={
           <div className="flex shrink-0 items-center gap-2">
             <InfoTip title="How they learn" align="right">

@@ -135,7 +135,7 @@ export class WebApplyAdapter implements ApplyAdapter {
         });
       }
       // A password box means the site wants an account first (Workday's "Create Account / Sign In").
-      // Sudarshan never creates accounts or types passwords: this one is yours, with the page left open.
+      // Sudarshan AI never creates accounts or types passwords: this one is yours, with the page left open.
       if (accountWall) {
         return result(PrepareStatus.LOGIN_REQUIRED, {
           // The site that asks (Workday behind a careers page), not the one the job started on.
@@ -297,7 +297,7 @@ export class WebApplyAdapter implements ApplyAdapter {
   }
 
   private async findApplyAction(snap: FormSnapshot, domain: string, text: string, pressed = new Set<string>()): Promise<FormAction | null> {
-    // Links in words Sudarshan does not know are candidates too: "Apply" may be in any language.
+    // Links in words Sudarshan AI does not know are candidates too: "Apply" may be in any language.
     // Never another site's sign-in ("Apply with Indeed") or an answer button - the AI navigator included.
     const usable = [...snap.actions, ...(snap.links ?? [])].filter(
       (a) => !a.disabled && !pressed.has(a.text.trim().toLowerCase()) && !NEVER_ADVANCE.test(a.text.trim()),

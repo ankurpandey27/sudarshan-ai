@@ -19,7 +19,7 @@ export default defineConfig({
     // sudarshan-ai.html is the start page of the agent's own browser.
     rollupOptions: {
       input: { main: resolve(import.meta.dirname, 'index.html'), sudarshanAi: resolve(import.meta.dirname, 'sudarshan-ai.html') },
-      output: { postBanner: '/*! Sudarshan - crafted by Ankur Pandey (https://github.com/ankurpandey27) | MIT License */' },
+      output: { postBanner: '/*! Sudarshan AI - crafted by Ankur Pandey (https://github.com/ankurpandey27) | MIT License */' },
     },
   },
 });

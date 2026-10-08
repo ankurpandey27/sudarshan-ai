@@ -84,7 +84,7 @@ export class WorkbookService {
 
   async template(): Promise<Buffer> {
     const wb = new ExcelJS.Workbook();
-    wb.creator = 'Sudarshan';
+    wb.creator = 'Sudarshan AI';
     const answers = wb.addWorksheet(SHEET_ANSWERS);
     answers.columns = [
       { header: 'Question', key: 'q', width: 60 },

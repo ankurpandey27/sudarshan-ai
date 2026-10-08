@@ -83,7 +83,7 @@ export class JobsService implements OnApplicationBootstrap {
   ) {}
 
   // Rows left in APPLYING by a crash go back to the queue - unless Submit had already been pressed:
-  // the application may have gone through, so you check it instead of Sudarshan applying twice.
+  // the application may have gone through, so you check it instead of Sudarshan AI applying twice.
   onApplicationBootstrap(): void {
     this.recoverInterrupted();
     const merged = this.mergeSameRoles();
@@ -384,26 +384,32 @@ export class JobsService implements OnApplicationBootstrap {
    * "India" after it is known on its own later.
    */
   classifyPlaces(home: { country: string[]; ownPlaces: string[] }, all = false): number {
-    const rows = this.storage.all<Pick<JobRow, 'id' | 'source' | 'url' | 'apply_url' | 'title' | 'location' | 'is_remote' | 'description' | 'work_mode' | 'region'>>(
-      'SELECT id, source, url, apply_url, title, location, is_remote, substr(description, 1, 4000) description, work_mode, region FROM jobs',
+    // Every job's place, without its description: the places in your country are learned from all of them.
+    const rows = this.storage.all<Pick<JobRow, 'id' | 'source' | 'url' | 'apply_url' | 'title' | 'location' | 'is_remote' | 'work_mode' | 'region'>>(
+      'SELECT id, source, url, apply_url, title, location, is_remote, work_mode, region FROM jobs',
     );
-    const listing = (r: (typeof rows)[number]) => ({
+    const listing = (r: (typeof rows)[number], description = '') => ({
       platform: platformOf(r.source as JobSource, r.url, r.apply_url),
       url: r.url,
       title: r.title,
       location: r.location,
       isRemote: r.is_remote === 1,
-      description: r.description,
+      description,
     });
-    const listings = rows.map(listing);
+    const listings = rows.map((row) => listing(row));
     const places = learnHomePlaces(home.country, home.ownPlaces, listings);
     const ctx = { country: home.country, places, abroad: learnAbroadPlaces(home.country, places, listings) };
     let changed = 0;
     this.storage.transaction(() => {
       for (const row of rows) {
         if (!all && row.region !== null && row.work_mode !== null) continue;
-        const place = listing(row);
-        const mode = workModeOf(place);
+        let place = listing(row);
+        let mode = workModeOf(place);
+        // The description is read only when the title and location do not already say remote or hybrid.
+        if (mode === WorkMode.ONSITE) {
+          place = listing(row, this.storage.get<{ text: string }>('SELECT substr(description, 1, 4000) text FROM jobs WHERE id = ?', [row.id])?.text ?? '');
+          mode = workModeOf(place);
+        }
         const region = regionOf(place, ctx);
         if (mode === row.work_mode && region === row.region) continue;
         this.storage.run('UPDATE jobs SET work_mode = ?, region = ? WHERE id = ?', [mode, region, row.id]);
@@ -455,7 +461,7 @@ export class JobsService implements OnApplicationBootstrap {
     this.storage.run('UPDATE jobs SET attempts = MAX(0, attempts - 1) WHERE id = ?', [id]);
   }
 
-  /** Jobs from one site, by the site's own job id (Indeed's "jk"), with when Sudarshan last tried each. */
+  /** Jobs from one site, by the site's own job id (Indeed's "jk"), with when Sudarshan AI last tried each. */
   byExternalIds(
     source: JobSource,
     ids: string[],

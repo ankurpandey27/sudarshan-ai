@@ -96,9 +96,9 @@ export function Dashboard() {
     <div className="mx-auto max-w-[1320px]">
       <header className="mb-6 flex flex-wrap items-end justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="font-display text-[44px] leading-[0.95] tracking-[-0.01em]">Lakshya</h1>
+          <h1 className="font-display text-[32px] leading-[1.05]">Lakshya</h1>
           <p className="mt-2 text-[14px] text-ink-3">
-            <span className="text-ink-2 italic">Your job hunt, on target.</span>{' '}
+            <span className="text-ink-2">Your job hunt, on target.</span>{' '}
             <span className={cn('inline-flex items-center gap-1.5', agent?.running && 'text-ink-2')}>
               <span className={cn('size-1.5 rounded-full', agent?.running ? 'live-dot bg-good' : 'bg-ink-3/60')} />
               {status.filter(Boolean).join(' · ')}
@@ -365,7 +365,7 @@ function Kpi({
     <div className="flex h-full flex-col">
       <p className="text-[12.5px] text-ink-3">{label}</p>
       <div className="mt-1 flex items-end justify-between gap-3">
-        <p className={cn('font-display text-[46px] leading-none tabular', tone === 'warn' && 'text-warn')}>{value}</p>
+        <p className={cn('font-display text-[36px] leading-none tabular', tone === 'warn' && 'text-warn')}>{value}</p>
         {change !== undefined && change !== null && (
           <span
             className={cn(

@@ -83,7 +83,7 @@ export class BackupService {
   }
 
   /**
-   * Checks an uploaded backup and sets it to be restored; Sudarshan then restarts by itself to apply it
+   * Checks an uploaded backup and sets it to be restored; Sudarshan AI then restarts by itself to apply it
    * (your current data is kept in backups first, as before-restore-...).
    */
   stageRestore(data: Buffer): BackupCheck {
@@ -111,7 +111,7 @@ export class BackupService {
       return;
     }
     try {
-      if (!isAbsolute(folder)) throw new Error('the backup folder must be a full path, like C:\\Users\\you\\OneDrive\\Sudarshan');
+      if (!isAbsolute(folder)) throw new Error('the backup folder must be a full path, like C:\\Users\\you\\OneDrive\\Sudarshan AI');
       if (!fresh && existsSync(join(folder, file.split(/[\\/]/).pop()!))) return;
       copyToFolder(file, folder);
       prune(folder);

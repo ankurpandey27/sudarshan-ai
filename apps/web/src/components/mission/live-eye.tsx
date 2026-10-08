@@ -62,7 +62,7 @@ export function LiveEye({ agent }: { agent: AgentStatus | undefined }) {
                 {applying
                   ? 'Opening the job - the first picture appears at the first form step.'
                   : !agent?.running
-                    ? 'Sudarshan is resting. Start the agent and the next application plays here, step by step.'
+                    ? 'Sudarshan AI is resting. Start the agent and the next application plays here, step by step.'
                     : agent.queue
                       ? `Next application ${agent.nextApplyAt ? timeUntil(agent.nextApplyAt) : 'soon'} - it plays here live.`
                       : 'Nothing approved to apply to. Approve jobs on the radar or with the command bar.'}

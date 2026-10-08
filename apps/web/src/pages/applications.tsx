@@ -84,7 +84,7 @@ export function Applications() {
       refresh();
     },
   });
-  // Tabs handed over to you that are still open: Sudarshan can carry on in them once you have unblocked them.
+  // Tabs handed over to you that are still open: Sudarshan AI can carry on in them once you have unblocked them.
   const { data: openTabs } = useQuery({ queryKey: ['open-tabs'], queryFn: () => api.get<number[]>('/agent/open-tabs'), refetchInterval: 10_000 });
   const carryOn = useMutation({
     mutationFn: (id: number) => api.post<{ status: string; detail: string }>(`/agent/continue/${id}`),
@@ -99,7 +99,7 @@ export function Applications() {
     mutationFn: (url: string) => api.post('/browser/open', { url }),
     onError: (e: Error) => toast('error', e.message),
   });
-  // Applications you finished by hand on Indeed, which Sudarshan did not see go through.
+  // Applications you finished by hand on Indeed, which Sudarshan AI did not see go through.
   const syncIndeed = useMutation({
     mutationFn: () => api.post<AppliedSyncResult>('/applied-sync/indeed'),
     onSuccess: (r) => {
@@ -128,7 +128,7 @@ export function Applications() {
               Check Indeed
             </Button>
             <InfoTip title="Check Indeed">
-              Reads your Indeed "My jobs - Applied" list and marks those jobs Applied here - for applications you finished by hand in a tab Sudarshan left open.
+              Reads your Indeed "My jobs - Applied" list and marks those jobs Applied here - for applications you finished by hand in a tab Sudarshan AI left open.
               It matches by Indeed's own job id, only reads the page, and never clicks anything on Indeed. You need to be logged in to Indeed.
             </InfoTip>
             <Button icon={<Link2 className="size-4" />} onClick={() => setAdding((a) => !a)}>
@@ -161,9 +161,9 @@ export function Applications() {
             ))}
           </div>
           <InfoTip title="Jobs that need attention" align="left">
-            <b>Open in agent browser</b> opens the job in Sudarshan's own window, where you are already logged in, so you can finish it yourself.{' '}
-            <b>I applied</b> marks it as applied once you have. <b>Retry</b> puts it back in the queue for Sudarshan to try again. Open a job's title to see
-            every step Sudarshan took.
+            <b>Open in agent browser</b> opens the job in Sudarshan AI's own window, where you are already logged in, so you can finish it yourself.{' '}
+            <b>I applied</b> marks it as applied once you have. <b>Retry</b> puts it back in the queue for Sudarshan AI to try again. Open a job's title to see
+            every step Sudarshan AI took.
           </InfoTip>
         </div>
         <div className="relative w-full sm:w-64">
@@ -211,7 +211,7 @@ export function Applications() {
                         variant="primary"
                         icon={<Play className="size-3.5" />}
                         loading={carryOn.isPending && carryOn.variables === j.id}
-                        title="You solved the captcha or logged in: Sudarshan carries on from where its tab is"
+                        title="You solved the captcha or logged in: Sudarshan AI carries on from where its tab is"
                         onClick={() => carryOn.mutate(j.id)}
                       >
                         Continue
@@ -225,7 +225,7 @@ export function Applications() {
                     <Button size="sm" variant="ghost" icon={<CheckCheck className="size-3.5" />} onClick={() => markApplied.mutate(j.id)}>
                       I applied
                     </Button>
-                    <Button size="sm" icon={<RotateCcw className="size-3.5" />} title="Queue it again - Sudarshan applies on its next turn" onClick={() => retry.mutate(j.id)}>
+                    <Button size="sm" icon={<RotateCcw className="size-3.5" />} title="Queue it again - Sudarshan AI applies on its next turn" onClick={() => retry.mutate(j.id)}>
                       Approve again
                     </Button>
                     <Button size="sm" variant="ghost" icon={<Undo2 className="size-3.5" />} title="Out of here and back to Review, to decide later" onClick={() => toReview.mutate(j.id)}>

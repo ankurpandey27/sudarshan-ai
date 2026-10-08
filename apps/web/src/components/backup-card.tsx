@@ -56,7 +56,7 @@ export function BackupCard({ folder, onFolder }: { folder: string; onFolder: (v:
       <Card>
         <CardHeader title="Restoring your backup" />
         <p className="p-4 text-[13.5px] text-ink-2">
-          {restoring.jobs} jobs, {restoring.answers} answers{restoring.resume ? ' and your resume' : ''}. Sudarshan is restarting to apply it - this page
+          {restoring.jobs} jobs, {restoring.answers} answers{restoring.resume ? ' and your resume' : ''}. Sudarshan AI is restarting to apply it - this page
           reloads by itself. If it does not come back within a minute, start it again with <code>npm start</code>.
         </p>
       </Card>
@@ -80,7 +80,7 @@ export function BackupCard({ folder, onFolder }: { folder: string; onFolder: (v:
           label="Also copy each backup to this folder"
           hint="A folder that syncs elsewhere - OneDrive, Google Drive, Dropbox - or a USB disk. Full path. The last 7 are kept there. AI keys are never in a backup."
         >
-          <Input value={folder} onChange={(e) => onFolder(e.target.value)} placeholder="e.g. C:\Users\you\OneDrive\Sudarshan backups" />
+          <Input value={folder} onChange={(e) => onFolder(e.target.value)} placeholder="e.g. C:\Users\you\OneDrive\Sudarshan AI backups" />
         </Field>
         {data?.folderError && (
           <p className="flex items-center gap-2 text-[13px] text-bad">
@@ -104,7 +104,7 @@ export function BackupCard({ folder, onFolder }: { folder: string; onFolder: (v:
             <div className="flex flex-wrap items-center gap-3 rounded-lg border border-warn/30 bg-warn-soft px-3 py-2.5 text-[13px]">
               <RotateCcw className="size-4 shrink-0 text-warn" />
               <span className="min-w-0 flex-1">
-                Replace everything here with <b className="break-all">{file.name}</b>? Your current data is kept in the backups folder first. Sudarshan
+                Replace everything here with <b className="break-all">{file.name}</b>? Your current data is kept in the backups folder first. Sudarshan AI
                 restarts to apply it.
               </span>
               <Button size="sm" variant="ghost" onClick={() => setFile(null)}>

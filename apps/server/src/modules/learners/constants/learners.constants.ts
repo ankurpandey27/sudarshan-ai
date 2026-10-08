@@ -63,3 +63,6 @@ export const OUTCOME_MIN_AUC = 0.75;
 export const OUTCOME_MIN_TESTED = 50;
 /** After something worth learning, retrain this soon (once, however much happened meanwhile). */
 export const TRAIN_SOON_MS = 60_000;
+
+/** The first training after startup waits this long, so it never competes with the app opening. */
+export const TRAIN_AFTER_START_MS = 90_000;

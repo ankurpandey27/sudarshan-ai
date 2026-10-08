@@ -28,7 +28,7 @@ export function summaryText(s: DaySummary): { title: string; body: string } {
   if (replies.length) lines.push(`Replies: ${replies.join(', ')}`);
   if (s.failed) lines.push(`Could not apply: ${s.failed}`);
   lines.push(`New jobs found: ${s.found}`);
-  return { title: `Sudarshan today: ${plural(applied, 'application')} sent`, body: lines.join('\n') };
+  return { title: `Sudarshan AI today: ${plural(applied, 'application')} sent`, body: lines.join('\n') };
 }
 
 /** One message for several applications that need you. */
@@ -37,6 +37,6 @@ export function needsYouText(items: { label: string; why: string }[]): { title: 
   if (items.length > 5) shown.push(`...and ${items.length - 5} more`);
   return {
     title: items.length === 1 ? 'An application needs you' : `${items.length} applications need you`,
-    body: `${shown.join('\n')}\nOpen Sudarshan -> Needs attention.`,
+    body: `${shown.join('\n')}\nOpen Sudarshan AI -> Needs attention.`,
   };
 }

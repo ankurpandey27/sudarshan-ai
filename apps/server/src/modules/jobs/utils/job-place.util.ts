@@ -33,7 +33,19 @@ const norm = (s: string): string =>
     .replace(/\s+/g, ' ')
     .trim();
 
-const hasWord = (text: string, word: string): boolean => new RegExp(`(^|[^a-z])${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z])`).test(text);
+const escapeRegex = (word: string): string => word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/**
+ * Every country name, compiled once into one pattern (longest names first, so "united states of america" wins over
+ * "united states"), with the list position of each name's country. Building a pattern per name per job made placing
+ * 2,500 jobs take 2.3 s at startup (2026-10-08).
+ */
+const COUNTRY_RANK = new Map<string, number>();
+COUNTRIES.forEach((names, rank) => names.forEach((name) => COUNTRY_RANK.set(norm(name), rank)));
+const COUNTRY_PATTERN = new RegExp(
+  `(?:^|[^a-z])(${[...COUNTRY_RANK.keys()].sort((a, b) => b.length - a.length).map(escapeRegex).join('|')})(?=$|[^a-z])`,
+  'g',
+);
 
 /** The names of a country as listings write them, from how the profile names it ("India", "IN", "Bharat"). */
 export function countryNames(country: string): string[] {
@@ -42,10 +54,14 @@ export function countryNames(country: string): string[] {
   return [...(COUNTRIES.find((names) => names.some((n) => norm(n) === lower)) ?? [lower])];
 }
 
-/** The country a listing names, if it names exactly one place on the list (else null). */
+/** The country a listing names - when it names several, the one earliest on the list, as before (else null). */
 function namedCountry(text: string): string | null {
-  for (const names of COUNTRIES) if (names.some((n) => hasWord(text, norm(n)))) return names[0];
-  return null;
+  let best: number | null = null;
+  for (const match of text.matchAll(COUNTRY_PATTERN)) {
+    const rank = COUNTRY_RANK.get(match[1]);
+    if (rank !== undefined && (best === null || rank < best)) best = rank;
+  }
+  return best === null ? null : COUNTRIES[best][0];
 }
 
 /** "Noida, Uttar Pradesh, India" -> ["noida", "uttar pradesh"]: the place names before the country. */

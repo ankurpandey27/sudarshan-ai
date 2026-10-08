@@ -33,7 +33,7 @@ import { fillWayFromOps, isCustomWidget, showsAnswer } from './utils/fill-way.ut
  * Learning by demonstration. When the agent leaves a form to the user, it watches
  * the user finish it: every answer they give goes into answer memory and every
  * button that moves the form on becomes part of that site's recipe, and the way they
- * operated a field Sudarshan's usual filling missed is learned for that kind of field.
+ * operated a field Sudarshan AI's usual filling missed is learned for that kind of field.
  * The next form with the same questions, on any site, fills itself.
  */
 @Injectable()
@@ -95,13 +95,13 @@ export class LearningService {
     }
   }
 
-  /** While Sudarshan continues in the tab itself, what happens there is not learned as yours. */
+  /** While Sudarshan AI continues in the tab itself, what happens there is not learned as yours. */
   pause(page: Page, paused: boolean): void {
     const session = this.sessions.get(page);
     if (!session) return;
     session.paused = paused;
     if (paused || page.isClosed()) return;
-    // Handed back to you: what Sudarshan touched and filled meanwhile is not yours to learn.
+    // Handed back to you: what Sudarshan AI touched and filled meanwhile is not yours to learn.
     void page.evaluate(() => (window as unknown as { __sudarshanForget?: () => void }).__sudarshanForget?.()).catch(() => undefined);
     const target = this.targets.get(page);
     if (target)
@@ -118,7 +118,7 @@ export class LearningService {
     return session ? (session.lastActivity ?? 0) : undefined;
   }
 
-  /** The application in this tab was confirmed (by you or by Sudarshan). */
+  /** The application in this tab was confirmed (by you or by Sudarshan AI). */
   finished(page: Page): boolean {
     return this.sessions.get(page)?.done === true;
   }
@@ -207,7 +207,7 @@ export class LearningService {
   private complete(target: WatchTarget, session: LearningSession): void {
     this.learnStep(target, session, null);
     session.done = true;
-    // Confirmed: your steps, and Sudarshan's before it handed over, are good moves on this site.
+    // Confirmed: your steps, and Sudarshan AI's before it handed over, are good moves on this site.
     const moves = [...(target.agentMoves ?? []), ...session.moves];
     this.playbook.confirm(moves);
     this.recipes.confirm(moves);
@@ -218,7 +218,7 @@ export class LearningService {
       type: AgentEventType.LOG,
       level: 'success',
       jobId: target.jobId,
-      message: `${target.jobLabel}: you finished it - Sudarshan learned ${learnedSummary(session)} for next time`,
+      message: `${target.jobLabel}: you finished it - Sudarshan AI learned ${learnedSummary(session)} for next time`,
     });
   }
 

@@ -19,7 +19,7 @@ export interface ProfileTip {
   to?: string;
 }
 
-/** What would make your profile match more jobs, from the jobs Sudarshan has found. */
+/** What would make your profile match more jobs, from the jobs Sudarshan AI has found. */
 export interface ProfileCheck {
   /** Jobs the check is based on. */
   jobs: number;

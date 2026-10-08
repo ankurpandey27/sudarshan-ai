@@ -8,7 +8,7 @@ import { ProfileCheck } from './interfaces/profile-check.interface';
 import { ProfileService } from './profile.service';
 import { buildProfileCheck } from './utils/profile-check.util';
 
-/** What would make your profile match more of the jobs Sudarshan finds for you. */
+/** What would make your profile match more of the jobs Sudarshan AI finds for you. */
 @Injectable()
 export class ProfileCheckService {
   constructor(

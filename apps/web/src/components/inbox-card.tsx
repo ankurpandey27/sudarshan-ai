@@ -90,7 +90,7 @@ export function InboxCard() {
               </Field>
             </div>
             {showHost && (
-              <Field label="IMAP server" hint="Only needed for providers Sudarshan does not know">
+              <Field label="IMAP server" hint="Only needed for providers Sudarshan AI does not know">
                 <Input value={host} onChange={(e) => setHost(e.target.value)} placeholder="imap.example.com" />
               </Field>
             )}

@@ -40,7 +40,7 @@ export function ProfileCheckPanel({ profile, onAdd }: { profile: Profile; onAdd:
 
   return (
     <div className="space-y-4">
-      <p className="text-[13px] text-ink-3">Based on {data.jobs} jobs Sudarshan found in the last 60 days. Matching uses your skills list, not your resume text.</p>
+      <p className="text-[13px] text-ink-3">Based on {data.jobs} jobs Sudarshan AI found in the last 60 days. Matching uses your skills list, not your resume text.</p>
       {nothing && (
         <Card>
           <p className="p-4 text-[13.5px] text-ink-2">Your profile covers what these jobs ask for. Nothing to add.</p>
@@ -69,7 +69,7 @@ export function ProfileCheckPanel({ profile, onAdd }: { profile: Profile; onAdd:
       )}
       {data.missing.length > 0 && (
         <Card>
-          <CardHeader title="Asked for often, not in your profile" hint="Add one only if you really have it - Sudarshan answers forms from these" />
+          <CardHeader title="Asked for often, not in your profile" hint="Add one only if you really have it - Sudarshan AI answers forms from these" />
           <div className="flex flex-wrap gap-2 p-4">
             {data.missing.map((g) => (
               <button

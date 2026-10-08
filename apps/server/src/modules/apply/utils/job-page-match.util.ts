@@ -16,7 +16,7 @@ const words = (s: string): string[] =>
 /**
  * Whether a page reached on the way to an application is about this job: it names the company (in its text, its title
  * or its address) or most of the job title. A press on Himalayas landed on a business school's sign-up page and
- * Sudarshan filled it with your details (Mesa School, 2026-10-05) - such a page names neither. When the company and
+ * Sudarshan AI filled it with your details (Mesa School, 2026-10-05) - such a page names neither. When the company and
  * title give nothing to look for, the page is not held back.
  */
 export function mentionsJob(pageText: string, url: string, job: { title: string; company: string }): boolean {

@@ -1,10 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import '@fontsource/inter-tight/latin-400.css';
-import '@fontsource/inter-tight/latin-600.css';
-import '@fontsource/instrument-serif/latin-400.css';
-import '@fontsource/instrument-serif/latin-400-italic.css';
+import '@fontsource-variable/geist';
 import '@fontsource/jetbrains-mono/latin-400.css';
 import './agent-window.css';
 import { CHAKRA_SPOKES, CHAKRA_TEETH } from '../lib/chakra';
@@ -40,15 +37,43 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const RIM = 178;
 const byId = (id: string) => document.getElementById(id)!;
 
-function applyTheme(): void {
-  let theme: string | null = null;
+const SUN = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/></svg>';
+const MOON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
+
+/** The saved choice (the same key as the app), or the computer's setting when there is none. */
+function savedTheme(): 'light' | 'dark' | null {
   try {
-    theme = localStorage.getItem('jaa-theme');
+    const theme = localStorage.getItem('jaa-theme');
+    return theme === 'dark' || theme === 'light' ? theme : null;
   } catch {
     // Storage can be blocked; fall back to the system setting.
+    return null;
   }
-  const dark = theme ? theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+}
+
+function applyTheme(): void {
+  const dark = (savedTheme() ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')) === 'dark';
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+  // The button shows what it switches to: a sun in the dark, a moon in the light - as in the app.
+  const toggle = document.getElementById('theme-toggle');
+  if (toggle) {
+    toggle.innerHTML = dark ? SUN : MOON;
+    const label = dark ? 'Switch to light mode' : 'Switch to dark mode';
+    toggle.setAttribute('aria-label', label);
+    toggle.title = label;
+  }
+}
+
+/** This window runs in the agent's own browser, which does not share the app's saved choice - so it has its own switch. */
+function toggleTheme(): void {
+  const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+  try {
+    localStorage.setItem('jaa-theme', next);
+  } catch {
+    // Not remembered - it still switches for now.
+  }
+  document.documentElement.dataset.theme = next;
+  applyTheme();
 }
 
 /** The chakra itself, in a -16..16 box, for the brand mark and the centre of the orbit. */
@@ -96,7 +121,7 @@ function drawOrbit(): void {
   const [sx, sy] = point(RIM - 10, -0.5);
   const [ex, ey] = point(RIM - 10, 0);
   byId('orbit').innerHTML =
-    `<svg viewBox="-215 -215 430 430" role="img" aria-label="Sudarshan's orbit: today's applications against each site's limit">` +
+    `<svg viewBox="-215 -215 430 430" role="img" aria-label="Sudarshan AI's orbit: today's applications against each site's limit">` +
     `<defs><radialGradient id="core"><stop offset="0" style="stop-color:var(--accent);stop-opacity:.5"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:0"/></radialGradient>` +
     `<linearGradient id="sweep" x1="0" x2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:0"/><stop offset="1" style="stop-color:var(--accent);stop-opacity:.22"/></linearGradient>` +
     `<linearGradient id="tail" x1="0" x2="1"><stop offset="0" style="stop-color:var(--accent);stop-opacity:0"/><stop offset="1" style="stop-color:var(--accent)"/></linearGradient></defs>` +
@@ -151,7 +176,7 @@ function describe(s: Status): View {
     return {
       tone: 'idle',
       label: 'Resting',
-      headline: 'Sudarshan is <em>resting</em>.',
+      headline: 'Sudarshan AI is <em>resting</em>.',
       detail: 'Press Start agent on Lakshya and this window comes to life: tabs open here as it searches and applies.',
     };
   }
@@ -161,7 +186,7 @@ function describe(s: Status): View {
         tone: 'work',
         label: 'Applying',
         headline: s.currentJob ? `Applying to <em>${escape(s.currentJob.title)}</em> at ${escape(s.currentJob.company)}.` : 'Filling an <em>application</em>.',
-        detail: 'Watch it in the tab that just opened. Leave the form to Sudarshan until it moves on.',
+        detail: 'Watch it in the tab that just opened. Leave the form to Sudarshan AI until it moves on.',
       };
     case 'discovering':
       return {
@@ -186,7 +211,7 @@ function describe(s: Status): View {
         tone: 'idle',
         label: 'Off hours',
         headline: 'Outside your <em>active hours</em>.',
-        detail: 'Sudarshan picks up again when your active hours start. Change them in Settings → Agent.',
+        detail: 'Sudarshan AI picks up again when your active hours start. Change them in Settings → Agent.',
       };
     default: {
       const logins = s.blockedSources.filter((block) => /log in/i.test(block.reason));
@@ -196,7 +221,7 @@ function describe(s: Status): View {
           tone: 'attention',
           label: 'Log in needed',
           headline: `Log in to <em>${escape(sites.join(' and '))}</em> to continue.`,
-          detail: `${s.queue} approved job${s.queue === 1 ? ' is' : 's are'} waiting. Open a new tab in this window and sign in (or use Settings → Site logins); Sudarshan picks them up within a couple of minutes.`,
+          detail: `${s.queue} approved job${s.queue === 1 ? ' is' : 's are'} waiting. Open a new tab in this window and sign in (or use Settings → Site logins); Sudarshan AI picks them up within a couple of minutes.`,
         };
       }
       if (s.queue === 0 && s.awaitingReview > 0) {
@@ -204,7 +229,7 @@ function describe(s: Status): View {
           tone: 'attention',
           label: 'Needs your approval',
           headline: `<em>${s.awaitingReview} job${s.awaitingReview === 1 ? '' : 's'}</em> waiting for your approval.`,
-          detail: 'Sudarshan applies only to jobs you approve. Approve them in Review, on the radar, or in one sentence with the command bar.',
+          detail: 'Sudarshan AI applies only to jobs you approve. Approve them in Review, on the radar, or in one sentence with the command bar.',
         };
       }
       if (s.openQuestions > 0) {
@@ -219,7 +244,7 @@ function describe(s: Status): View {
         tone: 'work',
         label: 'On watch',
         headline: s.queue ? 'Getting the <em>next job</em> ready.' : 'On watch for <em>approved jobs</em>.',
-        detail: s.queue ? `${s.queue} approved job${s.queue === 1 ? '' : 's'} in the queue.` : 'Approve jobs in Review and Sudarshan applies to them one by one.',
+        detail: s.queue ? `${s.queue} approved job${s.queue === 1 ? '' : 's'} in the queue.` : 'Approve jobs in Review and Sudarshan AI applies to them one by one.',
       };
     }
   }
@@ -235,7 +260,7 @@ function render(view: View, s: Status | null): void {
   byId('eyebrow').textContent = view.tone === 'offline' ? 'Not connected' : `Mission status · ${view.label}`;
   byId('headline').innerHTML = view.headline;
   byId('detail').textContent = view.detail;
-  document.title = view.tone === 'offline' ? 'Sudarshan' : `Sudarshan · ${view.label}`;
+  document.title = view.tone === 'offline' ? 'Sudarshan AI' : `Sudarshan AI · ${view.label}`;
 
   byId('review-link').hidden = !s || s.queue > 0 || s.awaitingReview === 0;
   byId('questions-link').hidden = !s || s.openQuestions === 0;
@@ -384,7 +409,7 @@ async function poll(): Promise<void> {
       {
         tone: 'offline',
         label: 'Not connected',
-        headline: 'Can’t reach <em>Sudarshan</em>.',
+        headline: 'Can’t reach <em>Sudarshan AI</em>.',
         detail: 'Is it still running in your terminal? Start it again with npm start and this page reconnects by itself.',
       },
       null,
@@ -394,6 +419,11 @@ async function poll(): Promise<void> {
 
 applyTheme();
 matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
+byId('theme-toggle').addEventListener('click', toggleTheme);
+// Switched in another tab of this browser (the app opened here): follow it.
+window.addEventListener('storage', (event) => {
+  if (event.key === 'jaa-theme') applyTheme();
+});
 drawOrbit();
 void poll();
 setInterval(() => void poll(), POLL_MS);

@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-/** One job in Foundit's search data (/middleware/jobsearch), the fields Sudarshan reads. Verified 2026-10-02. */
+/** One job in Foundit's search data (/middleware/jobsearch), the fields Sudarshan AI reads. Verified 2026-10-02. */
 export interface FounditJob {
   jobId: number;
   title: string;

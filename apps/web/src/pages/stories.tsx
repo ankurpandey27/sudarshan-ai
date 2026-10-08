@@ -20,7 +20,7 @@ export function StoriesPage() {
     <>
       <PageTitle
         title="Story Bank"
-        sub='True stories from your work. On every job site, Sudarshan builds written answers - "Why are you a fit?", "Describe a challenge" - from these instead of generic resume lines.'
+        sub='True stories from your work. On every job site, Sudarshan AI builds written answers - "Why are you a fit?", "Describe a challenge" - from these instead of generic resume lines.'
         actions={
           <Button variant="primary" icon={<Plus className="size-4" />} onClick={() => setAdding(true)}>
             Add a story

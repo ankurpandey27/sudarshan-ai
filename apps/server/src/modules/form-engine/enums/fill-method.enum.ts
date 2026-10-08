@@ -3,7 +3,7 @@
 
 /** Ways to operate a field - what a person does with their mouse and keys. */
 export enum FillMethod {
-  /** Set the value the usual way (Sudarshan's own filler). */
+  /** Set the value the usual way (Sudarshan AI's own filler). */
   NATIVE = 'native',
   /** Click into it and type, key by key. */
   KEYS = 'keys',

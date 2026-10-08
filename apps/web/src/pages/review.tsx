@@ -151,7 +151,7 @@ export function Review() {
             ))}
           </div>
           <InfoTip title="Moving jobs around" align="left">
-            <b>Approve</b> puts a job in the queue (the Approved tab); Sudarshan applies to queued jobs one by one while the agent is running.{' '}
+            <b>Approve</b> puts a job in the queue (the Approved tab); Sudarshan AI applies to queued jobs one by one while the agent is running.{' '}
             <b>Move to review</b> takes a job out of the queue and back to To review. <b>Skip</b> puts it in Skipped - you can still approve it later.{' '}
             <b>Dismiss</b> hides it for good. <b>Apply now</b> applies to one queued job straight away, even if its platform is switched off. Tick jobs to move
             several at once.

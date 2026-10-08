@@ -158,7 +158,7 @@ export const SLOW_STEP_RENDER_WAIT_MS = 30_000;
 /** With Submit greyed out, a captcha may still be on its way (Indeed): looked for this long. */
 export const LATE_CAPTCHA_WAIT_MS = 12_000;
 
-/** Submits that land back on the same form before Sudarshan stops and asks you. */
+/** Submits that land back on the same form before Sudarshan AI stops and asks you. */
 export const MAX_SAME_FORM_SENDS = 2;
 
 /**
@@ -180,7 +180,7 @@ export const MAX_PROBED_COMBOBOXES = 20;
 /**
  * An advertiser's page reached by clicking an ad: Google's click markers (gclid, gad_source, gbraid/wbraid), paid
  * campaign tags, or an ad network's own address. A press on Himalayas landed on a Google ad over its Apply button and
- * Sudarshan filled a business school's sign-up form with your details (Mesa School, 2026-10-05). Never filled.
+ * Sudarshan AI filled a business school's sign-up form with your details (Mesa School, 2026-10-05). Never filled.
  */
 export const AD_LANDING =
   /[?&](gclid|gad_source|gad_campaignid|gbraid|wbraid|dclid|msclkid|fbclid)=|[?&]utm_medium=(cpc|ppc|paid|paidsearch|display|banner)\b|[?&]utm_source=(google-?ads|adwords|googleadservices|facebook-?ads|meta-?ads)\b|\/\/[^/]*(doubleclick\.net|googleadservices\.com|googlesyndication\.com|adservice\.google\.)/i;

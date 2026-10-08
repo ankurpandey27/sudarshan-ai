@@ -5,16 +5,12 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Sudarshan Guide</title>
-<meta name="description" content="How every part of Sudarshan works: what it is, why it is there, and how to use it." />
+<title>Sudarshan AI Guide</title>
+<meta name="description" content="How every part of Sudarshan AI works: what it is, why it is there, and how to use it." />
 <link rel="icon" href="../sudarshan.svg" type="image/svg+xml" />
 <script src="theme.js"></script>
 <style>
-  @font-face { font-family: 'Inter Tight'; font-weight: 400; font-display: swap; src: url(fonts/inter-tight-latin-400-normal.woff2) format('woff2'); }
-  @font-face { font-family: 'Inter Tight'; font-weight: 500; font-display: swap; src: url(fonts/inter-tight-latin-500-normal.woff2) format('woff2'); }
-  @font-face { font-family: 'Inter Tight'; font-weight: 600; font-display: swap; src: url(fonts/inter-tight-latin-600-normal.woff2) format('woff2'); }
-  @font-face { font-family: 'Instrument Serif'; font-weight: 400; font-display: swap; src: url(fonts/instrument-serif-latin-400-normal.woff2) format('woff2'); }
-  @font-face { font-family: 'Instrument Serif'; font-style: italic; font-weight: 400; font-display: swap; src: url(fonts/instrument-serif-latin-400-italic.woff2) format('woff2'); }
+  @font-face { font-family: 'Geist'; font-weight: 100 900; font-display: swap; src: url(fonts/geist-latin-wght-normal.woff2) format('woff2'); }
   @font-face { font-family: 'JetBrains Mono'; font-weight: 400; font-display: swap; src: url(fonts/jetbrains-mono-latin-400-normal.woff2) format('woff2'); }
 
   /* The app's own tokens (apps/web/src/tokens.css). */
@@ -55,7 +51,7 @@
   html { scroll-behavior: smooth; scroll-padding-top: 24px; }
   body {
     margin: 0; background: var(--bg); color: var(--ink);
-    font: 15.5px/1.65 'Inter Tight', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+    font: 15.5px/1.65 'Geist', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     background-image: radial-gradient(1200px 500px at 85% -10%, var(--glow), transparent 70%);
     background-attachment: fixed;
@@ -74,7 +70,7 @@
   }
   .brand { display: flex; align-items: center; gap: 10px; padding: 0 6px 16px; text-decoration: none; color: inherit; }
   .brand img { width: 40px; height: 40px; animation: spin 40s linear infinite; }
-  .brand b { font-family: 'Instrument Serif', Georgia, serif; font-weight: 400; font-size: 27px; line-height: 1; display: block; }
+  .brand b { font-family: 'Geist', sans-serif; font-weight: 600; letter-spacing: -0.035em; font-size: 27px; line-height: 1; display: block; }
   .brand small { color: var(--accent); font-size: 11.5px; letter-spacing: 0.02em; }
   @keyframes spin { to { transform: rotate(360deg); } }
   @media (prefers-reduced-motion: reduce) { .brand img { animation: none; } html { scroll-behavior: auto; } }
@@ -95,10 +91,10 @@
   main { flex: 1; min-width: 0; padding: 40px 56px 96px; }
   .col { max-width: 900px; }
 
-  h1, h2, h3 { font-weight: 400; letter-spacing: -0.01em; }
-  h1 { font-family: 'Instrument Serif', Georgia, serif; font-size: clamp(44px, 6vw, 64px); line-height: 1.02; margin: 0 0 14px; }
-  h1 em, h2 em { color: var(--accent); }
-  h2 { font-family: 'Instrument Serif', Georgia, serif; font-size: 38px; line-height: 1.1; margin: 0 0 6px; }
+  h3 { letter-spacing: -0.015em; }
+  h1 { font-family: 'Geist', sans-serif; font-weight: 600; letter-spacing: -0.04em; font-size: clamp(38px, 5vw, 56px); line-height: 1.02; margin: 0 0 14px; }
+  h1 em, h2 em { color: var(--accent); font-style: normal; }
+  h2 { font-family: 'Geist', sans-serif; font-weight: 600; letter-spacing: -0.035em; font-size: 32px; line-height: 1.1; margin: 0 0 6px; }
   h3 { font-size: 18px; font-weight: 600; margin: 30px 0 6px; }
   h4 { font-size: 15px; font-weight: 600; margin: 20px 0 4px; }
   p { margin: 0 0 12px; }
@@ -154,7 +150,7 @@
 
   .diagram { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 18px; box-shadow: var(--shadow); margin: 16px 0; }
   .diagram svg { width: 100%; height: auto; display: block; }
-  .diagram text { font-family: 'Inter Tight', sans-serif; fill: var(--ink); }
+  .diagram text { font-family: 'Geist', sans-serif; fill: var(--ink); }
   .diagram .t2 { fill: var(--ink-3); font-size: 11.5px; }
   .diagram .box { fill: var(--surface-2); stroke: var(--line-strong); }
   .diagram .you { fill: var(--accent-soft); stroke: var(--accent); }
@@ -184,13 +180,13 @@
 <button class="btn menu-btn" id="menu" aria-label="Contents">Contents</button>
 <div class="layout">
   <aside class="toc" id="toc" aria-label="Contents">
-    <a class="brand" href="#top"><img src="../sudarshan.svg" alt="" /><span><b>Sudarshan</b><small>The guide</small></span></a>
+    <a class="brand" href="#top"><img src="../sudarshan.svg" alt="" /><span><b>Sudarshan AI</b><small>The guide</small></span></a>
     <div class="actions">
       <a class="btn primary" href="/">Open the app</a>
       <button class="btn" id="theme" type="button" aria-label="Switch light or dark">Theme</button>
     </div>
     <div class="group">Start here</div>
-    <a class="item" href="#intro">What Sudarshan is</a>
+    <a class="item" href="#intro">What Sudarshan AI is</a>
     <a class="item" href="#how">How it works</a>
     <a class="item" href="#install">Install and start</a>
     <a class="item" href="#setup">First-run setup</a>
@@ -235,7 +231,7 @@
         <div>
           <div class="eyebrow">Goes out. Finishes the task. Returns.</div>
           <h1>Apply while you <em>live your life.</em></h1>
-          <p class="lede">Sudarshan is a job application agent that runs on your own computer. It searches job sites, scores every job against your profile, fills and sends the applications you approve, and comes back to tell you what happened.</p>
+          <p class="lede">Sudarshan AI is a job application agent that runs on your own computer. It searches job sites, scores every job against your profile, fills and sends the applications you approve, and comes back to tell you what happened.</p>
           <div class="pills">
             <span class="pill">LinkedIn</span><span class="pill">Naukri</span><span class="pill">Indeed</span><span class="pill">Instahyre</span><span class="pill">Foundit</span><span class="pill">Hirist</span><span class="pill">Himalayas</span><span class="pill">Company career sites</span>
           </div>
@@ -251,7 +247,7 @@
       <h3>What makes it different</h3>
       <ul>
         <li><b>Everything stays on your computer.</b> Your resume, answers and logins never leave it. There is no account and no server of ours.</li>
-        <li><b>You stay in charge.</b> By default nothing is sent until you approve it. Sudarshan asks you only what it cannot know, once, and never guesses personal facts.</li>
+        <li><b>You stay in charge.</b> By default nothing is sent until you approve it. Sudarshan AI asks you only what it cannot know, once, and never guesses personal facts.</li>
         <li><b>It gets faster with use.</b> Every answer is remembered and reused, so after a few dozen applications most forms fill without any AI call.</li>
         <li><b>Any AI, or none.</b> Bring a key from Anthropic, OpenAI, Gemini, Groq or OpenRouter, run a free local model (Ollama, LM Studio), or use no AI at all.</li>
       </ul>
@@ -279,13 +275,13 @@
         </svg>
       </div>
       <ol class="steps">
-        <li><b>Search.</b> Sudarshan searches the job sites you switched on for your job titles and locations, every few hours. It also takes any job link you paste in, from any career site.</li>
+        <li><b>Search.</b> Sudarshan AI searches the job sites you switched on for your job titles and locations, every few hours. It also takes any job link you paste in, from any career site.</li>
         <li><b>Score.</b> Each job is compared with your profile: your skills (and years with each), experience, salary, location and the companies or titles you never want. It gets a score from 0 to 100 and a short reason.</li>
         <li><b>You approve.</b> Strong matches wait on the <a href="#review">Review</a> page. Approve them one by one or all at once. In <b>Auto</b> mode, jobs above your auto-apply score are queued for you.</li>
         <li><b>Apply.</b> One job at a time, at a human pace, in its own visible browser window: it opens the job, presses Apply, fills every field from your profile and answers, uploads your resume and sends it.</li>
         <li><b>Report back.</b> Every result lands on <a href="#lakshya">Lakshya</a> and the <a href="#flightlog">Flight log</a>. Anything that needs you (a captcha, a login, a question) appears in <a href="#attention">Needs attention</a> and, if you like, as a desktop or Telegram alert.</li>
       </ol>
-      <div class="note info"><b>Why it is fast.</b> Sudarshan never lets an AI "look at a screenshot and click". It reads the whole form in one pass, answers from your profile and memory first, asks the AI at most once for whatever is left, and fills everything in one pass. A job site it has seen before is replayed from a saved recipe with no AI at all.</div>
+      <div class="note info"><b>Why it is fast.</b> Sudarshan AI never lets an AI "look at a screenshot and click". It reads the whole form in one pass, answers from your profile and memory first, asks the AI at most once for whatever is left, and fills everything in one pass. A job site it has seen before is replayed from a saved recipe with no AI at all.</div>
     </section>
 
     <!-- ============================== INSTALL ============================== -->
@@ -300,7 +296,7 @@
         <li>Windows, macOS or Linux. No database, Docker or Python.</li>
       </ul>
       <h3>One-command install</h3>
-      <p>It installs Node.js if needed, downloads Sudarshan, adds a <b>Sudarshan</b> shortcut and starts it. Installed this way, it updates itself each time it starts.</p>
+      <p>It installs Node.js if needed, downloads Sudarshan AI, adds a <b>Sudarshan AI</b> shortcut and starts it. Installed this way, it updates itself each time it starts.</p>
       <p>Windows (PowerShell):</p>
       <pre><code>irm https://raw.githubusercontent.com/ankurpandey27/sudarshan-ai/master/install.ps1 | iex</code></pre>
       <p>macOS or Linux (terminal):</p>
@@ -317,14 +313,14 @@ npm start</code></pre>
       <div class="eyebrow">Start here</div>
       <h2>First-run setup</h2>
       <p class="sub">A four-step wizard. Only the resume is required.</p>
-      <figure><img src="img/setup.png" alt="The setup wizard, step 1: choose the agent's brain" /><figcaption>Step 1 of the wizard: pick an AI provider and model, or skip and use Sudarshan without AI.</figcaption></figure>
+      <figure><img src="img/setup.png" alt="The setup wizard, step 1: choose the agent's brain" /><figcaption>Step 1 of the wizard: pick an AI provider and model, or skip and use Sudarshan AI without AI.</figcaption></figure>
       <ol class="steps">
         <li><b>Choose a brain.</b> Pick an AI provider, paste its key (local models need none), press <b>Test connection</b>, then <b>Save model</b>. See <a href="#s-ai">AI model</a> for which one to pick.</li>
-        <li><b>Your resume.</b> Drop your PDF. Sudarshan reads it into a profile on your computer. Then fill in your <b>notice period, current CTC and expected CTC</b>: nearly every form asks for them.</li>
+        <li><b>Your resume.</b> Drop your PDF. Sudarshan AI reads it into a profile on your computer. Then fill in your <b>notice period, current CTC and expected CTC</b>: nearly every form asks for them.</li>
         <li><b>Your answers</b> (optional). Download the Excel template, fill in what you know, upload it. See <a href="#excel">The Excel sheet</a>.</li>
-        <li><b>Where to look.</b> Your job titles and locations (add <code>Remote</code> for remote roles), then log in to LinkedIn and Naukri in the browser window Sudarshan opens.</li>
+        <li><b>Where to look.</b> Your job titles and locations (add <code>Remote</code> for remote roles), then log in to LinkedIn and Naukri in the browser window Sudarshan AI opens.</li>
       </ol>
-      <div class="note tip"><b>Tip for your first run:</b> in <a href="#s-agent">Settings → Agent</a>, turn on <b>Stop before the final Submit</b>. Sudarshan fills every form and waits for you to press Submit. Check a few, then turn it off.</div>
+      <div class="note tip"><b>Tip for your first run:</b> in <a href="#s-agent">Settings → Agent</a>, turn on <b>Stop before the final Submit</b>. Sudarshan AI fills every form and waits for you to press Submit. Check a few, then turn it off.</div>
     </section>
 
     <!-- ============================== DAILY ============================== -->
@@ -332,11 +328,11 @@ npm start</code></pre>
       <div class="eyebrow">Start here</div>
       <h2>A typical day</h2>
       <ol class="steps">
-        <li>Open Sudarshan and press <b>Start agent</b> (bottom left). It searches, scores and starts applying to anything already approved.</li>
+        <li>Open Sudarshan AI and press <b>Start agent</b> (bottom left). It searches, scores and starts applying to anything already approved.</li>
         <li>Spend a few minutes on <a href="#review">Review</a>: approve the jobs you want.</li>
         <li>Answer anything on <a href="#questions">Questions</a>. Each answer unblocks every job waiting on it.</li>
         <li>Check <a href="#attention">Needs attention</a> now and then: tick a captcha, log in again, or fix a setting.</li>
-        <li>In the evening, read the day on <a href="#lakshya">Lakshya</a> (or your daily summary). Sudarshan rests outside your active hours and carries on the next day.</li>
+        <li>In the evening, read the day on <a href="#lakshya">Lakshya</a> (or your daily summary). Sudarshan AI rests outside your active hours and carries on the next day.</li>
       </ol>
     </section>
 
@@ -347,7 +343,7 @@ npm start</code></pre>
       <p class="sub">Your job hunt at a glance.</p>
       <div class="www">
         <div><b>What it is</b><p>The main page, in four views: <a href="#mission">Mission control</a> (live), Overview, Insights and Activity.</p></div>
-        <div><b>Why</b><p>One look tells you whether Sudarshan is working, what it achieved and what needs you, without reading logs.</p></div>
+        <div><b>Why</b><p>One look tells you whether Sudarshan AI is working, what it achieved and what needs you, without reading logs.</p></div>
         <div><b>How it works</b><p>Everything updates live while the agent runs. Overview and Insights cover 7, 30 or 90 days, for one platform or all of them.</p></div>
       </div>
       <figure><img src="img/dashboard.png" alt="Lakshya, Overview tab" /><figcaption>Overview: the headline numbers, applications per day (by platform) and the pipeline from found to applied.</figcaption></figure>
@@ -364,7 +360,7 @@ npm start</code></pre>
         <figure><img src="img/dashboard-activity.png" alt="Lakshya, Activity tab" /><figcaption>Activity: what happened, most recent first.</figcaption></figure>
       </div>
       <h3>Today and Apply on</h3>
-      <p>On Overview, below the charts, <b>Today</b> shows how many applications went out today and how much of each site's daily limit is used: a bar turns orange when a site has reached its limit and waits until tomorrow. Next to it, <b>Apply on</b> has a card for every job site, with what Sudarshan does there, today's applications against the limit, and how many jobs are queued. The switch on each card turns that site on or off; a site that is off keeps its jobs waiting, nothing is lost. A card also says when a site is paused, in careful mode, or refusing applications for a while.</p>
+      <p>On Overview, below the charts, <b>Today</b> shows how many applications went out today and how much of each site's daily limit is used: a bar turns orange when a site has reached its limit and waits until tomorrow. Next to it, <b>Apply on</b> has a card for every job site, with what Sudarshan AI does there, today's applications against the limit, and how many jobs are queued. The switch on each card turns that site on or off; a site that is off keeps its jobs waiting, nothing is lost. A card also says when a site is paused, in careful mode, or refusing applications for a while.</p>
       <figure><img src="img/dashboard-today.png" alt="Lakshya: the Today card and the Apply on cards" /><figcaption>Today (left) and one card per job site (right), each with its switch, what it does and today's use of its limit.</figcaption></figure>
       <h3>The controls</h3>
       <ul>
@@ -428,10 +424,10 @@ npm start</code></pre>
     <section class="doc" id="attention">
       <div class="eyebrow">The pages</div>
       <h2>Needs attention</h2>
-      <p class="sub">What is stopping Sudarshan right now, most serious first, and how to fix each one.</p>
+      <p class="sub">What is stopping Sudarshan AI right now, most serious first, and how to fix each one.</p>
       <div class="www">
         <div><b>What it is</b><p>A list of problems and suggestions: a question waiting, a login that ran out, a pace that is too fast, an AI key with no credit.</p></div>
-        <div><b>Why</b><p>Sudarshan never fails quietly. Instead of a stuck queue, you get a plain explanation and a button that takes you to the fix.</p></div>
+        <div><b>Why</b><p>Sudarshan AI never fails quietly. Instead of a stuck queue, you get a plain explanation and a button that takes you to the fix.</p></div>
         <div><b>How it works</b><p>Each card says what happened and <b>How to fix</b> it. Orange cards block applications; blue ones are tips. Close a card with ×.</p></div>
       </div>
       <figure><img src="img/attention.png" alt="Needs attention page" /><figcaption>Each card names the problem, how to fix it, and a button that takes you there.</figcaption></figure>
@@ -442,10 +438,10 @@ npm start</code></pre>
     <section class="doc" id="review">
       <div class="eyebrow">The pages</div>
       <h2>Review</h2>
-      <p class="sub">The jobs Sudarshan found and scored. Approve a batch and it applies to them one by one.</p>
+      <p class="sub">The jobs Sudarshan AI found and scored. Approve a batch and it applies to them one by one.</p>
       <div class="www">
         <div><b>What it is</b><p>Every job worth a look, with its score (0-100), company, location, platform, salary when known, and the skills it matched.</p></div>
-        <div><b>Why</b><p>You decide where you apply. Sudarshan does the searching and sorting so a few minutes a day is enough.</p></div>
+        <div><b>Why</b><p>You decide where you apply. Sudarshan AI does the searching and sorting so a few minutes a day is enough.</p></div>
         <div><b>How it works</b><p>Approve jobs one by one, select several, or press <b>Approve all N scoring X+</b>. Approved jobs join the queue.</p></div>
       </div>
       <figure><img src="img/review.png" alt="Review page, To review tab" /><figcaption>To review: the score ring, the job, its platform and matched skills. The arrow at the right opens the full job and why it scored as it did.</figcaption></figure>
@@ -453,7 +449,7 @@ npm start</code></pre>
       <table class="wrap">
         <tr><th>Tab</th><th>What it holds</th></tr>
         <tr><td>To review</td><td>Jobs scoring at or above your <b>review score</b> and not decided yet.</td></tr>
-        <tr><td>Approved (queue)</td><td>Jobs waiting to be applied to, in the order Sudarshan will take them (<b>Apply order</b>): job links you added first, then, with <a href="#s-agent">Apply to jobs in my country first</a> on, jobs in your country, then jobs that do not say where, then jobs abroad; within each, the best matches first. <b>Move to review</b> takes one out.</td></tr>
+        <tr><td>Approved (queue)</td><td>Jobs waiting to be applied to, in the order Sudarshan AI will take them (<b>Apply order</b>): job links you added first, then, with <a href="#s-agent">Apply to jobs in my country first</a> on, jobs in your country, then jobs that do not say where, then jobs abroad; within each, the best matches first. <b>Move to review</b> takes one out.</td></tr>
         <tr><td>Skipped</td><td>Jobs scored too low, or excluded by your rules (a company or title word you never want, salary below your expected CTC, not remote, a junior role). The reason is shown on each; approve one anyway if you disagree.</td></tr>
       </table>
       <div class="shots">
@@ -473,7 +469,7 @@ npm start</code></pre>
         <tr><th>Filter</th><th>What it does</th></tr>
         <tr><td>Platform chips</td><td>One job site, with how many jobs each has.</td></tr>
         <tr><td>Work</td><td><b>Remote</b>, <b>Hybrid</b> or <b>On-site</b>. Read from the job's location and title ("Hybrid - Bengaluru", "Work From Home"), and from a description that clearly says hybrid ("3 days a week in the office").</td></tr>
-        <tr><td>Where</td><td><b>In &lt;your country&gt;</b>, <b>Abroad</b>, or <b>Not said</b> - measured from the country on your <a href="#profile">Profile</a>. A job counts as in your country when its location names it ("Remote (India)") or a place in it; Sudarshan learns those places from the listings themselves, so "Noida" alone is known once it has been seen as "Noida, Uttar Pradesh, India". Sites that only list one country's jobs (Naukri, Instahyre, Foundit, Hirist) count as that country. A bare "Remote" with nothing else stays <b>Not said</b> - it is never guessed. Jobs abroad carry an <b>Abroad</b> badge.</td></tr>
+        <tr><td>Where</td><td><b>In &lt;your country&gt;</b>, <b>Abroad</b>, or <b>Not said</b> - measured from the country on your <a href="#profile">Profile</a>. A job counts as in your country when its location names it ("Remote (India)") or a place in it; Sudarshan AI learns those places from the listings themselves, so "Noida" alone is known once it has been seen as "Noida, Uttar Pradesh, India". Sites that only list one country's jobs (Naukri, Instahyre, Foundit, Hirist) count as that country. A bare "Remote" with nothing else stays <b>Not said</b> - it is never guessed. Jobs abroad carry an <b>Abroad</b> badge.</td></tr>
         <tr><td>Found</td><td>Only jobs posted (or found, when the site does not say) in the last 24 hours, 3, 7 or 30 days.</td></tr>
         <tr><td>Search</td><td>Words in the title or company.</td></tr>
       </table>
@@ -488,7 +484,7 @@ npm start</code></pre>
       <p class="sub">Things only you can answer. Each answer is remembered and unblocks every job that asked it.</p>
       <div class="www">
         <div><b>What it is</b><p>Questions from application forms that your profile and saved answers do not cover, such as a referrer's name or a city-specific question.</p></div>
-        <div><b>Why</b><p>Sudarshan never makes up facts about you. When it cannot know, it asks once instead of guessing.</p></div>
+        <div><b>Why</b><p>Sudarshan AI never makes up facts about you. When it cannot know, it asks once instead of guessing.</p></div>
         <div><b>How it works</b><p>Answer and press <b>Save answer</b>. The answer goes to memory and every job waiting on it goes back into the queue.</p></div>
       </div>
       <figure><img src="img/questions.png" alt="Questions page with one question" /><figcaption>A question with the AI's suggestion pre-filled. Check it before saving. <b>Skip these jobs</b> drops the jobs that asked it.</figcaption></figure>
@@ -514,31 +510,31 @@ npm start</code></pre>
       <table class="wrap">
         <tr><th>Tab</th><th>What it holds</th></tr>
         <tr><td>Applied</td><td>Applications that went through.</td></tr>
-        <tr><td>Needs attention</td><td><b>Needs you</b> (a question), <b>Do by hand</b> (a captcha, an account to create, a site Sudarshan cannot finish) and <b>Failed</b>.</td></tr>
+        <tr><td>Needs attention</td><td><b>Needs you</b> (a question), <b>Do by hand</b> (a captcha, an account to create, a site Sudarshan AI cannot finish) and <b>Failed</b>.</td></tr>
         <tr><td>Everything</td><td>Every job in every state.</td></tr>
       </table>
       <figure><img src="img/applications-attention.png" alt="Applications, Needs attention tab" /><figcaption>Needs attention: each job with what is left to do, and the buttons to act on it.</figcaption></figure>
       <h3>The buttons</h3>
       <table class="wrap">
         <tr><th>Button</th><th>What it does</th></tr>
-        <tr><td>Continue</td><td>You solved the captcha or logged in: Sudarshan carries on in the open tab from where it stopped.</td></tr>
-        <tr><td>Open in agent browser</td><td>Opens the job in Sudarshan's own browser, where you are logged in, to finish by hand.</td></tr>
+        <tr><td>Continue</td><td>You solved the captcha or logged in: Sudarshan AI carries on in the open tab from where it stopped.</td></tr>
+        <tr><td>Open in agent browser</td><td>Opens the job in Sudarshan AI's own browser, where you are logged in, to finish by hand.</td></tr>
         <tr><td>I applied</td><td>You finished it yourself: counts it as applied.</td></tr>
         <tr><td>Approve again</td><td>Back into the queue, to try again.</td></tr>
         <tr><td>Back to Review</td><td>Out of the way, to decide later.</td></tr>
         <tr><td>Dismiss</td><td>Not interested: drop it.</td></tr>
         <tr><td>Add job links</td><td>Paste any job URLs (any site). They are queued straight away.</td></tr>
         <tr><td>Export to Excel</td><td>A spreadsheet of your applications, as a tracker.</td></tr>
-        <tr><td>Check Indeed</td><td>Reads your Indeed "Applied" list and marks those jobs applied, for ones finished outside Sudarshan.</td></tr>
+        <tr><td>Check Indeed</td><td>Reads your Indeed "Applied" list and marks those jobs applied, for ones finished outside Sudarshan AI.</td></tr>
       </table>
-      <div class="note info"><b>Never sent twice.</b> Sudarshan notes the moment it presses Submit. If it is stopped right then, the job waits for you to check ("stopped right after pressing Submit") instead of being sent again.</div>
+      <div class="note info"><b>Never sent twice.</b> Sudarshan AI notes the moment it presses Submit. If it is stopped right then, the job waits for you to check ("stopped right after pressing Submit") instead of being sent again.</div>
     </section>
 
     <!-- ============================== ANSWERS ============================== -->
     <section class="doc" id="answers">
       <div class="eyebrow">The pages</div>
       <h2>Answer memory</h2>
-      <p class="sub">Everything Sudarshan has learned to answer, and where each answer came from.</p>
+      <p class="sub">Everything Sudarshan AI has learned to answer, and where each answer came from.</p>
       <div class="www">
         <div><b>What it is</b><p>Every question it has answered, with the answer, its source (you, your profile, a spreadsheet or the AI) and how often it was used.</p></div>
         <div><b>Why</b><p>Remembering makes every form faster and cheaper. Seeing it lets you correct anything that is wrong.</p></div>
@@ -558,7 +554,7 @@ npm start</code></pre>
         <div><b>Why</b><p>Written questions ("Why are you a fit?", "Describe a challenge") are where applications stand out or sound generic.</p></div>
         <div><b>How it works</b><p>For each job, the stories that fit are given to the AI, which builds written answers on their facts and never changes their numbers.</p></div>
       </div>
-      <figure><img src="img/stories.png" alt="Story Bank page" /><figcaption>Stories with the skills they show. If one has no number, date or name, Sudarshan asks once for one.</figcaption></figure>
+      <figure><img src="img/stories.png" alt="Story Bank page" /><figcaption>Stories with the skills they show. If one has no number, date or name, Sudarshan AI asks once for one.</figcaption></figure>
       <p>Written answers follow plain-writing rules: no "leverage", "robust", "spearheaded", no "I am thrilled to apply". An answer that still reads as AI-written is rewritten once, with the same facts.</p>
     </section>
 
@@ -579,7 +575,7 @@ npm start</code></pre>
     <section class="doc" id="profile">
       <div class="eyebrow">The pages</div>
       <h2>Profile</h2>
-      <p class="sub">What Sudarshan knows about you. Most form fields are filled from here.</p>
+      <p class="sub">What Sudarshan AI knows about you. Most form fields are filled from here.</p>
       <div class="www">
         <div><b>What it is</b><p>Your details, work history, skills with years, pay and availability, read from your resume and editable.</p></div>
         <div><b>Why</b><p>Forms ask the same things everywhere. Keeping them accurate here means every application is accurate.</p></div>
@@ -608,11 +604,11 @@ npm start</code></pre>
     <section class="doc" id="window">
       <div class="eyebrow">The pages</div>
       <h2>The agent window</h2>
-      <p class="sub">The page Sudarshan's own browser shows while it works - its mission control.</p>
+      <p class="sub">The page Sudarshan AI's own browser shows while it works - its mission control.</p>
       <div class="www">
         <div><b>What it is</b><p>A live status page in the agent's browser: what it is doing right now, today against each site's daily limit, the queue, a live feed, AI usage and the schedule.</p></div>
         <div><b>Why</b><p>When you glance at the agent's window you see at once whether it is working, resting or waiting for you - and what to do about it.</p></div>
-        <div><b>How it works</b><p>It updates itself every few seconds and follows your light or dark theme. <b>Open Lakshya</b> brings you back to the app.</p></div>
+        <div><b>How it works</b><p>It updates itself every few seconds. The sun/moon button at the top switches light and dark - this window runs in the agent's own browser, so it keeps its own choice. <b>Open Lakshya</b> brings you back to the app.</p></div>
       </div>
       <figure><img src="img/agent-window.png" alt="The agent window: the orbit, today's applications per site, the live feed, AI usage and schedule" /><figcaption>The orbit in the middle, today on the left, the live feed, AI usage and schedule on the right.</figcaption></figure>
       <table class="wrap">
@@ -631,7 +627,7 @@ npm start</code></pre>
       <h2>AI model</h2>
       <p class="sub">Used to read your resume, score jobs and answer new questions.</p>
       <div class="www">
-        <div><b>What it is</b><p>The AI provider, model and key Sudarshan uses, plus an optional fallback model.</p></div>
+        <div><b>What it is</b><p>The AI provider, model and key Sudarshan AI uses, plus an optional fallback model.</p></div>
         <div><b>Why</b><p>The AI handles what rules and memory cannot: reading a resume, judging a job, drafting a new answer.</p></div>
         <div><b>How it works</b><p>Pick a provider, paste the key, choose a model (the refresh button lists the provider's models), <b>Test connection</b>, <b>Save model</b>.</p></div>
       </div>
@@ -646,7 +642,8 @@ npm start</code></pre>
         <tr><td>Your own server</td><td>Custom (any OpenAI-compatible URL)</td><td>Depends</td></tr>
       </table>
       <ul>
-        <li><b>Fallback model.</b> If the main model fails or runs out of credit, Sudarshan switches to it automatically. A local Ollama model makes a good fallback.</li>
+        <li><b>Server URL.</b> For Ollama, LM Studio and Custom: where the model runs. Ollama and LM Studio fill in their usual address on this computer; for Custom, paste the base URL of any OpenAI-compatible server (its <code>/chat/completions</code> endpoint is used).</li>
+        <li><b>Fallback model.</b> If the main model fails or runs out of credit, Sudarshan AI switches to it automatically. A local Ollama model makes a good fallback.</li>
         <li><b>No AI at all</b> works too: scoring is rule-based, and new questions come to you instead of being drafted.</li>
         <li>Usage stays small: answer memory means one short call for a brand-new form and none for questions it has seen.</li>
       </ul>
@@ -656,7 +653,7 @@ npm start</code></pre>
     <section class="doc" id="s-search">
       <div class="eyebrow">Settings</div>
       <h2>What to search</h2>
-      <p class="sub">Which jobs Sudarshan looks for, and which it never wants.</p>
+      <p class="sub">Which jobs Sudarshan AI looks for, and which it never wants.</p>
       <div class="www">
         <div><b>What it is</b><p>Your job titles, locations, filters and exclusions.</p></div>
         <div><b>Why</b><p>Good searches find good jobs; exclusions keep out the ones you would always say no to.</p></div>
@@ -689,6 +686,7 @@ npm start</code></pre>
         <div><b>How it works</b><p>Switch sites on or off and set <b>Per day</b>. <b>Use safe pace</b> sets limits, gaps and hours a person could keep. The same switches are on Lakshya's <b>Apply on</b> cards.</p></div>
       </div>
       <figure><img src="img/settings-platforms.png" alt="Settings, Platforms and limits tab" /></figure>
+      <p><b>Out of the box:</b> LinkedIn 25, Naukri 40, Instahyre 30 and job links 30 applications a day; Indeed (15), Foundit, Hirist, Himalayas and company career sites start switched off. Applications are 40-110 seconds apart, between 8:00 and 23:00, with a search every hour. <b>Use safe pace</b> puts these back.</p>
       <div class="note warn"><b>Protect your accounts.</b> LinkedIn does not allow automated applications and restricts accounts that apply too fast. If your limits, gaps or hours are faster than a person, this page and Needs attention warn you, with a one-click <b>Use safe pace</b>. Raise limits at your own risk.</div>
     </section>
 
@@ -699,7 +697,7 @@ npm start</code></pre>
       <p class="sub">How the agent behaves: when it works, how fast, and how careful.</p>
       <div class="www">
         <div><b>What it is</b><p>The agent's mode, score thresholds, pacing, active hours and safety switches.</p></div>
-        <div><b>Why</b><p>So Sudarshan works the way you are comfortable with, from "ask me about everything" to "apply to strong matches by yourself".</p></div>
+        <div><b>Why</b><p>So Sudarshan AI works the way you are comfortable with, from "ask me about everything" to "apply to strong matches by yourself".</p></div>
         <div><b>How it works</b><p>Change a setting and press Save. It applies from the next job.</p></div>
       </div>
       <figure><img src="img/settings-agent.png" alt="Settings, Agent tab" /></figure>
@@ -710,7 +708,7 @@ npm start</code></pre>
         <tr><td>Review score</td><td>Jobs at or above this are shown in Review; below it they are skipped.</td></tr>
         <tr><td>Gap between applications (s)</td><td>A random wait between applications, between the min and max you set.</td></tr>
         <tr><td>Search every (minutes)</td><td>How often job sites are searched.</td></tr>
-        <tr><td>Active from / until (hour)</td><td>Sudarshan works only between these hours, like a person.</td></tr>
+        <tr><td>Active from / until (hour)</td><td>Sudarshan AI works only between these hours, like a person.</td></tr>
         <tr><td>Stop before the final Submit</td><td>A dry run: it fills everything, and you press Submit in the agent browser.</td></tr>
         <tr><td>Use my past answers for similar questions</td><td>Shows the AI your own answers to questions that mean the same, in any wording or language. They are never filled in by themselves.</td></tr>
         <tr><td>Apply to jobs in my country first</td><td>On (the default): approved jobs in the country on your profile - on-site, hybrid or remote - are applied to before jobs abroad, so remote jobs from other countries never use up a site's daily limit first. Jobs that do not say where go in between. Off: the best match goes first wherever it is.</td></tr>
@@ -728,7 +726,7 @@ npm start</code></pre>
     <section class="doc" id="s-notifications">
       <div class="eyebrow">Settings</div>
       <h2>Notifications</h2>
-      <p class="sub">Know what happened without watching Sudarshan.</p>
+      <p class="sub">Know what happened without watching Sudarshan AI.</p>
       <div class="www">
         <div><b>What it is</b><p>Desktop notifications, a daily summary, Telegram messages on your phone, and replies read from your email.</p></div>
         <div><b>Why</b><p>So a captcha or a question does not sit for hours, and you know when an employer answered.</p></div>
@@ -737,26 +735,46 @@ npm start</code></pre>
       <figure><img src="img/settings-notifications.png" alt="Settings, Notifications tab" /></figure>
       <table class="wrap">
         <tr><th>Setting</th><th>What it does</th></tr>
-        <tr><td>Desktop notifications</td><td>While Sudarshan is open in your browser. The browser asks once for permission.</td></tr>
+        <tr><td>Desktop notifications</td><td>While Sudarshan AI is open in your browser. The browser asks once for permission.</td></tr>
         <tr><td>When an application needs me</td><td>A captcha to solve or questions only you can answer, gathered into one message.</td></tr>
         <tr><td>Daily summary</td><td>Applied, waiting for you, failed and found, once a day at the hour you choose.</td></tr>
         <tr><td>Telegram (optional)</td><td>The same messages on your phone. Create a bot with @BotFather, paste its token, send it a message, and connect.</td></tr>
         <tr><td>Replies from your email (optional)</td><td>Reads your mailbox on your computer with an app password and shows each application's reply: received, a test, an interview, an offer, or not selected. Only the sender, subject and meaning are kept, never the email itself.</td></tr>
       </table>
+
+      <h3>Setting up Telegram</h3>
+      <p>Telegram sends you the same messages as the desktop notifications - when an application needs you, and the daily summary - on your phone, wherever you are.</p>
+      <figure><img src="img/telegram-setup.png" alt="The Telegram card in Settings, Notifications: three steps, with a bot token pasted in" /><figcaption>Three steps. The token shown is made up.</figcaption></figure>
+      <ol class="steps">
+        <li>In Telegram, open <b>@BotFather</b>, send <code>/newbot</code> and pick any name. It replies with a token like <code>123456:AAH...</code>.</li>
+        <li>Paste the token into the box and press <b>Save</b>. The card says which bot it saved.</li>
+        <li>Send your new bot any message (like "hi"), then press <b>Connect</b>. The card shows <b>Connected</b>; <b>Send today's summary now</b> above it sends a test.</li>
+      </ol>
+      <p>The token is stored encrypted on your computer. Only you and your bot are in the chat. <b>Disconnect</b> removes it.</p>
+
+      <h3>Setting up replies from your email</h3>
+      <p>Sudarshan AI reads your mailbox every 30 minutes and matches replies to your applications - "received", a test, an interview, an offer, or "not selected" - shown as a badge on each application in <a href="#applications">Applications</a>.</p>
+      <figure><img src="img/email-setup.png" alt="The email card in Settings, Notifications: email address and app password" /><figcaption>Your address and an app password. The address shown is made up.</figcaption></figure>
+      <ol class="steps">
+        <li>Make an <b>app password</b> for your mailbox - not your normal password. Gmail: Google Account → Security → 2-Step Verification → App passwords. Yahoo: Account security → Generate app password. iCloud: appleid.apple.com → Sign-In and Security → App-Specific Passwords.</li>
+        <li>Enter your email address and the app password, then press <b>Connect mailbox</b>. Gmail, Yahoo and iCloud are known; for another provider an <b>IMAP server</b> box appears - enter its address (for example <code>imap.example.com</code>).</li>
+        <li>The card shows <b>Reading</b> your address, when it last checked, and how many replies it has matched. <b>Check now</b> reads it straight away; <b>Disconnect</b> stops it.</li>
+      </ol>
+      <p>It is read on your computer only, never by an AI. Only replies about your applications are kept - the sender, the subject and what they mean, never the email itself. The app password is stored encrypted, and is never in a backup.</p>
     </section>
 
     <!-- ============================== SETTINGS: LOGINS ============================== -->
     <section class="doc" id="s-logins">
       <div class="eyebrow">Settings</div>
       <h2>Site logins</h2>
-      <p class="sub">Log in to each job site once, in Sudarshan's own browser.</p>
+      <p class="sub">Log in to each job site once, in Sudarshan AI's own browser.</p>
       <div class="www">
         <div><b>What it is</b><p>The login state of every job site in the agent's browser.</p></div>
-        <div><b>Why</b><p>Applying needs you to be signed in. Sudarshan never sees or stores your passwords.</p></div>
+        <div><b>Why</b><p>Applying needs you to be signed in. Sudarshan AI never sees or stores your passwords.</p></div>
         <div><b>How it works</b><p>Press <b>Log in</b>. A window opens on the site; sign in as usual. The row then shows <b>Connected</b>.</p></div>
       </div>
-      <figure><img src="img/settings-accounts.png" alt="Settings, Site logins tab" /><figcaption>A separate browser profile just for the agent. Your passwords go to the site, never to Sudarshan.</figcaption></figure>
-      <p>For a site whose login Sudarshan does not know yet (Himalayas, for example), it learns the login the first time you sign in, then shows Connected from then on. When a login runs out, Needs attention tells you and that site waits until you log in again.</p>
+      <figure><img src="img/settings-accounts.png" alt="Settings, Site logins tab" /><figcaption>A separate browser profile just for the agent. Your passwords go to the site, never to Sudarshan AI.</figcaption></figure>
+      <p>For a site whose login Sudarshan AI does not know yet (Himalayas, for example), it learns the login the first time you sign in, then shows Connected from then on. When a login runs out, Needs attention tells you and that site waits until you log in again.</p>
     </section>
 
     <!-- ============================== SETTINGS: DATA ============================== -->
@@ -766,7 +784,7 @@ npm start</code></pre>
       <p class="sub">Your data, the spreadsheet, and backups you can restore.</p>
       <div class="www">
         <div><b>What it is</b><p>Spreadsheet import and export, daily backups, an off-computer backup folder, and restore.</p></div>
-        <div><b>Why</b><p>Everything Sudarshan learned about you lives in one file. A backup means a damaged disk never costs you more than a day.</p></div>
+        <div><b>Why</b><p>Everything Sudarshan AI learned about you lives in one file. A backup means a damaged disk never costs you more than a day.</p></div>
         <div><b>How it works</b><p>A full backup is made once a day by itself. Point <b>Also copy each backup to this folder</b> at a synced folder to keep a copy elsewhere.</p></div>
       </div>
       <figure><img src="img/settings-data.png" alt="Settings, Data and backups tab" /></figure>
@@ -777,11 +795,12 @@ npm start</code></pre>
         <tr><td>macOS</td><td><code>/Users/&lt;you&gt;/.sudarshan</code></td></tr>
         <tr><td>Linux</td><td><code>/home/&lt;you&gt;/.sudarshan</code></td></tr>
       </table>
-      <p>Inside: <code>agent.db</code> (profile, answers, jobs, applications, what it learned), <code>backups</code> (the last 7 daily backups), <code>secret.key</code> (unlocks your saved AI keys), <code>browser-profile</code> (the agent's logins), <code>uploads</code> (your resumes), <code>screenshots</code> and <code>logs</code> (cleared after 30 days).</p>
+      <p>Inside: <code>agent.db</code> (profile, answers, jobs, applications, what it learned), <code>backups</code> (the last 7 daily backups), <code>secret.key</code> (unlocks your saved AI keys), <code>browser-profile</code> (the agent's logins), <code>uploads</code> (your resumes), <code>screenshots</code> (kept 30 days) and <code>logs</code> (kept 14 days).</p>
+      <p>Old files are cleared when Sudarshan AI starts and then every 24 hours while it runs - there is no fixed time of day; while it is closed nothing runs, and the next start catches up. The same pass makes the daily backup. An attempt keeps its record (steps, fields, result) after its pictures are cleared.</p>
       <h3>Restoring a backup</h3>
       <ol class="steps">
         <li>Open <b>Data &amp; backups → Restore from a backup</b> and choose the file (a daily <code>agent-YYYY-MM-DD.db</code> or a downloaded <code>sudarshan-backup-....db</code>).</li>
-        <li>Press <b>Restore</b>. Your current data is kept as <code>before-restore-....db</code>, Sudarshan restarts by itself, and the page reloads.</li>
+        <li>Press <b>Restore</b>. Your current data is kept as <code>before-restore-....db</code>, Sudarshan AI restarts by itself, and the page reloads.</li>
         <li>Enter your AI key again: keys are never in a backup, so a backup can never leak them.</li>
       </ol>
       <div class="note warn"><b>Backups hold your personal details.</b> Keep them private; never share or upload them publicly.</div>
@@ -818,31 +837,31 @@ npm start</code></pre>
         <tr><td>Your answers</td><td>Every answer you give or that a form accepted</td><td>The same question is never asked twice.</td></tr>
         <tr><td>How to operate each kind of field</td><td>Fields that needed another way to fill (open and click, type and pick, type and Enter)</td><td>Next time that kind of field on that site is filled the right way first.</td></tr>
         <tr><td>Each site's steps</td><td>Buttons that moved an application on, from applications the site confirmed</td><td>A known site is replayed without trial and error or AI.</td></tr>
-        <tr><td>From you</td><td>Applications you finish by hand in the agent's browser</td><td>Your answers and steps are reused. What Sudarshan itself filled is never counted as yours.</td></tr>
+        <tr><td>From you</td><td>Applications you finish by hand in the agent's browser</td><td>Your answers and steps are reused. What Sudarshan AI itself filled is never counted as yours.</td></tr>
         <tr><td>Your interest</td><td>Jobs you approve, apply to, skip and dismiss</td><td>Review can sort by how much a job looks like the ones you want.</td></tr>
         <tr><td>Four small models</td><td>Your daily applications, retrained every few hours</td><td>Better field recognition, similar-question matching, forward-button picking and success ranking. Each checks itself before it acts.</td></tr>
       </table>
-      <p><b>When a site changes.</b> If a site's last three applications all got stuck, Sudarshan stops applying there instead of failing quietly, and Needs attention says so. Finish one by hand (it learns the new steps) or press <b>Try again carefully</b>.</p>
+      <p><b>When a site changes.</b> If a site's last three applications all got stuck, Sudarshan AI stops applying there instead of failing quietly, and Needs attention says so. Finish one by hand (it learns the new steps) or press <b>Try again carefully</b>.</p>
     </section>
 
     <!-- ============================== HANDOVER ============================== -->
     <section class="doc" id="handover">
       <div class="eyebrow">Under the hood</div>
       <h2>Captchas and hand-overs</h2>
-      <p class="sub">What Sudarshan leaves to you, on purpose, and how to finish it quickly.</p>
+      <p class="sub">What Sudarshan AI leaves to you, on purpose, and how to finish it quickly.</p>
       <div class="www">
         <div><b>What</b><p>Captchas, sites that need an account or a code sent to your email or phone, and pages it cannot work out.</p></div>
-        <div><b>Why</b><p>Captchas exist to keep automated tools out. Sudarshan never solves or gets around them, and never creates accounts for you.</p></div>
+        <div><b>Why</b><p>Captchas exist to keep automated tools out. Sudarshan AI never solves or gets around them, and never creates accounts for you.</p></div>
         <div><b>How</b><p>It fills everything else, keeps the tab open, tells you, and carries on with other jobs meanwhile.</p></div>
       </div>
       <ol class="steps">
-        <li>Sudarshan fills the whole form and stops at the captcha. The job shows <b>Do by hand</b>: "Filled - only the captcha is left".</li>
+        <li>Sudarshan AI fills the whole form and stops at the captcha. The job shows <b>Do by hand</b>: "Filled - only the captcha is left".</li>
         <li>The tab stays open in the agent's browser, and the agent moves on to the next job.</li>
-        <li>Switch to that tab and solve the captcha. Press Submit yourself, or just leave the tab: a few seconds later Sudarshan presses Submit for you (or press <b>Continue</b> in Applications).</li>
+        <li>Switch to that tab and solve the captcha. Press Submit yourself, or just leave the tab: a few seconds later Sudarshan AI presses Submit for you (or press <b>Continue</b> in Applications).</li>
         <li>When the site confirms, the job turns <b>Applied</b> by itself ("Finished by you"), and anything you typed is remembered.</li>
       </ol>
       <div class="note tip"><b>Fewer captchas:</b> keep a safe pace, stay logged in to each site, and keep the agent's browser visible. Most captchas come from applying too fast or from logged-out visits.</div>
-      <p>Sudarshan also protects you on the way: it never fills a page reached through an advert, checks that a form is about the job before filling it, and treats a job page that shows a different job, a "404" or "no longer accepting applications" as closed.</p>
+      <p>Sudarshan AI also protects you on the way: it never fills a page reached through an advert, checks that a form is about the job before filling it, and treats a job page that shows a different job, a "404" or "no longer accepting applications" as closed.</p>
     </section>
 
     <!-- ============================== SITES ============================== -->
@@ -874,15 +893,15 @@ npm start</code></pre>
         <li><b>Local only.</b> The app listens on <code>127.0.0.1</code> and refuses requests from other websites.</li>
         <li><b>What leaves your computer:</b> traffic to the job sites you use and the AI provider you chose (none with a local model), and, only if you turn them on, Telegram (your own bot) and your mailbox (read only).</li>
       </ul>
-      <div class="note warn"><b>Your responsibility.</b> Sudarshan acts in your own browser, on your own accounts. Automated applying may break a site's terms, and sites can restrict accounts that apply too fast. The defaults are careful, but how you use it is up to you.</div>
+      <div class="note warn"><b>Your responsibility.</b> Sudarshan AI acts in your own browser, on your own accounts. Automated applying may break a site's terms, and sites can restrict accounts that apply too fast. The defaults are careful, but how you use it is up to you.</div>
     </section>
 
     <!-- ============================== EXCEL ============================== -->
     <section class="doc" id="excel">
       <div class="eyebrow">Under the hood</div>
       <h2>The Excel sheet</h2>
-      <p class="sub">One file to teach Sudarshan your answers, links and preferences at once.</p>
-      <p>Download the template from the wizard or <b>Settings → Data &amp; backups → Spreadsheet</b>. It has three sheets, all optional:</p>
+      <p class="sub">One file to teach Sudarshan AI your answers, links and preferences at once.</p>
+      <p>Download the template from the wizard or <b>Settings → Data &amp; backups → Spreadsheet</b>, fill it in, and load it with <b>Import spreadsheet</b> there (or in the wizard). It has three sheets, all optional:</p>
       <table class="wrap">
         <tr><th>Sheet</th><th>What to put in</th></tr>
         <tr><td>Answers</td><td><b>Question | Answer</b> rows, such as "What is your notice period? | 30 days". They go straight into answer memory.</td></tr>
@@ -906,7 +925,7 @@ npm start</code></pre>
         <tr><td>Applying this fast can get your accounts restricted</td><td>A limit, gap or active hours faster than a person</td><td>Settings → Platforms &amp; limits → Use safe pace, then Save.</td></tr>
         <tr><td>Stopped right after pressing Submit</td><td>It was closed at the moment it sent</td><td>Check the site or your email; mark it Applied or queue it again. It never sends twice by itself.</td></tr>
         <tr><td>Filled - only the captcha is left</td><td>The site wants a human</td><td>Solve it in the open tab. See <a href="#handover">Captchas and hand-overs</a>.</td></tr>
-        <tr><td>Port 4747 is already in use</td><td>Sudarshan is already running</td><td>Open <code>http://localhost:4747</code>, or stop the other one.</td></tr>
+        <tr><td>Port 4747 is already in use</td><td>Sudarshan AI is already running</td><td>Open <code>http://localhost:4747</code>, or stop the other one.</td></tr>
         <tr><td>No Chrome, Edge or Brave found</td><td>No supported browser</td><td>Install Google Chrome.</td></tr>
       </table>
       <p>Each attempt keeps a screenshot and a step-by-step trace: <b>Applications → open the job → Attempts</b>. When you report a problem, share those and the Flight log lines around it, with your personal details removed.</p>
@@ -923,7 +942,7 @@ npm start</code></pre>
       <h4>Remote jobs abroad keep using up my limit before jobs in my country. What can I do?</h4>
       <p>Keep <b>Settings → Agent → Apply to jobs in my country first</b> on (it is on by default): jobs in your country go first. To approve only those, filter Review by <b>Where: In &lt;your country&gt;</b> and press Approve all. Check that your Profile has your country.</p>
       <h4>Can it solve captchas?</h4>
-      <p>No, by design. It fills everything else and hands the captcha to you; after you tick it, Sudarshan finishes the application.</p>
+      <p>No, by design. It fills everything else and hands the captcha to you; after you tick it, Sudarshan AI finishes the application.</p>
       <h4>How much does the AI cost?</h4>
       <p>Very little, or nothing with a free tier or local model. Memory answers most questions, and the daily token budget caps what a paid model can use.</p>
       <h4>Can I use it on two computers?</h4>
@@ -933,7 +952,7 @@ npm start</code></pre>
     </section>
 
     <footer>
-      Sudarshan is free and open source (MIT), created by <a href="https://github.com/ankurpandey27" target="_blank" rel="noopener">Ankur Pandey</a>.
+      Sudarshan AI is free and open source (MIT), created by <a href="https://github.com/ankurpandey27" target="_blank" rel="noopener">Ankur Pandey</a>.
       Screenshots show a made-up candidate and made-up jobs.
       <a href="https://github.com/ankurpandey27/sudarshan-ai" target="_blank" rel="noopener">Source code</a>.
     </footer>

@@ -356,7 +356,7 @@ export interface BrowserStatus {
   running: boolean;
   executable: string | null;
   headless: boolean;
-  /** loggedIn is null for a site whose login Sudarshan cannot check (Foundit, Hirist). */
+  /** loggedIn is null for a site whose login Sudarshan AI cannot check (Foundit, Hirist). */
   sessions: { id: 'linkedin' | 'naukri' | 'instahyre' | 'indeed' | 'foundit' | 'hirist' | 'himalayas'; label: string; loggedIn: boolean | null }[];
 }
 
@@ -425,7 +425,7 @@ export interface AppliedSyncResult {
   notInSudarshan: number;
 }
 
-/** A small model trained on this computer from Sudarshan's daily work. */
+/** A small model trained on this computer from Sudarshan AI's daily work. */
 export interface LearnerStatus {
   name: 'field' | 'question' | 'button' | 'outcome';
   label: string;

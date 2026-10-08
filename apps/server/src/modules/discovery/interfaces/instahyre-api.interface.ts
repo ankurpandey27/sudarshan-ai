@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-/** The part of Instahyre's /api/v1/job_search response Sudarshan uses. */
+/** The part of Instahyre's /api/v1/job_search response Sudarshan AI uses. */
 export interface InstahyreJob {
   id: number;
   title: string;

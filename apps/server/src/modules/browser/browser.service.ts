@@ -64,7 +64,7 @@ export class BrowserService implements OnApplicationShutdown {
       // Logging in needs a visible window, which means restarting the hidden one - never mid-task.
       if (this.inUse > 0) {
         throw new BrowserBusyError(
-          'Sudarshan is using the hidden browser for an application or search right now - try Log in again in a minute, or stop the agent first.',
+          'Sudarshan AI is using the hidden browser for an application or search right now - try Log in again in a minute, or stop the agent first.',
         );
       }
       await this.close();

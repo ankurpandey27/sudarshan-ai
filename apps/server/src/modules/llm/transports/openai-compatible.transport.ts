@@ -75,7 +75,7 @@ export class OpenAiCompatibleTransport implements LlmTransport {
     if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
     if (this.kind === LlmProviderKind.OPENROUTER) {
       headers['http-referer'] = 'https://github.com/ankurpandey27/sudarshan-ai';
-      headers['x-title'] = 'Sudarshan';
+      headers['x-title'] = 'Sudarshan AI';
     }
     return headers;
   }

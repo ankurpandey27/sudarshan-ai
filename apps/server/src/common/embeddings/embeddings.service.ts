@@ -1,10 +1,11 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
+import { availableParallelism } from 'node:os';
 import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SettingsService } from '../../modules/settings/settings.service';
-import { EMBEDDING_BATCH, EMBEDDING_DTYPE, EMBEDDING_LOAD_TIMEOUT_MS, EMBEDDING_MODEL } from './constants/embeddings.constants';
+import { EMBEDDING_BATCH, EMBEDDING_DTYPE, EMBEDDING_LOAD_TIMEOUT_MS, EMBEDDING_MODEL, EMBEDDING_WARM_AFTER_MS } from './constants/embeddings.constants';
 import { EmbeddingStatus } from './interfaces/embedding-status.interface';
 import { pickModelDir } from './utils/model-dir.util';
 
@@ -28,8 +29,9 @@ export class EmbeddingsService implements OnApplicationBootstrap {
   ) {}
 
   onApplicationBootstrap(): void {
-    // Warmed in the background: nothing waits for it.
-    if (this.enabled()) void this.load();
+    // Warmed in the background a little after startup, so loading it never slows the app opening; anything that
+    // needs it sooner loads it then.
+    if (this.enabled()) setTimeout(() => void this.load(), EMBEDDING_WARM_AFTER_MS).unref();
   }
 
   status(): EmbeddingStatus {
@@ -77,7 +79,12 @@ export class EmbeddingsService implements OnApplicationBootstrap {
       const lib = require('@huggingface/transformers') as typeof import('@huggingface/transformers');
       lib.env.cacheDir = dir;
       lib.env.localModelPath = dir;
-      const ready = lib.pipeline('feature-extraction', EMBEDDING_MODEL, { dtype: EMBEDDING_DTYPE });
+      // A few cores, not all of them: with every core busy the app itself stalled for half a minute (2026-10-08).
+      const threads = Math.max(1, Math.floor(availableParallelism() / 4));
+      const ready = lib.pipeline('feature-extraction', EMBEDDING_MODEL, {
+        dtype: EMBEDDING_DTYPE,
+        session_options: { intraOpNumThreads: threads, interOpNumThreads: 1 },
+      });
       const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error('took too long to start')), EMBEDDING_LOAD_TIMEOUT_MS).unref());
       this.extractor = (await Promise.race([ready, timeout])) as unknown as Extractor;
       this.logger.log(`Meaning model ready in ${Math.round((Date.now() - started) / 1000)} s`);

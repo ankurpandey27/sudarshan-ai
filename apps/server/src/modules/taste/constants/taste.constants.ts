@@ -58,3 +58,6 @@ export const SKIP_MIN_RATE = 0.5;
 export const SKIP_MIN_DECISIONS = 5;
 /** Shown on the taste card, each list. */
 export const HABITS_SHOWN = 6;
+
+/** Your interest is worked out this long after startup, once the app is answering. */
+export const REFRESH_AFTER_START_MS = 5_000;

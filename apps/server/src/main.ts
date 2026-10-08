@@ -48,7 +48,7 @@ async function bootstrap(): Promise<void> {
     throw err;
   }
   const url = `http://localhost:${port}`;
-  logger.log(`Sudarshan is running at ${url}  (data: ${boot.paths.dataDir})`);
+  logger.log(`Sudarshan AI is running at ${url}  (data: ${boot.paths.dataDir})`);
   if (config.get<boolean>('server.openBrowser') && process.argv.includes('--open')) openInBrowser(url);
 }
 

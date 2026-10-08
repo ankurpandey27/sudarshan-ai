@@ -92,7 +92,7 @@ const healthy = () =>
     req.end();
   });
 
-console.log(`\n  Sudarshan - goes out, finishes the task, returns.\n`);
+console.log(`\n  Sudarshan AI - goes out, finishes the task, returns.\n`);
 
 // Installed with the one-line installer: brought up to date first. A developer's clone (no marker file), or a copy
 // with local changes, is left alone; offline, this version starts.
@@ -140,7 +140,7 @@ if (serverStale || webStale) {
 }
 
 // The answer-matching model: fetched once if an earlier install could not (offline, or installed before it
-// existed). Never stops the start - without it, Sudarshan works as before.
+// existed). Never stops the start - without it, Sudarshan AI works as before.
 if (haveModel()) {
   done('Answer-matching model ready');
 } else if (process.env.SUDARSHAN_SKIP_MODEL !== '1') {

@@ -2,7 +2,7 @@
   <img src="apps/web/public/sudarshan.svg" width="110" alt="Sudarshan Chakra logo" />
 </p>
 
-<h1 align="center">Sudarshan</h1>
+<h1 align="center">Sudarshan AI</h1>
 
 <p align="center"><b>Goes out. Finishes the task. Returns.</b><br/>
 A local-first job application agent: it searches job sites, scores jobs against your profile, fills and submits the applications you approve, and reports back.<br/>
@@ -17,7 +17,7 @@ NestJS + React, SQLite, a real Chrome you can watch. Any AI provider, a local mo
 
 <p align="center"><img src="apps/web/public/docs/img/dashboard-dark.png" width="860" alt="Lakshya's Mission control: the radar of jobs around the chakra (demo data)" /></p>
 
-> **Using Sudarshan, not developing it?** Read the **user guide**: open Sudarshan and click **Documentation** in the sidebar, or open [`apps/web/public/docs/index.html`](apps/web/public/docs/index.html). It explains every page and setting with screenshots.
+> **Using Sudarshan AI, not developing it?** Read the **user guide**: open Sudarshan AI and click **Documentation** in the sidebar, or open [`apps/web/public/docs/index.html`](apps/web/public/docs/index.html). It explains every page and setting with screenshots.
 > This README is for people who want to run it from source, fork it, or build on it.
 
 ---
@@ -32,7 +32,7 @@ NestJS + React, SQLite, a real Chrome you can watch. Any AI provider, a local mo
 - [Configuration](#configuration)
 - [Data and storage](#data-and-storage)
 - [The main flows in code](#the-main-flows-in-code)
-- [Extending Sudarshan](#extending-sudarshan)
+- [Extending Sudarshan AI](#extending-sudarshan)
 - [Testing](#testing)
 - [Conventions](#conventions)
 - [Security model](#security-model)
@@ -236,7 +236,7 @@ Installer-only: `SUDARSHAN_REPO`, `SUDARSHAN_HOME`, `SUDARSHAN_SHORTCUT_DIR`, `S
 | Reading a page | `modules/form-engine/scripts/extract-form.script.ts` (runs inside the page) |
 | Answering | `modules/form-engine/answer-engine.service.ts` → `resolve()`; rules in `utils/profile-rules.util.ts`; prompt in `utils/answer-prompt.util.ts` |
 | AI rescue | `modules/form-engine/rescue.service.ts` |
-| Learning from the user | `modules/learning/learning.service.ts` and `scripts/recorder.script.ts` |
+| Learning from the user | `modules/learning/learning.service.ts` and `modules/learning/scripts/recorder.script.ts` |
 | Live updates | `common/events` → `GET /api/events/stream` (SSE) → `apps/web/src/lib/events.tsx` |
 | Mission control (Lakshya's first view) | `apps/web/src/components/mission/mission-control.tsx`. The radar (`radar.tsx`) places jobs from `GET /api/jobs?status=review,approved,applying` (ring = score, half = `region`) and animates the SVG directly in one `requestAnimationFrame` loop; comets start on `apply.step` "Applying:" events and land on `job.updated`. Live Eye polls `GET /api/agent/live` and shows `GET /api/agent/live/shots/:attemptId/:index` (`ApplyService.live()`, only pictures of the attempt in progress). The command bar's sentence parser is `apps/web/src/lib/command.ts` - rules, no AI - and maps to the jobs filters (`workMode`, `region`, `minScore`, `platform`, `withinDays`, `exclude`) and `POST /api/jobs/approve-strong`. The flight recorder reads `GET /api/events/history?day=…`. |
 
@@ -244,7 +244,7 @@ Functions named `…InPage` run inside the browser through `page.evaluate`, so t
 
 ---
 
-## Extending Sudarshan
+## Extending Sudarshan AI
 
 ### Add a job site (search)
 
@@ -252,7 +252,7 @@ Functions named `…InPage` run inside the browser through `page.evaluate`, so t
 2. Write `modules/discovery/sources/<site>.source.ts` implementing `DiscoverySource` (`search`, optionally `enrich` and `combine`), and register it in the discovery module.
 3. If the site lists one country's jobs only, add it to `SITE_COUNTRY` in `modules/jobs/constants/countries.constants.ts` so its bare "Remote" jobs get a region.
 4. Add its on/off switch and daily limit to the sources settings (`modules/settings`) and the safe-pace table.
-5. If it needs a login, add it to `SITES` in `modules/browser/constants/sites.constants.ts` (login URL and auth cookies; leave cookies empty and Sudarshan learns them the first time the user logs in), and to `apply/constants/site-of-platform.constants.ts`.
+5. If it needs a login, add it to `SITES` in `modules/browser/constants/sites.constants.ts` (login URL and auth cookies; leave cookies empty and Sudarshan AI learns them the first time the user logs in), and to `apply/constants/site-of-platform.constants.ts`.
 6. On the web side, add its label and colour (`apps/web/src/lib/format.ts`, `--p-<site>` in `tokens.css`), its safe pace (`lib/safe-pace.ts`) and its one-line description in `ABOUT` (`components/apply-on-card.tsx`).
 
 ### Add an apply path
@@ -276,7 +276,7 @@ Append a migration (see [Data and storage](#data-and-storage)). For a new settin
 ## Testing
 
 ```bash
-npm test -w apps/server                 # ~570 unit tests
+npm test -w apps/server                 # ~590 unit tests
 npm run test:browser -w apps/server     # ~65 tests in a real headless Chrome
 ```
 
@@ -334,6 +334,6 @@ Remove personal details (name, email, phone, salary) before posting. For a site-
 
 ## Disclaimer and license
 
-Sudarshan automates actions in the user's own browser, on their own accounts. Automated applying may break a job site's terms of service, and sites can restrict accounts that apply too fast. The defaults are conservative, but users are responsible for how they use it. It is not affiliated with LinkedIn, Naukri, Indeed or any AI provider.
+Sudarshan AI automates actions in the user's own browser, on their own accounts. Automated applying may break a job site's terms of service, and sites can restrict accounts that apply too fast. The defaults are conservative, but users are responsible for how they use it. It is not affiliated with LinkedIn, Naukri, Indeed or any AI provider.
 
 Created by **[Ankur Pandey](https://github.com/ankurpandey27)**. MIT; see [LICENSE](LICENSE).

@@ -19,7 +19,7 @@ const FORWARD = 'forward';
 const NOT = 'not';
 
 /**
- * Learns which buttons move an application forward, from every site Sudarshan applied on: a button
+ * Learns which buttons move an application forward, from every site Sudarshan AI applied on: a button
  * that led to confirmed applications is "forward", one that led into dead ends is not. On a site it
  * has never seen - any wording, any language - it can then pick the button that moves on, before
  * asking the AI. Never a button that leaves or deletes an application.

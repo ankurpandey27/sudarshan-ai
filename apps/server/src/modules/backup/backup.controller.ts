@@ -33,7 +33,7 @@ export class BackupController {
     res.download(file, `sudarshan-backup-${localDay()}.db`, () => rmSync(file, { force: true }));
   }
 
-  /** Restores an uploaded backup; Sudarshan restarts by itself to apply it. */
+  /** Restores an uploaded backup; Sudarshan AI restarts by itself to apply it. */
   @Post('restore')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: BACKUP_MAX_BYTES } }))
   restore(@UploadedFile() file?: Express.Multer.File): BackupCheck {

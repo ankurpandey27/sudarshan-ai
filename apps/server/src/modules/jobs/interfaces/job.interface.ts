@@ -48,7 +48,7 @@ export interface Job {
   score: number | null;
   scoreDetail: ScoreDetail | null;
   reason: string | null;
-  /** Chance you would approve it, from your own decisions (0-1); null while Sudarshan is still learning your taste. */
+  /** Chance you would approve it, from your own decisions (0-1); null while Sudarshan AI is still learning your taste. */
   taste: number | null;
   /** Why, strongest first, e.g. "+ title: backend". */
   tasteReasons: string[];

@@ -4,7 +4,7 @@
 /** One thing the rescue agent wants done: press a control, or choose an option in a field. */
 export interface RescueAction {
   click?: string;
-  /** This press sends the application (the AI's judgement, next to Sudarshan's own). */
+  /** This press sends the application (the AI's judgement, next to Sudarshan AI's own). */
   submits?: boolean;
   choose?: string;
   option?: string;

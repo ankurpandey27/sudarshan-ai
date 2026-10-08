@@ -24,7 +24,7 @@ const same = (a: string, b: string) => a.toLowerCase().replace(/[^a-z0-9@.+]+/g,
 const TELLS_NOTHING = /^(yes|no|y|n|true|false|na|n\/a|none|-|0|1)$/i;
 
 /**
- * Learns which of your details a form field asks for, from what Sudarshan does every day: every field
+ * Learns which of your details a form field asks for, from what Sudarshan AI does every day: every field
  * a rule fills is an example, and so is every question you answered yourself with one of your details
  * ("Contact No" -> your phone) - the wordings the rules missed. It then recognises new wordings and
  * languages the same way, and fills them with the same rule (units and format included).

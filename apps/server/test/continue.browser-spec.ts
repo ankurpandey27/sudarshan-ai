@@ -95,7 +95,7 @@ describe('Carrying on after you unblock an application (real browser)', () => {
     // Solved, but you touched the tab a moment ago - you may be pressing Submit yourself: not yet.
     lastActivity = Date.now();
     expect(await svc.readyToContinue()).toEqual([]);
-    // You left it: Sudarshan carries on.
+    // You left it: Sudarshan AI carries on.
     lastActivity = Date.now() - 60_000;
     expect(await svc.readyToContinue()).toEqual([jobId]);
 

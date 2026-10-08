@@ -53,7 +53,7 @@ function accepted(a: LlmFieldAnswer, field: FormField): boolean {
  * plain mismatch - "Noida, Uttar Pradesh, India" holds "Noida", "+91 98..." holds your number.
  */
 // Salary and notice too: Hirist pre-fills its questions from your Hirist profile (8 LPA current, 2 months' notice
-// against your 12 LPA and 30 days, Babcom 2026-10-05) - your Sudarshan profile is the one that holds.
+// against your 12 LPA and 30 days, Babcom 2026-10-05) - your Sudarshan AI profile is the one that holds.
 const IDENTITY_KEYS = new Set([
   'institution',
   'city',

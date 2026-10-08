@@ -5,7 +5,7 @@ import { Injectable, Logger, OnApplicationBootstrap, OnApplicationShutdown } fro
 import { StorageService } from '../../common/storage/storage.service';
 import { JobSource } from '../jobs/enums/job-source.enum';
 import { platformOf } from '../jobs/utils/platform.util';
-import { MIN_KEPT, REFRESH_DEBOUNCE_MS, REFRESH_EVERY_MS, UNWANTED_STATUSES, WANTED_STATUSES } from './constants/taste.constants';
+import { MIN_KEPT, REFRESH_DEBOUNCE_MS, REFRESH_AFTER_START_MS, REFRESH_EVERY_MS, UNWANTED_STATUSES, WANTED_STATUSES } from './constants/taste.constants';
 import { InterestProfile, TasteFeaturesInput, TastePrediction, TasteState } from './interfaces/taste.interface';
 import { habitsOf } from './utils/habits.util';
 import { buildProfile, interestOf } from './utils/interest.util';
@@ -55,7 +55,9 @@ export class TasteService implements OnApplicationBootstrap, OnApplicationShutdo
   constructor(private readonly storage: StorageService) {}
 
   onApplicationBootstrap(): void {
-    this.refresh();
+    // After the server is up: it ran before the app could answer (2026-10-08).
+    this.soon = setTimeout(() => this.refresh(), REFRESH_AFTER_START_MS);
+    this.soon.unref();
     this.timer = setInterval(() => this.refresh(), REFRESH_EVERY_MS);
     this.timer.unref();
   }
