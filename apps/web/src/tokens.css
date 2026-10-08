@@ -1,64 +1,70 @@
 /* Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License. */
 /* SPDX-License-Identifier: MIT */
 
-/* Design tokens */
+/* Design tokens. Saffron is the one colour that means "Sudarshan AI"; everything else steps back for it. */
 :root {
-  --bg: #f6f2ea;
-  --surface: #fffdf8;
-  --surface-2: #f0ebe1;
-  --line: #e2dacb;
-  --line-strong: #cfc4b0;
-  --ink: #1b1814;
-  --ink-2: #4d463d;
-  --ink-3: #857b6d;
-  --accent: #d98e04;
-  --accent-ink: #1b1814;
-  --accent-soft: #fbecc9;
-  --good: #2f7d4f;
-  --good-soft: #dff0e3;
+  --bg: #f8f7f4;
+  --surface: #ffffff;
+  --surface-2: #f2f0eb;
+  --line: #e7e3db;
+  --line-strong: #d4cec3;
+  --ink: #16140f;
+  --ink-2: #4a453d;
+  --ink-3: #807a70;
+  --accent: #c98200;
+  --accent-ink: #16140f;
+  --accent-soft: #fbefd2;
+  --good: #23784a;
+  --good-soft: #ddf1e4;
   --warn: #b25e09;
-  --warn-soft: #fbe6cf;
+  --warn-soft: #fce9d6;
   --bad: #b3261e;
-  --bad-soft: #f8dcd9;
-  --info: #2f5f9e;
-  --info-soft: #dde8f6;
-  --shadow: 0 1px 0 rgb(27 24 20 / 0.04), 0 8px 24px -12px rgb(27 24 20 / 0.18);
-  --chakra-core: #1b1814;
+  --bad-soft: #fadedb;
+  --info: #2b5ca3;
+  --info-soft: #e0eaf8;
+  /* A hairline highlight on top, a soft drop below: cards sit on the page, not on a border. */
+  --shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), 0 1px 2px rgb(22 20 15 / 0.04), 0 10px 28px -14px rgb(22 20 15 / 0.14);
+  --shadow-pop: 0 1px 2px rgb(22 20 15 / 0.06), 0 16px 40px -12px rgb(22 20 15 / 0.22);
+  --chakra-core: #16140f;
   /* Chart colours per platform: calm, distinct from each other and from the accent. */
   --p-linkedin: #4a74a8;
-  --p-naukri: #6b9b78;
+  --p-naukri: #5f9670;
   --p-indeed: #8a6aa3;
   --p-instahyre: #c0766e;
   --p-foundit: #4f9696;
   --p-hirist: #a3893f;
   --p-himalayas: #6d7fb8;
-  --p-other: #b3a58c;
-  --grid: rgb(27 24 20 / 0.07);
-  --glow: rgb(217 142 4 / 0.09);
+  --p-other: #ab9d84;
+  --grid: rgb(22 20 15 / 0.06);
+  --glow: rgb(201 130 0 / 0.08);
+  /* Motion: strong ease-out for things that respond, ease-in-out for things that move. */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
   color-scheme: light;
 }
 
 [data-theme='dark'] {
-  --bg: #12110f;
-  --surface: #1a1916;
-  --surface-2: #22201c;
-  --line: #2e2b26;
-  --line-strong: #3d3932;
-  --ink: #f2ede4;
-  --ink-2: #c3bbad;
-  --ink-3: #8a8174;
+  --bg: #0d0c0b;
+  --surface: #151412;
+  --surface-2: #1d1b18;
+  --line: #282521;
+  --line-strong: #37332d;
+  --ink: #f4efe6;
+  --ink-2: #bab2a5;
+  --ink-3: #7e766a;
   --accent: #f2b02d;
   --accent-ink: #15130f;
-  --accent-soft: #3a2d10;
+  --accent-soft: #33270c;
   --good: #6cc38d;
-  --good-soft: #17301f;
+  --good-soft: #142a1c;
   --warn: #f0a354;
-  --warn-soft: #36240f;
+  --warn-soft: #33210d;
   --bad: #f08a80;
-  --bad-soft: #3a1a17;
+  --bad-soft: #351714;
   --info: #8ab4ec;
-  --info-soft: #162538;
-  --shadow: 0 1px 0 rgb(0 0 0 / 0.3), 0 10px 30px -14px rgb(0 0 0 / 0.7);
+  --info-soft: #132234;
+  --shadow: inset 0 1px 0 rgb(255 255 255 / 0.035), 0 0 0 1px rgb(0 0 0 / 0.25), 0 14px 34px -18px rgb(0 0 0 / 0.85);
+  --shadow-pop: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.4), 0 20px 48px -12px rgb(0 0 0 / 0.8);
   --chakra-core: #2a241a;
   --p-linkedin: #7fa3d1;
   --p-naukri: #8fc09c;
@@ -68,7 +74,7 @@
   --p-hirist: #d2b86c;
   --p-himalayas: #9aa9dc;
   --p-other: #8a8174;
-  --grid: rgb(255 255 255 / 0.06);
-  --glow: rgb(242 176 45 / 0.06);
+  --grid: rgb(255 255 255 / 0.05);
+  --glow: rgb(242 176 45 / 0.07);
   color-scheme: dark;
 }

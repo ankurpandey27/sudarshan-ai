@@ -26,10 +26,13 @@
   --color-bad-soft: var(--bad-soft);
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
-  --font-sans: 'Inter Tight', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+  /* Geist for everything a person reads; JetBrains Mono for numbers and the orbit's read-outs. */
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', Consolas, monospace;
   --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-pop);
+  --ease-snappy: var(--ease-out);
 }
 
 html,
@@ -39,14 +42,20 @@ body,
 }
 
 body {
-  /* A faint warm glow, so the page is not a flat sheet. */
+  /* A faint saffron glow at the top, so the page is not a flat sheet. */
   background: radial-gradient(1100px 520px at 88% -8%, var(--glow), transparent 65%) fixed, var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  font-feature-settings: 'ss01', 'cv11';
+  text-rendering: optimizeLegibility;
+}
+
+/* Headings: Geist at display sizes, set tight and a little heavy. */
+.font-display {
+  font-weight: 600;
+  letter-spacing: -0.035em;
 }
 
 /* In the base layer, so a component can move the ring (e.g. the tag input rings its whole box). */
@@ -54,7 +63,7 @@ body {
   :focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
-    border-radius: 6px;
+    border-radius: 8px;
   }
 }
 
@@ -69,6 +78,16 @@ body {
 
 .tabular {
   font-variant-numeric: tabular-nums;
+}
+
+/* Anything you press gives way a little - the interface heard you. */
+.press {
+  transition-property: transform, background-color, border-color, color, box-shadow, opacity;
+  transition-duration: 160ms;
+  transition-timing-function: var(--ease-out);
+}
+.press:active:not(:disabled) {
+  transform: scale(0.97);
 }
 
 @keyframes pulse-ring {
@@ -91,16 +110,39 @@ body {
   animation-duration: 8s;
 }
 
-@keyframes slide-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to { opacity: 1; transform: none; }
-}
 .log-line {
-  animation: slide-in 180ms ease-out;
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+}
+
+/* Panels that appear (the phone menu, toasts) come in from where they live, and leave faster than they came. */
+.slide-in-left {
+  transition: transform 260ms var(--ease-out);
+  @starting-style {
+    transform: translateX(-100%);
+  }
+}
+.fade-in {
+  transition: opacity 200ms ease;
+  @starting-style {
+    opacity: 0;
+  }
+}
+.rise-in {
+  transition: opacity 200ms var(--ease-out), transform 220ms var(--ease-out);
+  @starting-style {
+    opacity: 0;
+    transform: translateY(8px) scale(0.98);
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .live-dot, .log-line { animation: none; }
+  .live-dot { animation: none; }
+  .press:active:not(:disabled) { transform: none; }
+  .slide-in-left, .rise-in, .log-line { transition: opacity 150ms ease; }
   /* Still turning, but gently. */
   .chakra-spin, .chakra-spin.fast { animation-duration: 60s; }
 }

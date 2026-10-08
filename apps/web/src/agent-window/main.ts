@@ -1,10 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-import '@fontsource/inter-tight/latin-400.css';
-import '@fontsource/inter-tight/latin-600.css';
-import '@fontsource/instrument-serif/latin-400.css';
-import '@fontsource/instrument-serif/latin-400-italic.css';
+import '@fontsource-variable/geist';
 import '@fontsource/jetbrains-mono/latin-400.css';
 import './agent-window.css';
 import { CHAKRA_SPOKES, CHAKRA_TEETH } from '../lib/chakra';

@@ -40,13 +40,15 @@ function Item({ to, icon, label, count, tone, rail }: { to: string; icon: ReactN
       aria-label={rail ? label : undefined}
       className={({ isActive }) =>
         cn(
-          'relative flex h-9 items-center gap-2.5 rounded-lg text-[13.5px] font-medium transition-colors',
+          'group press relative flex h-9 items-center gap-2.5 rounded-[10px] text-[13.5px] font-medium',
           rail ? 'mx-auto w-10 justify-center' : 'px-2.5',
-          isActive ? 'bg-surface text-ink shadow-card' : 'text-ink-2 hover:bg-surface-2 hover:text-ink',
+          isActive
+            ? 'bg-surface-2 text-ink shadow-[inset_0_0_0_1px_var(--line)] before:absolute before:top-2 before:bottom-2 before:-left-3 before:w-[3px] before:rounded-r-full before:bg-accent'
+            : 'text-ink-2 hover:bg-surface-2/70 hover:text-ink',
         )
       }
     >
-      <span className="text-ink-3">{icon}</span>
+      <span className="text-ink-3 transition-colors duration-150 group-aria-[current=page]:text-accent">{icon}</span>
       {rail ? (
         !!count && <span className={cn('absolute top-1.5 right-1.5 size-2 rounded-full', tone === 'warn' ? 'bg-warn' : 'bg-accent')} />
       ) : (
@@ -55,8 +57,8 @@ function Item({ to, icon, label, count, tone, rail }: { to: string; icon: ReactN
       {!rail && !!count && (
         <span
           className={cn(
-            'tabular rounded-md px-1.5 text-[11.5px] font-semibold',
-            tone === 'warn' ? 'bg-warn text-white dark:text-black' : 'bg-surface-2 text-ink-2',
+            'tabular rounded-full px-1.5 font-mono text-[10.5px] font-medium',
+            tone === 'warn' ? 'bg-warn text-white dark:text-black' : 'bg-surface-2 text-ink-3 ring-1 ring-line ring-inset',
           )}
         >
           {count}
@@ -79,14 +81,17 @@ export function Layout() {
 
   const nav = (rail = false) => (
     <nav className="flex flex-col gap-0.5" onClick={() => setOpen(false)}>
+      <Group rail={rail} label="Hunt" />
       <Item rail={rail} to="/" icon={<Target className="size-4" />} label="Lakshya" />
       <Item rail={rail} to="/attention" icon={<Wrench className="size-4" />} label="Needs attention" count={needsYou || undefined} tone="warn" />
       <Item rail={rail} to="/review" icon={<Inbox className="size-4" />} label="Review" count={stats?.byStatus.review} />
       <Item rail={rail} to="/questions" icon={<MessageCircleQuestion className="size-4" />} label="Questions" count={agent?.openQuestions} tone="warn" />
       <Item rail={rail} to="/applications" icon={<Briefcase className="size-4" />} label="Applications" count={stats?.appliedTotal} />
+      <Group rail={rail} label="Memory" />
       <Item rail={rail} to="/answers" icon={<BookOpenCheck className="size-4" />} label="Answer memory" />
       <Item rail={rail} to="/stories" icon={<NotebookPen className="size-4" />} label="Story Bank" />
       <Item rail={rail} to="/activity" icon={<ScrollText className="size-4" />} label="Flight log" />
+      <Group rail={rail} label="You" />
       <Item rail={rail} to="/profile" icon={<UserRound className="size-4" />} label="Profile" />
       <Item rail={rail} to="/settings" icon={<Settings2 className="size-4" />} label="Settings" />
       {/* The user guide: a page of its own, opened beside the app. */}
@@ -97,7 +102,7 @@ export function Layout() {
         title={rail ? 'Documentation' : 'How every part of Sudarshan AI works - opens in a new tab'}
         aria-label={rail ? 'Documentation' : undefined}
         className={cn(
-          'relative flex h-9 items-center gap-2.5 rounded-lg text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink',
+          'press relative flex h-9 items-center gap-2.5 rounded-[10px] text-[13.5px] font-medium text-ink-2 hover:bg-surface-2/70 hover:text-ink',
           rail ? 'mx-auto w-10 justify-center' : 'px-2.5',
         )}
       >
@@ -129,7 +134,7 @@ export function Layout() {
             {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
           </button>
         </div>
-        <div className="mt-6 flex-1">{nav(collapsed)}</div>
+        <div className="mt-4 flex-1 overflow-y-auto">{nav(collapsed)}</div>
         <AgentToggle rail={collapsed} />
         <Footer theme={theme} toggleTheme={toggleTheme} connected={connected} compact={collapsed} />
       </aside>
@@ -143,15 +148,15 @@ export function Layout() {
       </div>
       {open && (
         <div className="fixed inset-0 z-40 md:hidden">
-          <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-72 flex-col bg-bg px-3 py-4 shadow-card">
+          <div className="fade-in absolute inset-0 bg-black/40 backdrop-blur-[2px]" onClick={() => setOpen(false)} />
+          <aside className="slide-in-left absolute inset-y-0 left-0 flex w-72 flex-col border-r border-line bg-bg px-3 py-4 shadow-pop">
             <div className="flex items-center justify-between">
               <Brand spinning={agent?.running} />
               <button aria-label="Close menu" onClick={() => setOpen(false)} className="rounded-lg p-1.5 hover:bg-surface-2">
                 <X className="size-5" />
               </button>
             </div>
-            <div className="mt-6 flex-1">{nav()}</div>
+            <div className="mt-4 flex-1 overflow-y-auto">{nav()}</div>
             <AgentToggle />
             <Footer theme={theme} toggleTheme={toggleTheme} connected={connected} />
           </aside>
@@ -168,18 +173,24 @@ export function Layout() {
   );
 }
 
+/** A small section label in the sidebar; a thin divider when it is collapsed to icons. */
+function Group({ label, rail }: { label: string; rail?: boolean }) {
+  if (rail) return <span aria-hidden className="mx-auto my-2 block h-px w-6 bg-line first:hidden" />;
+  return <span className="mt-4 mb-1 block px-2.5 font-mono text-[10px] tracking-[0.14em] text-ink-3 uppercase first:mt-0">{label}</span>;
+}
+
 /** The name and wheel; large in the sidebar, where it should be noticed, and small in the phone top bar. */
 function Brand({ spinning, compact, small }: { spinning?: boolean; compact?: boolean; small?: boolean }) {
   return (
     <div className={cn('flex min-w-0 items-center px-1', small ? 'gap-2.5' : 'gap-3 py-1')} title="Sudarshan AI - goes out, finishes the task, returns">
-      <SudarshanMark size={small ? 30 : compact ? 36 : 44} spinning={spinning} />
+      <SudarshanMark size={small ? 30 : compact ? 36 : 38} spinning={spinning} />
       <span className={cn('min-w-0 leading-tight', compact && 'sr-only')}>
         {/* "AI" as a small gold tag on the same line, so the full name fits beside the collapse button. */}
-        <span className={cn('flex items-baseline gap-1.5 whitespace-nowrap font-display leading-none tracking-tight', small ? 'text-[21px]' : 'text-[26px]')}>
+        <span className={cn('flex items-baseline gap-1.5 whitespace-nowrap font-display leading-none tracking-tight', small ? 'text-[19px]' : 'text-[21px]')}>
           Sudarshan
-          <span className={cn('font-mono font-semibold tracking-[0.08em] text-accent', small ? 'text-[10px]' : 'text-[11.5px]')}>AI</span>
+          <span className={cn('font-mono font-semibold tracking-[0.08em] text-accent', small ? 'text-[9.5px]' : 'text-[10.5px]')}>AI</span>
         </span>
-        <span className={cn('mt-1 block whitespace-nowrap text-accent', small ? 'text-[10.5px]' : 'text-[11.5px] font-medium')}>
+        <span className={cn('mt-1 block whitespace-nowrap text-accent/90', small ? 'text-[10.5px]' : 'text-[11px] font-medium')}>
           goes out · finishes · returns
         </span>
       </span>

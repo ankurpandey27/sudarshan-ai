@@ -66,7 +66,7 @@ function QuestionCard({ q }: { q: PendingQuestion }) {
     <Card className="p-4">
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="max-w-3xl">
-          <p className="font-display text-[22px] leading-snug">{q.question}</p>
+          <p className="text-[17px] leading-snug font-semibold tracking-[-0.015em]">{q.question}</p>
           {english && (
             <p className="mt-0.5 text-[14px] text-ink-2">
               <span className="font-semibold text-ink-3">In English: </span>

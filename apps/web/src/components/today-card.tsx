@@ -19,7 +19,7 @@ export function TodayCard() {
       </div>
       <div className="grid flex-1 grid-cols-[auto_1fr] gap-6 px-5 pt-3 pb-5">
         <div className="self-center text-center">
-          <div className="font-display text-[64px] leading-none tabular">{stats?.appliedToday ?? 0}</div>
+          <div className="font-display text-[52px] leading-none tabular">{stats?.appliedToday ?? 0}</div>
           <div className="mt-1 text-[12.5px] text-ink-3">applied today</div>
         </div>
         <ul className="flex flex-col justify-between gap-2.5">

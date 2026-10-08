@@ -28,8 +28,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             className={cn(
-              'log-line pointer-events-auto flex items-start gap-2 rounded-lg border px-3 py-2.5 text-[13.5px] shadow-card',
-              t.kind === 'ok' ? 'border-line bg-surface' : 'border-bad/30 bg-bad-soft text-ink',
+              'rise-in pointer-events-auto flex items-start gap-2.5 rounded-xl border px-3.5 py-3 text-[13.5px] shadow-pop backdrop-blur',
+              t.kind === 'ok' ? 'border-line bg-surface/95' : 'border-bad/30 bg-bad-soft text-ink',
             )}
           >
             {t.kind === 'ok' ? <CheckCircle2 className="mt-0.5 size-4 shrink-0 text-good" /> : <CircleAlert className="mt-0.5 size-4 shrink-0 text-bad" />}

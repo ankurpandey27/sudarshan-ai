@@ -48,7 +48,7 @@ export function Onboarding() {
               <p className="mt-1 text-[12px] font-semibold tracking-[0.12em] text-accent uppercase">Goes out. Finishes the task. Returns.</p>
             </div>
           </div>
-          <h1 className="mt-6 font-display text-[44px] leading-[1.02] tracking-tight">
+          <h1 className="mt-6 font-display text-[38px] leading-[1.05]">
             Apply while you <em className="text-accent">live your life.</em>
           </h1>
           <p className="mt-4 text-[14px] text-ink-2">
@@ -105,7 +105,7 @@ function StepHead({ n, title, children }: { n: number; title: string; children: 
   return (
     <div className="mb-6">
       <p className="text-[12px] font-semibold text-ink-3">STEP {n} OF 4</p>
-      <h2 className="mt-1 font-display text-[30px] leading-tight">{title}</h2>
+      <h2 className="mt-1 font-display text-[26px] leading-tight">{title}</h2>
       <p className="mt-1.5 max-w-xl text-[13.5px] text-ink-2">{children}</p>
     </div>
   );

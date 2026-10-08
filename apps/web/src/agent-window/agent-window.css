@@ -18,7 +18,7 @@
 html {
   background: var(--bg);
   color: var(--ink);
-  font-family: 'Inter Tight', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
+  font-family: 'Geist Variable', ui-sans-serif, system-ui, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -80,7 +80,9 @@ a {
   animation: spin 24s linear infinite;
 }
 .brand-name {
-  font-family: 'Instrument Serif', Georgia, serif;
+  font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
   font-size: 1.75rem;
   line-height: 1;
 }
@@ -220,7 +222,9 @@ a {
 }
 .big {
   margin: 0;
-  font-family: 'Instrument Serif', Georgia, serif;
+  font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
   font-size: 4.2rem;
   line-height: 0.85;
   font-variant-numeric: tabular-nums;
@@ -391,14 +395,16 @@ a {
 }
 .mission h1 {
   margin: 0.35rem 0 0;
-  font-family: 'Instrument Serif', Georgia, serif;
-  font-weight: 400;
+  font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
   font-size: clamp(1.9rem, 3.2vw, 2.7rem);
   line-height: 1.08;
   letter-spacing: -0.01em;
 }
 .mission h1 em {
   color: var(--accent);
+  font-style: normal;
 }
 .detail {
   margin: 0.6rem auto 0;
@@ -556,8 +562,9 @@ a {
 }
 .guide h2 {
   margin: 0;
-  font-family: 'Instrument Serif', Georgia, serif;
-  font-weight: 400;
+  font-family: 'Geist Variable', ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.035em;
   font-size: 1.5rem;
 }
 .guide ol {
