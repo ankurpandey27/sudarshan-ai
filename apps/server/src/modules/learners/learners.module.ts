@@ -13,7 +13,7 @@ import { LearnersService } from './learners.service';
 import { OutcomeLearnerService } from './outcome-learner.service';
 import { QuestionLearnerService } from './question-learner.service';
 
-/** Small models trained on this computer from what Sudarshan does every day. */
+/** Small models trained on this computer from what Sudarshan AI does every day. */
 @Module({
   imports: [EmbeddingsModule, AnswersModule, ProfileModule],
   controllers: [LearnersController],

@@ -28,7 +28,7 @@ export class NotificationsController {
 
   @Post('test')
   test(): Promise<{ telegram: boolean }> {
-    return this.notifications.notify('test', 'Sudarshan test notification', 'Notifications work. You will get the daily summary and a message when an application needs you.');
+    return this.notifications.notify('test', 'Sudarshan AI test notification', 'Notifications work. You will get the daily summary and a message when an application needs you.');
   }
 
   @Get('telegram')

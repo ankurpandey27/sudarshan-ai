@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-// Optional fields are filled when Sudarshan knows the answer (2026-09-29): a complete application does better.
+// Optional fields are filled when Sudarshan AI knows the answer (2026-09-29): a complete application does better.
 
 import { StorageService } from '../../common/storage/storage.service';
 import { AnswersService } from '../answers/answers.service';

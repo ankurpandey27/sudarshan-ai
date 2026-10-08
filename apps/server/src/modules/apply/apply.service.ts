@@ -104,7 +104,7 @@ export class ApplyService {
     let keepOpen = false;
     let learnFrom: WatchTarget | null = null;
     let outcome: FormRunOutcome | null = null;
-    // What was prepared, so Sudarshan can carry on in the tab after you unblock it.
+    // What was prepared, so Sudarshan AI can carry on in the tab after you unblock it.
     let preparedFor: { prep: PrepareResult; adapter: ApplyAdapter } | null = null;
     // `ended` says how the attempt ended (e.g. "run:stuck"); platform health reads it.
     let final: { status: JobStatus; detail: string; ended?: string };
@@ -157,7 +157,7 @@ export class ApplyService {
             scopeSelector: prep.scopeSelector,
             successPattern: prep.successPattern,
             successUrl: prep.successUrl,
-            // Sudarshan's own steps so far: learned too if you then finish the application.
+            // Sudarshan AI's own steps so far: learned too if you then finish the application.
             agentMoves: [...moves],
           };
         }
@@ -194,9 +194,9 @@ export class ApplyService {
       const tabGone = TAB_CLOSED.test(msg) && (!page || page.isClosed() || !this.browser.isRunning());
       final = tabGone
         ? // You closed its tab (or the browser) while it was applying: you stopped it - not a failed try.
-          { status: JobStatus.MANUAL, detail: 'You closed its tab while Sudarshan was applying - approve it again to start over', ended: TAB_CLOSED_ENDING }
+          { status: JobStatus.MANUAL, detail: 'You closed its tab while Sudarshan AI was applying - approve it again to start over', ended: TAB_CLOSED_ENDING }
         : PAGE_SWAPPED_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
-          ? { status: JobStatus.APPROVED, detail: `The page changed while Sudarshan read it, will try again: ${msg.slice(0, 120)}`, ended: 'network' }
+          ? { status: JobStatus.APPROVED, detail: `The page changed while Sudarshan AI read it, will try again: ${msg.slice(0, 120)}`, ended: 'network' }
           : NETWORK_ERROR.test(msg) && this.jobs.countEndings(job.id, 'network') < MAX_NETWORK_RETRIES
           ? // The connection, not the job: it keeps its tries and its place in the queue.
             { status: JobStatus.APPROVED, detail: `Network problem, will try again: ${msg.slice(0, 160)}`, ended: 'network' }
@@ -218,7 +218,7 @@ export class ApplyService {
     return result;
   }
 
-  /** Jobs whose tab is still open for you - Sudarshan can carry on in them. */
+  /** Jobs whose tab is still open for you - Sudarshan AI can carry on in them. */
   openTabs(): number[] {
     for (const [id, t] of this.tabs) if (t.page.isClosed()) this.tabs.delete(id);
     return [...this.tabs.keys()];
@@ -226,7 +226,7 @@ export class ApplyService {
 
   /**
    * Handed over for a captcha that you have since solved, and you have not touched the tab for a
-   * moment (so it never races you pressing Submit yourself): Sudarshan can carry on.
+   * moment (so it never races you pressing Submit yourself): Sudarshan AI can carry on.
    */
   async readyToContinue(): Promise<number[]> {
     if (this.settings.get().agent.pauseBeforeSubmit) return [];
@@ -281,7 +281,7 @@ export class ApplyService {
     this.jobs.setStatus(job.id, JobStatus.APPLYING, null);
     step(`Continuing: ${job.title} @ ${job.company} - from where it was handed to you`);
     const page = tab.page;
-    // Sudarshan's own clicks now are not yours to learn from.
+    // Sudarshan AI's own clicks now are not yours to learn from.
     this.learning.pause(page, true);
     const moves = [...tab.moves];
     let run: FormRunOutcome | null = null;
@@ -450,7 +450,7 @@ export class ApplyService {
       case 'ready_to_submit':
         return {
           status: JobStatus.MANUAL,
-          detail: 'Filled in - Sudarshan stopped before Submit (you asked it to, in Settings) - review and press Submit in the agent browser',
+          detail: 'Filled in - Sudarshan AI stopped before Submit (you asked it to, in Settings) - review and press Submit in the agent browser',
         };
       case 'blocked':
       case 'captcha':
@@ -458,7 +458,7 @@ export class ApplyService {
       case 'refused':
         return { status: JobStatus.APPROVED, detail: o.detail };
       case 'stuck':
-        return { status: JobStatus.MANUAL, detail: `${o.detail} - finish it in the open tab; Sudarshan learns from what you do` };
+        return { status: JobStatus.MANUAL, detail: `${o.detail} - finish it in the open tab; Sudarshan AI learns from what you do` };
       default:
         return { status: job.attempts + 1 >= 2 ? JobStatus.FAILED : JobStatus.APPROVED, detail: o.detail };
     }

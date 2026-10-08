@@ -94,7 +94,7 @@ export function Layout() {
         href="/docs/index.html"
         target="_blank"
         rel="noopener"
-        title={rail ? 'Documentation' : 'How every part of Sudarshan works - opens in a new tab'}
+        title={rail ? 'Documentation' : 'How every part of Sudarshan AI works - opens in a new tab'}
         aria-label={rail ? 'Documentation' : undefined}
         className={cn(
           'relative flex h-9 items-center gap-2.5 rounded-lg text-[13.5px] font-medium text-ink-2 transition-colors hover:bg-surface-2 hover:text-ink',
@@ -171,10 +171,14 @@ export function Layout() {
 /** The name and wheel; large in the sidebar, where it should be noticed, and small in the phone top bar. */
 function Brand({ spinning, compact, small }: { spinning?: boolean; compact?: boolean; small?: boolean }) {
   return (
-    <div className={cn('flex min-w-0 items-center px-1', small ? 'gap-2.5' : 'gap-3 py-1')} title="Sudarshan - goes out, finishes the task, returns">
+    <div className={cn('flex min-w-0 items-center px-1', small ? 'gap-2.5' : 'gap-3 py-1')} title="Sudarshan AI - goes out, finishes the task, returns">
       <SudarshanMark size={small ? 30 : compact ? 36 : 44} spinning={spinning} />
       <span className={cn('min-w-0 leading-tight', compact && 'sr-only')}>
-        <span className={cn('block font-display leading-none tracking-tight', small ? 'text-[21px]' : 'text-[28px]')}>Sudarshan</span>
+        {/* "AI" as a small gold tag on the same line, so the full name fits beside the collapse button. */}
+        <span className={cn('flex items-baseline gap-1.5 whitespace-nowrap font-display leading-none tracking-tight', small ? 'text-[21px]' : 'text-[26px]')}>
+          Sudarshan
+          <span className={cn('font-mono font-semibold tracking-[0.08em] text-accent', small ? 'text-[10px]' : 'text-[11.5px]')}>AI</span>
+        </span>
         <span className={cn('mt-1 block whitespace-nowrap text-accent', small ? 'text-[10.5px]' : 'text-[11.5px] font-medium')}>
           goes out · finishes · returns
         </span>

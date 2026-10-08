@@ -17,7 +17,7 @@ import { pickResume } from './utils/pick-resume.util';
 /**
  * Extra resumes, one per kind of role (Frontend, Data...). Each application attaches the one made for that job,
  * by the words of the job's title and description; your main resume (on the Profile) when none fits.
- * Sudarshan only chooses the file - it never changes what a resume says.
+ * Sudarshan AI only chooses the file - it never changes what a resume says.
  */
 @Injectable()
 export class ResumesService {

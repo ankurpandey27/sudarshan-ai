@@ -13,7 +13,7 @@ export const RESTORE_PENDING = 'restore-pending.db';
 /** The largest backup file accepted for restoring. */
 export const BACKUP_MAX_BYTES = 300 * 1024 * 1024;
 
-/** Tables every Sudarshan database has - a file without them is not a backup. */
+/** Tables every Sudarshan AI database has - a file without them is not a backup. */
 export const BACKUP_TABLES = ['settings', 'profile', 'jobs', 'answers'];
 
 /** The table inside a backup that carries your resume file. */

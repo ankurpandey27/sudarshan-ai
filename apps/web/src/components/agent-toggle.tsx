@@ -40,7 +40,7 @@ export function AgentToggle({ compact, rail }: { compact?: boolean; rail?: boole
       <button
         onClick={() => toggle.mutate()}
         disabled={toggle.isPending}
-        title={running ? `Sudarshan is out working - ${phaseText[phase]}. Click to stop.` : 'Sudarshan is resting. Click to start.'}
+        title={running ? `Sudarshan AI is out working - ${phaseText[phase]}. Click to stop.` : 'Sudarshan AI is resting. Click to start.'}
         aria-label={running ? 'Stop agent' : 'Start agent'}
         className={cn(
           'relative mx-auto grid size-10 place-items-center rounded-xl border transition-colors disabled:opacity-60',
@@ -57,9 +57,9 @@ export function AgentToggle({ compact, rail }: { compact?: boolean; rail?: boole
     <div className={cn('rounded-xl border p-3', running ? 'border-accent/40 bg-accent-soft/60' : 'border-line bg-surface')}>
       <div className="flex items-center gap-2">
         <span className={cn('size-2 rounded-full', running ? 'live-dot bg-accent' : 'bg-ink-3')} />
-        <span className="flex-1 text-[13px] font-semibold">{running ? 'Sudarshan is out working' : 'Sudarshan is resting'}</span>
+        <span className="flex-1 text-[13px] font-semibold">{running ? 'Sudarshan AI is out working' : 'Sudarshan AI is resting'}</span>
         <InfoTip title={running ? 'Stop agent' : 'Start agent'} align="left" side="top">
-          While running, Sudarshan searches for new jobs on a schedule and applies to your approved jobs one at a time, with pauses in between, within your
+          While running, Sudarshan AI searches for new jobs on a schedule and applies to your approved jobs one at a time, with pauses in between, within your
           daily limits and active hours. Stopping pauses it; an application already in progress finishes first. Nothing is lost - it picks up where it left off.
         </InfoTip>
       </div>

@@ -9,7 +9,7 @@ export interface SiteSession {
   loginUrl: string;
   homeUrl: string;
   cookieDomain: string;
-  /** Cookies present only when you are logged in; empty when Sudarshan cannot tell (the site's sign-in is then checked at the form). */
+  /** Cookies present only when you are logged in; empty when Sudarshan AI cannot tell (the site's sign-in is then checked at the form). */
   authCookies: string[];
 }
 
@@ -17,6 +17,6 @@ export interface BrowserStatus {
   running: boolean;
   executable: string | null;
   headless: boolean;
-  /** loggedIn is null for a site whose login Sudarshan cannot check. */
+  /** loggedIn is null for a site whose login Sudarshan AI cannot check. */
   sessions: { id: SiteId; label: string; loggedIn: boolean | null }[];
 }

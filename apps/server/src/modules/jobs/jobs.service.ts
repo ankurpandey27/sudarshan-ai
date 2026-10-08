@@ -83,7 +83,7 @@ export class JobsService implements OnApplicationBootstrap {
   ) {}
 
   // Rows left in APPLYING by a crash go back to the queue - unless Submit had already been pressed:
-  // the application may have gone through, so you check it instead of Sudarshan applying twice.
+  // the application may have gone through, so you check it instead of Sudarshan AI applying twice.
   onApplicationBootstrap(): void {
     this.recoverInterrupted();
     const merged = this.mergeSameRoles();
@@ -455,7 +455,7 @@ export class JobsService implements OnApplicationBootstrap {
     this.storage.run('UPDATE jobs SET attempts = MAX(0, attempts - 1) WHERE id = ?', [id]);
   }
 
-  /** Jobs from one site, by the site's own job id (Indeed's "jk"), with when Sudarshan last tried each. */
+  /** Jobs from one site, by the site's own job id (Indeed's "jk"), with when Sudarshan AI last tried each. */
   byExternalIds(
     source: JobSource,
     ids: string[],

@@ -100,7 +100,7 @@ export const EMBED_WAIT_MS = 6000;
 
 /** Step pictures kept per attempt, at most (small JPEGs, cleared with old screenshots). */
 export const MAX_SHOTS = 24;
-/** After you solve a captcha, Sudarshan carries on only once you have not touched the tab for this long. */
+/** After you solve a captcha, Sudarshan AI carries on only once you have not touched the tab for this long. */
 export const CONTINUE_IDLE_MS = 15_000;
 
 /** A company page still drawing (spinner, hardly any text) is waited for this long (Workday, 2026-09-30). */
@@ -131,7 +131,7 @@ export const BOT_CHECK_TEXT =
   /performing security verification|just a moment|checking (your browser|if the site connection is secure)|verify (you are|you're) (a )?human|attention required|ddos protection|security check to access|verification required|slide (right )?to (secure|verify|continue)|detected unusual activity/i;
 /** How long a bot-shield page may take to clear by itself before it is handed to you. */
 export const BOT_CHECK_WAIT_MS = 45_000;
-export const BOT_CHECK_DETAIL = 'The site is checking you are not a robot (a captcha) - tick it in the open tab; Sudarshan carries on by itself after';
+export const BOT_CHECK_DETAIL = 'The site is checking you are not a robot (a captcha) - tick it in the open tab; Sudarshan AI carries on by itself after';
 
 /** The tab or the browser went away mid-application: you closed it (Capco, 2026-10-03: "Target closed"). */
 export const TAB_CLOSED = /Target closed|Session closed|Browser has disconnected|page has been closed|detached Frame/i;

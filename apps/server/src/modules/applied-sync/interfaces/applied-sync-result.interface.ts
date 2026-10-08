@@ -8,6 +8,6 @@ export interface AppliedSyncResult {
   marked: { id: number; title: string; company: string }[];
   /** Listed on Indeed and already Applied here. */
   alreadyApplied: number;
-  /** Listed on Indeed but not in Sudarshan (you applied to them outside it). */
+  /** Listed on Indeed but not in Sudarshan AI (you applied to them outside it). */
   notInSudarshan: number;
 }

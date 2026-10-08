@@ -18,7 +18,7 @@ describe('notification texts', () => {
       failed: 1,
       replies: { interview: 1, rejected: 2 },
     });
-    expect(t.title).toBe('Sudarshan today: 12 applications sent');
+    expect(t.title).toBe('Sudarshan AI today: 12 applications sent');
     expect(t.body).toBe('Applied: 12 (LinkedIn 5, Naukri 7)\nNeeds you: 2 applications and 1 question\nReplies: 1 interview, 2 not selected\nCould not apply: 1\nNew jobs found: 40');
   });
 

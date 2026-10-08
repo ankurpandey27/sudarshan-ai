@@ -190,7 +190,7 @@ export const MIGRATIONS: string[] = [
     PRIMARY KEY (key, model)
   );
   `,
-  // Learners: small models trained on this computer from what Sudarshan does every day.
+  // Learners: small models trained on this computer from what Sudarshan AI does every day.
   `
   CREATE TABLE learners (
     name       TEXT PRIMARY KEY,

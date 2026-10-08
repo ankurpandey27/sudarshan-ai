@@ -7,7 +7,7 @@ import { JobsModule } from '../jobs/jobs.module';
 import { AppliedSyncController } from './applied-sync.controller';
 import { AppliedSyncService } from './applied-sync.service';
 
-/** Brings in applications a job site confirms but Sudarshan missed (e.g. finished by hand). */
+/** Brings in applications a job site confirms but Sudarshan AI missed (e.g. finished by hand). */
 @Module({
   imports: [BrowserModule, JobsModule],
   controllers: [AppliedSyncController],

@@ -50,7 +50,7 @@ describe('backing up your data', () => {
   });
 
   it('also keeps the last 7 in your own folder (OneDrive, a USB disk), leaving your other files alone', () => {
-    const folder = join(dir, 'OneDrive', 'Sudarshan');
+    const folder = join(dir, 'OneDrive', 'Sudarshan AI');
     mkdirSync(folder, { recursive: true });
     writeFileSync(join(folder, 'notes.txt'), 'mine');
     const { storage, svc } = setup(folder);
@@ -124,13 +124,13 @@ describe('backing up your data', () => {
     }
   });
 
-  it('refuses a file that is not a backup, or one from a newer Sudarshan', () => {
+  it('refuses a file that is not a backup, or one from a newer Sudarshan AI', () => {
     const { storage, svc } = setup();
     const junk = join(dir, 'junk.db');
     writeFileSync(junk, 'not a database at all');
-    expect(() => checkBackup(junk, MIGRATIONS.length)).toThrow(/not a Sudarshan backup/);
+    expect(() => checkBackup(junk, MIGRATIONS.length)).toThrow(/not a Sudarshan AI backup/);
     const file = svc.exportFile();
-    expect(() => checkBackup(file, 3)).toThrow(/newer Sudarshan/);
+    expect(() => checkBackup(file, 3)).toThrow(/newer Sudarshan AI/);
     storage.onApplicationShutdown();
   });
 });

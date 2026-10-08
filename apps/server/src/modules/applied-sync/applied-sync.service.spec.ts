@@ -39,7 +39,7 @@ const make = () => {
 describe('AppliedSyncService.markApplied (Indeed)', () => {
   it('marks exactly the jobs Indeed lists, by its job id, and counts the rest', () => {
     const { jobs, add, sync, storage } = make();
-    // Finished by hand in a tab Sudarshan left open (2026-09-28).
+    // Finished by hand in a tab Sudarshan AI left open (2026-09-28).
     const byHand = add('aaaaaaaaaaaaaaaa', 'Backend Developer', JobStatus.MANUAL);
     storage.run("INSERT INTO attempts (job_id, started_at) VALUES (?, '2026-09-27T10:00:00.000Z')", [byHand]);
     const queued = add('bbbbbbbbbbbbbbbb', 'Node.js Engineer', JobStatus.APPROVED);
@@ -60,7 +60,7 @@ describe('AppliedSyncService.markApplied (Indeed)', () => {
     expect(jobs.get(other).status).toBe(JobStatus.MANUAL);
   });
 
-  it("dates it when Sudarshan handed it to you, so today's daily limit is not used up", () => {
+  it("dates it when Sudarshan AI handed it to you, so today's daily limit is not used up", () => {
     const { jobs, add, sync, storage } = make();
     const id = add('aaaaaaaaaaaaaaaa', 'Backend Developer', JobStatus.MANUAL);
     storage.run("INSERT INTO attempts (job_id, started_at) VALUES (?, '2026-09-20T08:00:00.000Z')", [id]);

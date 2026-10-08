@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-// How the learners change what Sudarshan does (2026-09-30): only once proven, and checked while not.
+// How the learners change what Sudarshan AI does (2026-09-30): only once proven, and checked while not.
 
 import { EventsService } from '../../common/events/events.service';
 import { StorageService } from '../../common/storage/storage.service';

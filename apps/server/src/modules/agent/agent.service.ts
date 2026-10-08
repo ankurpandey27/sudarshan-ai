@@ -223,7 +223,7 @@ export class AgentService implements OnApplicationShutdown {
       if (searching && !this.retriedWhileBusy.has(job.id) && result.status === JobStatus.MANUAL && /^No apply button found/.test(result.detail)) {
         this.retriedWhileBusy.add(job.id);
         this.jobs.forgetAttempt(job.id);
-        this.jobs.setStatus(job.id, JobStatus.APPROVED, 'Its page was slow while Sudarshan searched for jobs - trying it again');
+        this.jobs.setStatus(job.id, JobStatus.APPROVED, 'Its page was slow while Sudarshan AI searched for jobs - trying it again');
       }
       const gap = settings.agent.minDelaySeconds + Math.random() * Math.max(0, settings.agent.maxDelaySeconds - settings.agent.minDelaySeconds);
       this.nextApplyAt = Date.now() + gap * 1000;

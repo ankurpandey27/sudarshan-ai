@@ -42,7 +42,7 @@ export class WidgetRecipesService {
     );
   }
 
-  /** How many widget kinds Sudarshan knows how to operate, for the learning card. */
+  /** How many widget kinds Sudarshan AI knows how to operate, for the learning card. */
   count(): number {
     return Number(this.storage.get<{ n: number }>('SELECT COUNT(DISTINCT widget) n FROM widget_recipes WHERE ok > fail')?.n ?? 0);
   }

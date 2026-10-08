@@ -79,7 +79,7 @@ export function ActivityPage() {
     <>
       <PageTitle
         title="Flight log history"
-        sub={`Everything Sudarshan did in the last ${first?.keepDays ?? 7} days - kept on this computer, older lines are cleared automatically.`}
+        sub={`Everything Sudarshan AI did in the last ${first?.keepDays ?? 7} days - kept on this computer, older lines are cleared automatically.`}
         actions={
           // The lines shown, with the same day, kind, platform and search - all of them, not just this page.
           <a

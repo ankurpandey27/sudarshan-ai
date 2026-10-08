@@ -603,7 +603,7 @@ export function extractFormInPage(scopeSelector: string | null): FormSnapshot {
     )
       kind = 'dismiss';
     if (isLink && kind === 'other') {
-      // A short link in words Sudarshan does not know may still be "Apply" in another language.
+      // A short link in words Sudarshan AI does not know may still be "Apply" in another language.
       if (text.split(/\s+/).length <= 5 && links.length < 40) links.push({ id: tag(el, 'data-jaa-act', 'a'), text, kind, disabled: false });
       continue;
     }

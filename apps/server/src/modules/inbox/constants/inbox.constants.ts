@@ -4,7 +4,7 @@
 /** Where the mailbox details are kept (a row of the settings table; the password encrypted). */
 export const INBOX_KEY = 'inbox';
 
-/** The mailbox is checked this often while Sudarshan runs. */
+/** The mailbox is checked this often while Sudarshan AI runs. */
 export const INBOX_CHECK_MS = 30 * 60_000;
 
 /** The first check reads this many days back; later ones only what is new. */
@@ -24,7 +24,7 @@ export const IMAP_PRESETS: Record<string, { host: string; port: number; help: st
   'gmail.com': {
     host: 'imap.gmail.com',
     port: 993,
-    help: 'Google Account -> Security -> 2-Step Verification on -> App passwords -> create one for "Sudarshan".',
+    help: 'Google Account -> Security -> 2-Step Verification on -> App passwords -> create one for "Sudarshan AI".',
   },
   'googlemail.com': { host: 'imap.gmail.com', port: 993, help: 'Google Account -> Security -> App passwords.' },
   'yahoo.com': { host: 'imap.mail.yahoo.com', port: 993, help: 'Yahoo Account security -> Generate app password.' },

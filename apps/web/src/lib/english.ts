@@ -19,7 +19,7 @@ const done = new Map<string, Promise<string | null>>();
 
 /**
  * The browser's own translator (Chrome and Edge, on this computer, nothing sent anywhere): used when
- * Sudarshan has no English for a question yet - no AI model set, or it is still being translated.
+ * Sudarshan AI has no English for a question yet - no AI model set, or it is still being translated.
  */
 function browserEnglish(text: string): Promise<string | null> {
   const cached = done.get(text);
@@ -51,7 +51,7 @@ function browserEnglish(text: string): Promise<string | null> {
   return job;
 }
 
-/** English for a question: Sudarshan's (from your AI model) when it has one, else the browser's own translation. */
+/** English for a question: Sudarshan AI's (from your AI model) when it has one, else the browser's own translation. */
 export function useEnglish(text: string, known: string | null | undefined, foreign: boolean | undefined): string | null {
   const [fromBrowser, setFromBrowser] = useState<string | null>(null);
   useEffect(() => {

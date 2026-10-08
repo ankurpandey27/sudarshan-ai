@@ -54,13 +54,13 @@ export function NotificationsCard({
   return (
     <>
       <Card>
-        <CardHeader title="Notifications" hint="Know what happened without watching Sudarshan" />
+        <CardHeader title="Notifications" hint="Know what happened without watching Sudarshan AI" />
         <div className="space-y-3 p-4">
           <Toggle
             checked={desktop}
             onChange={(v) => void toggleDesktop(v)}
             label="Desktop notifications"
-            hint="While Sudarshan is open in this browser. Your browser asks once."
+            hint="While Sudarshan AI is open in this browser. Your browser asks once."
           />
           <Toggle
             checked={agent.notifyNeedsYou}

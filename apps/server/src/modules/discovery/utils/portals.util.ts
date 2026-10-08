@@ -38,7 +38,7 @@ export function founditSearchPath(keyword: string, location: string, page: numbe
 }
 
 /**
- * A Foundit listing as a job. Many only point to a LinkedIn job (Sudarshan's LinkedIn search finds those itself,
+ * A Foundit listing as a job. Many only point to a LinkedIn job (Sudarshan AI's LinkedIn search finds those itself,
  * with LinkedIn's own apply) - skipped; one that points to a company's career site becomes that site's job.
  */
 export function founditJobToDiscovered(j: FounditJob | null): DiscoveredJob | null {

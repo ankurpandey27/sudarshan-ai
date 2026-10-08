@@ -76,7 +76,7 @@ const STALE_FLIGHT_MS = 15 * 60_000;
 const OUTCOME_COLOR = { applied: 'var(--good)', failed: 'var(--bad)', stopped: 'var(--warn)' } as const;
 
 /**
- * Lakshya's radar: every job Sudarshan is weighing is a dot. Rings are score bands, the left half is your country,
+ * Lakshya's radar: every job Sudarshan AI is weighing is a dot. Rings are score bands, the left half is your country,
  * the right half abroad. While the agent runs, a sweep circles and lights the jobs it passes; each application flies
  * out from the chakra as a comet and lands on the rim - green when it went through.
  */

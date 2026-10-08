@@ -23,7 +23,7 @@ import { AppliedSyncResult } from './interfaces/applied-sync-result.interface';
 import { indeedAppliedKeysInPage, indeedPageStateInPage } from './scripts/indeed-applied.script';
 
 /**
- * Brings in applications the site knows about but Sudarshan missed - ones you finished by hand in a
+ * Brings in applications the site knows about but Sudarshan AI missed - ones you finished by hand in a
  * tab it left open. It reads Indeed's own "My jobs -> Applied" list and marks exactly those jobs
  * (matched by Indeed's job id, never by title) as Applied. It only reads; it never clicks anything
  * on Indeed.
@@ -87,7 +87,7 @@ export class AppliedSyncService {
     throw new BadRequestException("Could not read Indeed's list of your applications (the page did not finish loading) - try again in a moment.");
   }
 
-  /** Marks the listed jobs Applied - at when Sudarshan last handed them to you, or when they were found. */
+  /** Marks the listed jobs Applied - at when Sudarshan AI last handed them to you, or when they were found. */
   markApplied(keys: string[]): AppliedSyncResult {
     const found = this.jobs.byExternalIds(JobSource.INDEED, keys);
     const result: AppliedSyncResult = { listed: keys.length, marked: [], alreadyApplied: 0, notInSudarshan: keys.length - found.length };
@@ -101,8 +101,8 @@ export class AppliedSyncService {
       }
     }
     const note = result.marked.length
-      ? `Indeed lists ${result.listed} application(s): marked ${result.marked.length} as Applied that Sudarshan had missed`
-      : `Indeed lists ${result.listed} application(s) - Sudarshan already had them all`;
+      ? `Indeed lists ${result.listed} application(s): marked ${result.marked.length} as Applied that Sudarshan AI had missed`
+      : `Indeed lists ${result.listed} application(s) - Sudarshan AI already had them all`;
     this.events.emit({ type: AgentEventType.LOG, level: result.marked.length ? 'success' : 'info', source: 'indeed', message: note });
     this.logger.log(note);
     return result;

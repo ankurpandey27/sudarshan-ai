@@ -372,7 +372,7 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
         return { ...out, status: 'stuck', detail: `This is an advert's page (${new URL(snap.url).hostname}), not the job's application - nothing was filled in; apply by hand from the job page` };
       }
 
-      // A confirmation only counts after Sudarshan pressed something, and never on a page that is
+      // A confirmation only counts after Sudarshan AI pressed something, and never on a page that is
       // still a form waiting to be sent (fields plus a Submit button, or an unsolved captcha) -
       // job sites mention "applied" and "application" all over their forms.
       const stillAForm = snap.captcha || (snap.fields.length > 0 && snap.actions.some((a) => a.kind === 'submit'));
@@ -464,8 +464,8 @@ Return JSON: {"method":"<one of: ${methods.join(', ')}>","text":"<exactly what t
           return { ...out, status: 'ready_to_submit', detail: 'Filled - type the captcha and press Submit' };
         }
         // A few seconds for checks that pass by themselves (Cloudflare); a real captcha is handed over at once, the tab
-        // kept open - Sudarshan carries on by itself once you have solved it - instead of sitting idle for minutes.
-        opts.onStep('Captcha shown - handing it to you (solve it any time; Sudarshan finishes the application after)');
+        // kept open - Sudarshan AI carries on by itself once you have solved it - instead of sitting idle for minutes.
+        opts.onStep('Captcha shown - handing it to you (solve it any time; Sudarshan AI finishes the application after)');
         if (!(await this.waitForCaptcha(page, opts.scopeSelector))) {
           return { ...out, status: 'captcha', detail: 'Filled - only the captcha is left; solve it and press Submit in the open tab' };
         }

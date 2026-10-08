@@ -121,7 +121,7 @@ export function CommandBar({ country, onMatches }: { country: string | null; onM
             if (event.key === 'Escape') setText('');
           }}
           placeholder={EXAMPLES[example]}
-          aria-label="Tell Sudarshan what to do"
+          aria-label="Tell Sudarshan AI what to do"
           className="h-11 min-w-0 flex-1 bg-transparent text-[14px] text-ink outline-none placeholder:text-ink-3"
         />
         {text ? (

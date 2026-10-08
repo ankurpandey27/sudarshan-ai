@@ -41,7 +41,7 @@ const SUBMIT_WORDS = /\b(submit|send|apply|finish|complete|finali[sz]e|confirm)\
 const shape = (s: FormSnapshot) => `${s.url.split('?')[0]}|${s.fields.map((f) => `${f.label}=${f.value}`).join('#')}|${s.actions.map((a) => a.text).join('#')}`;
 
 /**
- * The last resort when the usual way gets stuck on a site Sudarshan does not know: an AI that reads the
+ * The last resort when the usual way gets stuck on a site Sudarshan AI does not know: an AI that reads the
  * page (and a screenshot, when the model takes images) and presses the controls that move the
  * application on, several per step. It only presses and chooses - typed answers still come from your
  * profile, your answers or you - never touches passwords, codes, captchas or anything that leaves the

@@ -36,7 +36,7 @@ export interface FormSnapshot {
   fields: FormField[];
   actions: FormAction[];
   /**
-   * Short links whose words Sudarshan does not know ("Solliciteren" in a Dutch page's menu). Kept apart
+   * Short links whose words Sudarshan AI does not know ("Solliciteren" in a Dutch page's menu). Kept apart
    * from actions - never pressed while filling a form - so the AI can pick the one that opens the
    * application on a page in any language.
    */

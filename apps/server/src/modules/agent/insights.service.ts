@@ -155,10 +155,10 @@ export class InsightsService {
           id: `changed-${health.platform}`,
           severity: 'error',
           title: `${name} may have changed its pages - paused`,
-          detail: `The last few ${name} applications got stuck (latest: "${(health.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan stopped applying on ${name} - it tries one again by itself at ${clockTime(health.until)}.`,
+          detail: `The last few ${name} applications got stuck (latest: "${(health.recent[0] ?? '').slice(0, 140)}"). Rather than keep failing, Sudarshan AI stopped applying on ${name} - it tries one again by itself at ${clockTime(health.until)}.`,
           fix: this.settings.get().agent.carefulAfterPause
-            ? `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again": it resumes and, as you set, stops before Submit on ${name}'s own forms until one works.`
-            : `Finish one stuck application by hand in its open tab - Sudarshan learns the new steps from you - or press "Try again": it resumes normally. (To have it stop before Submit after a pause, turn on "Careful mode after a pause" in Settings.)`,
+            ? `Finish one stuck application by hand in its open tab - Sudarshan AI learns the new steps from you - or press "Try again": it resumes and, as you set, stops before Submit on ${name}'s own forms until one works.`
+            : `Finish one stuck application by hand in its open tab - Sudarshan AI learns the new steps from you - or press "Try again": it resumes normally. (To have it stop before Submit after a pause, turn on "Careful mode after a pause" in Settings.)`,
           actions: [
             { label: 'Try again', api: `/agent/platforms/${health.platform}/retry` },
             { label: 'See what happened', to: '/applications' },
@@ -170,7 +170,7 @@ export class InsightsService {
           version: `cooling until ${health.until ?? ''}`,
           severity: 'warn',
           title: `${name} is refusing applications for now - paused until ${clockTime(health.until)}`,
-          detail: `${name} answered "please try again later" instead of taking the application - usually after many applications in a short time. Those jobs stay in the queue; Sudarshan tries ${name} again at ${clockTime(health.until)} and carries on with the other sites meanwhile.`,
+          detail: `${name} answered "please try again later" instead of taking the application - usually after many applications in a short time. Those jobs stay in the queue; Sudarshan AI tries ${name} again at ${clockTime(health.until)} and carries on with the other sites meanwhile.`,
           fix: `Nothing to do now. To make it less likely: a lower daily limit for ${name} (Settings, Platforms & limits) and a longer gap between applications (Settings, Agent).`,
           actions: [{ label: 'Limits', to: '/settings?tab=platforms' }],
         });
@@ -181,7 +181,7 @@ export class InsightsService {
           version: `careful since ${health.since ?? ''}`,
           severity: 'info',
           title: `${name}: careful mode`,
-          detail: `After recent trouble, Sudarshan fills ${name}'s own application forms and stops before Submit, so you check each one. Company sites are not affected.`,
+          detail: `After recent trouble, Sudarshan AI fills ${name}'s own application forms and stops before Submit, so you check each one. Company sites are not affected.`,
           fix: 'Press Submit in the open tab. After one application goes through, careful mode ends by itself - or turn it off in Settings (Careful mode after a pause).',
           actions: [
             { label: 'Applications', to: '/applications' },

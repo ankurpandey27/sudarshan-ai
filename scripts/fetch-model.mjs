@@ -1,8 +1,8 @@
 // Copyright (c) 2026 Ankur Pandey. Licensed under the MIT License.
 // SPDX-License-Identifier: MIT
 
-// Downloads the answer-matching model into ./models once, so Sudarshan is ready on the first start.
-// Runs after `npm install` and from `npm start`; never fails either - without the model, Sudarshan
+// Downloads the answer-matching model into ./models once, so Sudarshan AI is ready on the first start.
+// Runs after `npm install` and from `npm start`; never fails either - without the model, Sudarshan AI
 // works as before. Skip it with SUDARSHAN_SKIP_MODEL=1.
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
@@ -36,7 +36,7 @@ export async function fetchModel({ quiet = false } = {}) {
     say('  Answer-matching model ready');
     return haveModel();
   } catch (err) {
-    say(`  Could not get the answer-matching model now (${err.message.split('\n')[0]}) - Sudarshan works without it and tries again on the next start.`);
+    say(`  Could not get the answer-matching model now (${err.message.split('\n')[0]}) - Sudarshan AI works without it and tries again on the next start.`);
     return false;
   }
 }

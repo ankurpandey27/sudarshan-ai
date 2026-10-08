@@ -11,7 +11,7 @@ export function SudarshanMark({ size = 28, spinning = false, className }: { size
       width={size}
       height={size}
       role="img"
-      aria-label="Sudarshan"
+      aria-label="Sudarshan AI"
       className={cn('chakra-spin', spinning && 'fast', className)}
     >
       <polygon points={TEETH} fill="var(--accent)" />

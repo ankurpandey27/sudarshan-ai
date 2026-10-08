@@ -5,7 +5,7 @@
 
 /**
  * The company's own apply address, as LinkedIn keeps it in the job page ("companyApplyUrl" in its data,
- * or the Apply link's href) - for when pressing Apply opens nothing Sudarshan can catch. Null when absent.
+ * or the Apply link's href) - for when pressing Apply opens nothing Sudarshan AI can catch. Null when absent.
  */
 export function linkedinCompanyApplyUrlInPage(): string | null {
   const unescape = (s: string) =>
